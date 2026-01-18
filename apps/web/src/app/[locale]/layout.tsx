@@ -38,9 +38,6 @@ export async function generateMetadata({
     title,
     description,
     metadataBase: new URL('https://myteslab.com'),
-    verification: {
-      google: 'ePlud_UhwMRjIZzM4kHYXLL3TuhADQs1dMCeYguF00w',
-    },
     alternates: {
       canonical: `/${locale}`,
       languages: {
@@ -82,8 +79,7 @@ export async function generateMetadata({
       },
     },
     verification: {
-      // 后续添加 Google Search Console 验证码
-      // google: 'your-verification-code',
+      google: 'ePlud_UhwMRjIZzM4kHYXLL3TuhADQs1dMCeYguF00w',
     },
   }
 }
