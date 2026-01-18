@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server'
-import { WrapCard } from '@/components/WrapCard'
+import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { getWraps, getModels } from '@/lib/api'
@@ -15,7 +15,8 @@ export default async function HomePage({
   const { model } = await searchParams
   const { locale } = await params
 
-  const wraps = await getWraps(model)
+  // 初始加载第一页数据 (12条)
+  const wraps = await getWraps(model, 1, 12)
   const models = await getModels()
 
   return (
@@ -32,7 +33,8 @@ export default async function HomePage({
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
               <div className="text-sm text-gray-500">
-                {wraps.length} {locale === 'zh' ? '个贴图' : 'wraps'}
+                {/* 注意：这里的总数现在只是初始加载的数量。如果需要显示全局总数，需要 api 额外返回 count */}
+                {locale === 'zh' ? '探索贴图库' : 'Explore Wraps'}
               </div>
             </div>
           </div>
@@ -42,24 +44,7 @@ export default async function HomePage({
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         <FilterBarWrapper models={models}>
-          {/* Wraps Grid */}
-          {wraps.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {wraps.map((wrap) => (
-                <WrapCard key={wrap.id} wrap={wrap} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">🎨</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {t('no_wraps')}
-              </h3>
-              <p className="text-gray-600">
-                {model ? (locale === 'zh' ? '该车型暂无可用贴图' : 'No wraps available for this model') : (locale === 'zh' ? '请先在数据库中添加贴图数据' : 'Please add wrap data to the database first')}
-              </p>
-            </div>
-          )}
+          <WrapList initialWraps={wraps} model={model} locale={locale} />
         </FilterBarWrapper>
       </main>
 

@@ -2,10 +2,13 @@ import { supabase } from '@/lib/supabase'
 import type { Wrap, Model } from '@/lib/types'
 
 /**
- * 获取所有贴图
+ * 获取贴图列表（支持分页和车型过滤）
  */
-export async function getWraps(modelSlug?: string): Promise<Wrap[]> {
+export async function getWraps(modelSlug?: string, page: number = 1, pageSize: number = 12): Promise<Wrap[]> {
     try {
+        const from = (page - 1) * pageSize
+        const to = from + pageSize - 1
+
         // 如果指定了车型,先获取车型ID
         if (modelSlug) {
             const { data: model } = await supabase
@@ -30,31 +33,33 @@ export async function getWraps(modelSlug?: string): Promise<Wrap[]> {
 
             const wrapIds = mappings.map(m => m.wrap_id)
 
-            // 获取贴图详情
+            // 获取贴图详情（分页）
             const { data, error } = await supabase
                 .from('wraps')
                 .select('*')
                 .in('id', wrapIds)
                 .eq('is_active', true)
                 .order('created_at', { ascending: false })
+                .range(from, to)
 
             if (error) {
-                console.error('获取贴图失败:', error)
+                console.error('获取带过滤的分页贴图失败:', error)
                 return []
             }
 
             return data || []
         }
 
-        // 获取所有贴图
+        // 获取所有贴图（分页）
         const { data, error } = await supabase
             .from('wraps')
             .select('*')
             .eq('is_active', true)
             .order('created_at', { ascending: false })
+            .range(from, to)
 
         if (error) {
-            console.error('获取贴图失败:', error)
+            console.error('获取分页贴图失败:', error)
             return []
         }
 
