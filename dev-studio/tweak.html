@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Wrap Tweak UI</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1F1F1F;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+
+        #viewer-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid #444;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        /* Scrollbar styling */
+        #controls::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #controls::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        #controls::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        #controls::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #ccc;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 12px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #005bb5;
+        }
+
+        button.secondary {
+            background: #444;
+        }
+
+        button.secondary:hover {
+            background: #555;
+        }
+
+        .value-display {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+    <!-- Import the component -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+</head>
+
+<body>
+    <div id="viewer-container">
+        <!-- Model Viewer injected by JS -->
+    </div>
+
+    <div id="controls">
+        <h2>Model & Texture</h2>
+
+        <div class="control-group">
+            <label>Car Model</label>
+            <select id="model-select"
+                style="width:100%; padding:8px; background:#333; color:white; border:1px solid #555; border-radius:4px; cursor:pointer;">
+                <option value="">Loading models...</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Wrap Texture</label>
+            <select id="texture-select"
+                style="width:100%; padding:8px; background:#333; color:white; border:1px solid #555; border-radius:4px; cursor:pointer;">
+                <option value="">Select a model first</option>
+            </select>
+        </div>
+
+        <h2 style="margin-top: 20px;">Wrap Adjustments</h2>
+
+        <div class="control-group">
+            <label>Detailed Tiling (U/V Scale) <span id="val-scale" class="value-display">1.0</span></label>
+            <input type="range" id="scale" min="0.1" max="10" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label>Rotation (Deg) <span id="val-rotation" class="value-display">0</span></label>
+            <input type="range" id="rotation" min="0" max="360" step="1" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>Base Color <span id="val-base-color" class="value-display">#FFFFFF</span></label>
+            <input type="color" id="base-color" value="#FFFFFF"
+                style="width:100%; height:30px; border:none; padding:0;">
+        </div>
+
+        <div class="control-group">
+            <label style="display:flex; align-items:center; gap:5px;">
+                Mirror Texture (Flip Horizontal)
+                <input type="checkbox" id="mirror">
+            </label>
+            <label style="display:flex; align-items:center; gap:5px; margin-top:5px; color:#4caf50;">
+                UV Set
+                <select id="uv-select"
+                    style="background:#333; color:white; border:1px solid #555; padding:2px; font-size:10px;">
+                    <option value="uv">Default (UVMap)</option>
+                </select>
+            </label>
+            <label style="display:flex; align-items:center; gap:5px; margin-top:5px; color:#ff9800;">
+                Auto Rotate View
+                <input type="checkbox" id="auto-rotate">
+            </label>
+        </div>
+
+        <div class="control-group">
+            <label>Shadow Intensity <span id="val-shadow" class="value-display">1.0</span></label>
+            <input type="range" id="shadow" min="0" max="5" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label>Exposure <span id="val-exposure" class="value-display">1.0</span></label>
+            <input type="range" id="exposure" min="0" max="3" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label>Camera Orbit</label>
+            <div class="row">
+                <button id="btn-set-camera" class="secondary" style="flex:1">Use Current View</button>
+            </div>
+            <div style="font-size: 10px; word-break: break-all; margin-top: 5px; color:#666;" id="camera-val">
+                225deg 75deg 105%
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Materials (Uncheck to Hide)</label>
+            <div id="material-list"
+                style="max-height: 150px; overflow-y: auto; background: #333; padding: 5px; border-radius: 4px;">
+                <!-- Checkboxes injected here -->
+            </div>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 10px;">
+            <button id="btn-save" style="flex:1">Save Config</button>
+            <button id="btn-reset" class="secondary">Reset</button>
+        </div>
+        <div id="status" style="font-size: 12px; color: #aaa; text-align: center; height: 15px;"></div>
+    </div>
+
+    <script type="module">
+        // --- CONFIG & STATE MANAGEMENT ---
+
+        const defaultConfig = {
+            scale: 1.0,
+            rotation: 0,
+            shadowIntensity: 1.0,
+            exposure: 1.0,
+            cameraOrbit: '225deg 75deg 105%',
+            fieldOfView: '30deg',
+            baseColor: '#FFFFFF',
+            mirror: false,
+            uvSet: 'uv', // 'uv' or 'uv1' or 'uv2'
+            hiddenMaterials: [],
+            bodyMaterials: []
+        };
+
+        let fullConfig = {
+            defaults: { ...defaultConfig },
+            models: {}
+        };
+
+        let state = {}; // Merged config for the current model
+        let modelSlug = 'default';
+        let modelViewer = null;
+        let wrapTexture = null;
+
+        // Model and texture catalog
+        let catalogData = {
+            models: [],
+            textures: {}
+        };
+
+        // --- CATALOG LOADING ---
+
+        const toSlug = (text) => {
+            return text
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/\+/g, 'plus')
+                .replace(/[^a-z0-9_-]/g, '');
+        };
+
+        async function loadCatalog() {
+            try {
+                // Fetch the directory listing from the server
+                const response = await fetch('/api/catalog');
+                if (response.ok) {
+                    catalogData = await response.json();
+                } else {
+                    // Fallback: hardcoded catalog for static server
+                    catalogData = {
+                        models: [
+                            { name: 'Cybertruck', slug: 'cybertruck', path: '/uploads/catalog/cybertruck/cybertruck.glb', folder: 'cybertruck' },
+                            { name: 'Model 3', slug: 'model-3', path: '/uploads/catalog/model-3/model.glb', folder: 'model-3' },
+                            { name: 'Model 3 2024+', slug: 'model-3-2024plus', path: '/uploads/catalog/model-3-2024-plus/model.glb', folder: 'model-3-2024-plus' },
+                            { name: 'Model Y', slug: 'model-y', path: '/uploads/catalog/model-y-pre-2025/model.glb', folder: 'model-y-pre-2025' },
+                            { name: 'Model Y 2025+', slug: 'model-y-2025plus', path: '/uploads/catalog/model-y-2025-plus/model.glb', folder: 'model-y-2025-plus' }
+                        ],
+                        textures: {
+                            'cybertruck': [
+                                { name: 'Ani', path: '/uploads/catalog/Cybertruck/wraps/Official/Ani.png' },
+                                { name: 'Camo Blue', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Blue.png' },
+                                { name: 'Camo Brown', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Brown.png' },
+                                { name: 'Camo Green', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Green.png' },
+                                { name: 'Camo Pink', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Pink.png' },
+                                { name: 'Camo Sand', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Sand.png' },
+                                { name: 'Camo Snow', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Snow.png' },
+                                { name: 'Camo Stealth', path: '/uploads/catalog/Cybertruck/wraps/Official/Camo_Stealth.png' },
+                                { name: 'Clay', path: '/uploads/catalog/Cybertruck/wraps/Official/Clay.png' },
+                                { name: 'Cosmic Burst', path: '/uploads/catalog/Cybertruck/wraps/Official/Cosmic_Burst.png' },
+                                { name: 'Divide', path: '/uploads/catalog/Cybertruck/wraps/Official/Divide.png' },
+                                { name: 'Doge', path: '/uploads/catalog/Cybertruck/wraps/Official/Doge.png' },
+                                { name: 'Leopard', path: '/uploads/catalog/Cybertruck/wraps/Official/Leopard.png' },
+                                { name: 'Pixel Art', path: '/uploads/catalog/Cybertruck/wraps/Official/Pixel_Art.png' },
+                                { name: 'Sakura', path: '/uploads/catalog/Cybertruck/wraps/Official/Sakura.png' }
+                            ],
+                            'model_3': [
+                                { name: 'Acid Drip', path: '/uploads/catalog/Model-3/wraps/Official/Acid_Drip.png' },
+                                { name: 'Ani', path: '/uploads/catalog/Model-3/wraps/Official/Ani.png' },
+                                { name: 'Apocalypse', path: '/uploads/catalog/Model-3/wraps/Official/Apocalypse.png' },
+                                { name: 'Avocado Green', path: '/uploads/catalog/Model-3/wraps/Official/Avocado_Green.png' },
+                                { name: 'Camo', path: '/uploads/catalog/Model-3/wraps/Official/Camo.png' },
+                                { name: 'Cosmic Burst', path: '/uploads/catalog/Model-3/wraps/Official/Cosmic_Burst.png' },
+                                { name: 'Divide', path: '/uploads/catalog/Model-3/wraps/Official/Divide.png' },
+                                { name: 'Doge', path: '/uploads/catalog/Model-3/wraps/Official/Doge.png' },
+                                { name: 'Dot Matrix', path: '/uploads/catalog/Model-3/wraps/Official/Dot_Matrix.png' },
+                                { name: 'Ice Cream', path: '/uploads/catalog/Model-3/wraps/Official/Ice_Cream.png' },
+                                { name: 'Leopard', path: '/uploads/catalog/Model-3/wraps/Official/Leopard.png' },
+                                { name: 'Pixel Art', path: '/uploads/catalog/Model-3/wraps/Official/Pixel_Art.png' },
+                                { name: 'Reindeer', path: '/uploads/catalog/Model-3/wraps/Official/Reindeer.png' },
+                                { name: 'Sakura', path: '/uploads/catalog/Model-3/wraps/Official/Sakura.png' },
+                                { name: 'Sketch', path: '/uploads/catalog/Model-3/wraps/Official/Sketch.png' },
+                                { name: 'Valentine', path: '/uploads/catalog/Model-3/wraps/Official/Valentine.png' }
+                            ],
+                            'model_3_2024plus': [
+                                { name: 'Acid Drip', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Acid_Drip.png' },
+                                { name: 'Ani', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Ani.png' },
+                                { name: 'Apocalypse', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Apocalypse.png' },
+                                { name: 'Doge', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Doge.png' },
+                                { name: 'Sakura', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Sakura.png' },
+                                { name: 'Sketch', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Sketch.png' },
+                                { name: 'Valentine', path: '/uploads/catalog/Model-3-2024+/wraps/Official/Valentine.png' }
+                            ],
+                            'model_y': [
+                                { name: 'Acid Drip', path: '/uploads/catalog/Model-Y/wraps/Official/Acid_Drip.png' },
+                                { name: 'Ani', path: '/uploads/catalog/Model-Y/wraps/Official/Ani.png' },
+                                { name: 'Apocalypse', path: '/uploads/catalog/Model-Y/wraps/Official/Apocalypse.png' },
+                                { name: 'Doge', path: '/uploads/catalog/Model-Y/wraps/Official/Doge.png' },
+                                { name: 'Sakura', path: '/uploads/catalog/Model-Y/wraps/Official/Sakura.png' },
+                                { name: 'Sketch', path: '/uploads/catalog/Model-Y/wraps/Official/Sketch.png' },
+                                { name: 'Valentine', path: '/uploads/catalog/Model-Y/wraps/Official/Valentine.png' }
+                            ],
+                            'model_y_2025plus': [
+                                { name: 'Acid Drip', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Acid_Drip.png' },
+                                { name: 'Ani', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Ani.png' },
+                                { name: 'Apocalypse', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Apocalypse.png' },
+                                { name: 'Doge', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Doge.png' },
+                                { name: 'Sakura', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Sakura.png' },
+                                { name: 'Sketch', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Sketch.png' },
+                                { name: 'Valentine', path: '/uploads/catalog/Model-Y-2025+/wraps/Official/Valentine.png' }
+                            ]
+                        }
+                    };
+                }
+
+                populateModelSelect();
+            } catch (e) {
+                console.error('Failed to load catalog:', e);
+                // Use fallback data when fetch fails (e.g., CORS error, network error)
+                catalogData = {
+                    "models": [
+                        {
+                            "name": "Cybertruck",
+                            "slug": "cybertruck",
+                            "path": "/uploads/catalog/Cybertruck/cybertruck.glb",
+                            "folder": "Cybertruck"
+                        },
+                        {
+                            "name": "Model 3",
+                            "slug": "model-3",
+                            "path": "/uploads/catalog/model-3/model.glb",
+                            "folder": "model-3"
+                        },
+                        {
+                            "name": "Model 3 2024+",
+                            "slug": "model-3-2024-plus",
+                            "path": "/uploads/catalog/model-3-2024-plus/model.glb",
+                            "folder": "model-3-2024-plus"
+                        },
+                        {
+                            "name": "Model Y",
+                            "slug": "model-y-pre-2025",
+                            "path": "/uploads/catalog/model-y-pre-2025/model.glb",
+                            "folder": "model-y-pre-2025"
+                        },
+                        {
+                            "name": "Model Y 2025+",
+                            "slug": "model-y-2025-plus",
+                            "path": "/uploads/catalog/model-y-2025-plus/model.glb",
+                            "folder": "model-y-2025-plus"
+                        }
+                    ],
+                    "textures": {
+                        "cybertruck": [
+                            { "name": "Ani", "path": "/uploads/catalog/Cybertruck/wraps/Official/Ani.png" },
+                            { "name": "Camo Blue", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Blue.png" },
+                            { "name": "Camo Brown", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Brown.png" },
+                            { "name": "Camo Green", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Green.png" },
+                            { "name": "Camo Pink", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Pink.png" },
+                            { "name": "Camo Sand", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Sand.png" },
+                            { "name": "Camo Snow", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Snow.png" },
+                            { "name": "Camo Stealth", "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Stealth.png" },
+                            { "name": "Clay", "path": "/uploads/catalog/Cybertruck/wraps/Official/Clay.png" },
+                            { "name": "Cosmic Burst", "path": "/uploads/catalog/Cybertruck/wraps/Official/Cosmic_Burst.png" },
+                            { "name": "Digital Camo Green", "path": "/uploads/catalog/Cybertruck/wraps/Official/Digital_Camo_Green.png" },
+                            { "name": "Digital Camo Snow", "path": "/uploads/catalog/Cybertruck/wraps/Official/Digital_Camo_Snow.png" },
+                            { "name": "Digital Camo Stealth", "path": "/uploads/catalog/Cybertruck/wraps/Official/Digital_Camo_Stealth.png" },
+                            { "name": "Doge Camo", "path": "/uploads/catalog/Cybertruck/wraps/Official/Doge_Camo.png" },
+                            { "name": "Gradient Black", "path": "/uploads/catalog/Cybertruck/wraps/Official/Gradient_Black.png" },
+                            { "name": "Gradient Burn", "path": "/uploads/catalog/Cybertruck/wraps/Official/Gradient_Burn.png" },
+                            { "name": "Gradient Cotton Candy", "path": "/uploads/catalog/Cybertruck/wraps/Official/Gradient_Cotton_Candy.png" },
+                            { "name": "Gradient Green", "path": "/uploads/catalog/Cybertruck/wraps/Official/Gradient_Green.png" },
+                            { "name": "Gradient Purple Burn", "path": "/uploads/catalog/Cybertruck/wraps/Official/Gradient_Purple_Burn.png" },
+                            { "name": "Gradient Sunburst", "path": "/uploads/catalog/Cybertruck/wraps/Official/Gradient_Sunburst.png" },
+                            { "name": "Graffiti back", "path": "/uploads/catalog/Cybertruck/wraps/Official/Graffiti_back.png" },
+                            { "name": "Graffiti green", "path": "/uploads/catalog/Cybertruck/wraps/Official/Graffiti_green.png" },
+                            { "name": "Graffiti orange", "path": "/uploads/catalog/Cybertruck/wraps/Official/Graffiti_orange.png" },
+                            { "name": "Grandmas Sofa", "path": "/uploads/catalog/Cybertruck/wraps/Official/Grandmas_Sofa.png" },
+                            { "name": "Houndstooth", "path": "/uploads/catalog/Cybertruck/wraps/Official/Houndstooth.png" },
+                            { "name": "Leopard", "path": "/uploads/catalog/Cybertruck/wraps/Official/Leopard.png" },
+                            { "name": "Mika", "path": "/uploads/catalog/Cybertruck/wraps/Official/Mika.png" },
+                            { "name": "Rc prototype", "path": "/uploads/catalog/Cybertruck/wraps/Official/Rc_prototype.png" },
+                            { "name": "Retro", "path": "/uploads/catalog/Cybertruck/wraps/Official/Retro.png" },
+                            { "name": "Rudi", "path": "/uploads/catalog/Cybertruck/wraps/Official/Rudi.png" },
+                            { "name": "Rust", "path": "/uploads/catalog/Cybertruck/wraps/Official/Rust.png" },
+                            { "name": "Valentine", "path": "/uploads/catalog/Cybertruck/wraps/Official/Valentine.png" },
+                            { "name": "Woody", "path": "/uploads/catalog/Cybertruck/wraps/Official/Woody.png" },
+                            { "name": "Xmas Camo", "path": "/uploads/catalog/Cybertruck/wraps/Official/Xmas_Camo.png" },
+                            { "name": "Xmas Lights", "path": "/uploads/catalog/Cybertruck/wraps/Official/Xmas_Lights.png" },
+                            { "name": "Xray", "path": "/uploads/catalog/Cybertruck/wraps/Official/Xray.png" },
+                            { "name": "police", "path": "/uploads/catalog/Cybertruck/wraps/Official/police.png" }
+                        ],
+                        "model-3": [
+                            { "name": "Acid Drip", "path": "/uploads/catalog/model-3/wraps/Official/Acid_Drip.png" },
+                            { "name": "Ani", "path": "/uploads/catalog/model-3/wraps/Official/Ani.png" },
+                            { "name": "Apocalypse", "path": "/uploads/catalog/model-3/wraps/Official/Apocalypse.png" },
+                            { "name": "Avocado Green", "path": "/uploads/catalog/model-3/wraps/Official/Avocado_Green.png" },
+                            { "name": "Camo", "path": "/uploads/catalog/model-3/wraps/Official/Camo.png" },
+                            { "name": "Cosmic Burst", "path": "/uploads/catalog/model-3/wraps/Official/Cosmic_Burst.png" },
+                            { "name": "Divide", "path": "/uploads/catalog/model-3/wraps/Official/Divide.png" },
+                            { "name": "Doge", "path": "/uploads/catalog/model-3/wraps/Official/Doge.png" },
+                            { "name": "Dot Matrix", "path": "/uploads/catalog/model-3/wraps/Official/Dot_Matrix.png" },
+                            { "name": "Ice Cream", "path": "/uploads/catalog/model-3/wraps/Official/Ice_Cream.png" },
+                            { "name": "Leopard", "path": "/uploads/catalog/model-3/wraps/Official/Leopard.png" },
+                            { "name": "Pixel Art", "path": "/uploads/catalog/model-3/wraps/Official/Pixel_Art.png" },
+                            { "name": "Reindeer", "path": "/uploads/catalog/model-3/wraps/Official/Reindeer.png" },
+                            { "name": "Rudi", "path": "/uploads/catalog/model-3/wraps/Official/Rudi.png" },
+                            { "name": "Sakura", "path": "/uploads/catalog/model-3/wraps/Official/Sakura.png" },
+                            { "name": "Sketch", "path": "/uploads/catalog/model-3/wraps/Official/Sketch.png" },
+                            { "name": "String Lights", "path": "/uploads/catalog/model-3/wraps/Official/String_Lights.png" },
+                            { "name": "Valentine", "path": "/uploads/catalog/model-3/wraps/Official/Valentine.png" },
+                            { "name": "Vintage Gradient", "path": "/uploads/catalog/model-3/wraps/Official/Vintage_Gradient.png" },
+                            { "name": "Vintage Stripes", "path": "/uploads/catalog/model-3/wraps/Official/Vintage_Stripes.png" }
+                        ],
+                        "model-3-2024-plus": [
+                            { "name": "Acid Drip", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Acid_Drip.png" },
+                            { "name": "Ani", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Ani.png" },
+                            { "name": "Apocalypse", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Apocalypse.png" },
+                            { "name": "Avocado Green", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Avocado_Green.png" },
+                            { "name": "Camo", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Camo.png" },
+                            { "name": "Cosmic Burst", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Cosmic_Burst.png" },
+                            { "name": "Divide", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Divide.png" },
+                            { "name": "Doge", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Doge.png" },
+                            { "name": "Dot Matrix", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Dot_Matrix.png" },
+                            { "name": "Ice Cream", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Ice_Cream.png" },
+                            { "name": "Leopard", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Leopard.png" },
+                            { "name": "Pixel Art", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Pixel_Art.png" },
+                            { "name": "Reindeer", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Reindeer.png" },
+                            { "name": "Rudi", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Rudi.png" },
+                            { "name": "Sakura", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Sakura.png" },
+                            { "name": "Sketch", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Sketch.png" },
+                            { "name": "String Lights", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/String_Lights.png" },
+                            { "name": "Valentine", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Valentine.png" },
+                            { "name": "Vintage Gradient", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Vintage_Gradient.png" },
+                            { "name": "Vintage Stripes", "path": "/uploads/catalog/model-3-2024-plus/wraps/Official/Vintage_Stripes.png" }
+                        ],
+                        "model-y-pre-2025": [
+                            { "name": "Acid Drip", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Acid_Drip.png" },
+                            { "name": "Ani", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Ani.png" },
+                            { "name": "Apocalypse", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Apocalypse.png" },
+                            { "name": "Avocado Green", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Avocado_Green.png" },
+                            { "name": "Camo", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Camo.png" },
+                            { "name": "Cosmic Burst", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Cosmic_Burst.png" },
+                            { "name": "Divide", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Divide.png" },
+                            { "name": "Doge", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Doge.png" },
+                            { "name": "Dot Matrix", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Dot_Matrix.png" },
+                            { "name": "Ice Cream", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Ice_Cream.png" },
+                            { "name": "Leopard", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Leopard.png" },
+                            { "name": "Pixel Art", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Pixel_Art.png" },
+                            { "name": "Reindeer", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Reindeer.png" },
+                            { "name": "Rudi", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Rudi.png" },
+                            { "name": "Sakura", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Sakura.png" },
+                            { "name": "Sketch", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Sketch.png" },
+                            { "name": "String Lights", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/String_Lights.png" },
+                            { "name": "Valentine", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Valentine.png" },
+                            { "name": "Vintage Gradient", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Vintage_Gradient.png" },
+                            { "name": "Vintage Stripes", "path": "/uploads/catalog/model-y-pre-2025/wraps/Official/Vintage_Stripes.png" }
+                        ],
+                        "model-y-2025-plus": [
+                            { "name": "Acid Drip", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Acid_Drip.png" },
+                            { "name": "Ani", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Ani.png" },
+                            { "name": "Apocalypse", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Apocalypse.png" },
+                            { "name": "Avocado Green", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Avocado_Green.png" },
+                            { "name": "Camo", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Camo.png" },
+                            { "name": "Cosmic Burst", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Cosmic_Burst.png" },
+                            { "name": "Divide", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Divide.png" },
+                            { "name": "Doge", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Doge.png" },
+                            { "name": "Dot Matrix", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Dot_Matrix.png" },
+                            { "name": "Ice Cream", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Ice_Cream.png" },
+                            { "name": "Leopard", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Leopard.png" },
+                            { "name": "Pixel Art", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Pixel_Art.png" },
+                            { "name": "Reindeer", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Reindeer.png" },
+                            { "name": "Rudi", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Rudi.png" },
+                            { "name": "Sakura", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Sakura.png" },
+                            { "name": "Sketch", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Sketch.png" },
+                            { "name": "String Lights", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/String_Lights.png" },
+                            { "name": "Valentine", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Valentine.png" },
+                            { "name": "Vintage Gradient", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Vintage_Gradient.png" },
+                            { "name": "Vintage Stripes", "path": "/uploads/catalog/model-y-2025-plus/wraps/Official/Vintage_Stripes.png" }
+                        ]
+                    }
+                };
+                populateModelSelect();
+            }
+        }
+
+        function populateModelSelect() {
+            const select = document.getElementById('model-select');
+            select.innerHTML = '<option value="">-- Select a model --</option>';
+
+            catalogData.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.slug;
+                option.textContent = model.name;
+                option.dataset.path = model.path;
+                option.dataset.folder = model.folder || model.name;
+                select.appendChild(option);
+            });
+
+            // Select current model if available
+            if (modelSlug && modelSlug !== 'default') {
+                select.value = modelSlug;
+                const selectedOption = select.selectedOptions[0];
+                if (selectedOption) {
+                    populateTextureSelect(modelSlug, selectedOption.dataset.folder);
+                }
+            }
+        }
+
+        async function populateTextureSelect(selectedModelSlug, modelFolder) {
+            const select = document.getElementById('texture-select');
+            select.innerHTML = '<option value="">Loading textures...</option>';
+
+            let textures = [];
+
+            try {
+                // Try to fetch textures from the server directory listing
+                const wrapsPath = `/uploads/catalog/${modelFolder}/wraps/Official/`;
+                const response = await fetch(wrapsPath);
+
+                if (response.ok) {
+                    const html = await response.text();
+
+                    // Parse directory listing HTML to extract .png files
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const links = doc.querySelectorAll('a');
+
+                    links.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href && href.endsWith('.png')) {
+                            const filename = decodeURIComponent(href);
+                            const name = filename.replace('.png', '').replace(/_/g, ' ');
+                            textures.push({
+                                name: name,
+                                path: wrapsPath + filename
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to fetch textures from server:', e);
+            }
+
+            // If no textures found from server, use fallback data
+            if (textures.length === 0) {
+                textures = catalogData.textures[selectedModelSlug] || [];
+                console.log(`Using fallback data: ${textures.length} textures for ${selectedModelSlug}`);
+            } else {
+                console.log(`Loaded ${textures.length} textures from server for ${modelFolder}`);
+            }
+
+            // Update select with textures (either from server or fallback)
+            select.innerHTML = '<option value="">-- No texture --</option>';
+
+            textures.forEach(texture => {
+                const option = document.createElement('option');
+                option.value = texture.path;
+                option.textContent = texture.name;
+                select.appendChild(option);
+            });
+
+            // Auto-select first texture if available
+            if (textures.length > 0) {
+                select.value = textures[0].path;
+            }
+        }
+
+        async function switchModel(newModelSlug, newModelPath) {
+            if (!newModelPath) return;
+
+            modelSlug = newModelSlug;
+
+            // Load model-specific config
+            const modelSpecificConfig = fullConfig.models[modelSlug] || {};
+            state = { ...fullConfig.defaults, ...modelSpecificConfig };
+            state.hiddenMaterials = state.hiddenMaterials || [];
+            state.bodyMaterials = state.bodyMaterials || [];
+
+            // Clear existing viewer
+            const container = document.getElementById('viewer-container');
+            container.innerHTML = '';
+
+            // Create new viewer
+            modelViewer = document.createElement('model-viewer');
+            modelViewer.setAttribute('src', newModelPath);
+            modelViewer.setAttribute('ar', 'false');
+            modelViewer.setAttribute('camera-controls', 'true');
+            modelViewer.setAttribute('interaction-prompt', 'none'); // Hide the interaction prompt
+            // Don't set auto-rotate initially - it will be controlled by the checkbox
+            modelViewer.setAttribute('crossorigin', 'anonymous');
+            modelViewer.style.backgroundColor = '#1F1F1F';
+
+            modelViewer.setAttribute('camera-orbit', state.cameraOrbit);
+            modelViewer.setAttribute('field-of-view', state.fieldOfView);
+            modelViewer.setAttribute('shadow-intensity', state.shadowIntensity);
+            modelViewer.setAttribute('exposure', state.exposure);
+
+            modelViewer.addEventListener('load', async () => {
+                updateBaseColor(state.baseColor);
+                updateBaseColor(state.baseColor);
+                populateUVSelect();
+                populateMaterialList();
+
+                // Apply texture if selected
+                const textureSelect = document.getElementById('texture-select');
+                if (textureSelect.value) {
+                    await switchTexture(textureSelect.value);
+                }
+
+                // Sync auto-rotate with checkbox state
+                const autoRotateCheckbox = document.getElementById('auto-rotate');
+                if (autoRotateCheckbox && autoRotateCheckbox.checked) {
+                    modelViewer.setAttribute('auto-rotate', '');
+                }
+            });
+
+            container.appendChild(modelViewer);
+            updateUIFromState();
+        }
+
+        async function switchTexture(texturePath) {
+            if (!modelViewer || !texturePath) {
+                wrapTexture = null;
+                return;
+            }
+
+            try {
+                wrapTexture = await modelViewer.createTexture(texturePath);
+                await applyTextureToBody();
+            } catch (e) {
+                console.error('Texture load error:', e);
+                wrapTexture = null;
+            }
+        }
+
+        // --- INITIALIZATION ---
+
+        async function initializeApp() {
+            const params = new URLSearchParams(window.location.search);
+            const modelUrl = params.get('modelUrl');
+            const textureUrl = params.get('textureUrl');
+
+            // 1. Determine modelSlug
+            modelSlug = params.get('modelSlug');
+            if (!modelSlug && modelUrl) {
+                try {
+                    const decodedUrl = decodeURIComponent(modelUrl);
+                    const match = decodedUrl.match(/catalog\/(.*?)\/(.*?)\.glb/);
+                    if (match && match[1]) {
+                        modelSlug = toSlug(match[1]);
+                    }
+                } catch (e) {
+                    console.error("Could not derive model slug from URL:", e);
+                }
+            }
+            if (!modelSlug) modelSlug = 'default';
+
+            // 2. Fetch and process existing config
+            try {
+                const res = await fetch(`/render_config.json?v=${Date.now()}`); // Bust cache
+                if (res.ok) {
+                    const savedConfig = await res.json();
+                    if (savedConfig.defaults || savedConfig.models) {
+                        fullConfig.defaults = { ...fullConfig.defaults, ...(savedConfig.defaults || {}) };
+                        fullConfig.models = { ...fullConfig.models, ...(savedConfig.models || {}) };
+                    } else {
+                        // Legacy: treat flat config as the new defaults
+                        fullConfig.defaults = { ...fullConfig.defaults, ...savedConfig };
+                    }
+                }
+            } catch (e) {
+                console.warn("No render_config.json found or fetch failed.", e);
+            }
+
+            // 3. Load catalog
+            await loadCatalog();
+
+            // 4. Merge configs to create initial state
+            const modelSpecificConfig = fullConfig.models[modelSlug] || {};
+            state = { ...fullConfig.defaults, ...modelSpecificConfig };
+            state.hiddenMaterials = state.hiddenMaterials || [];
+            state.bodyMaterials = state.bodyMaterials || [];
+
+            // 5. Init viewer and UI
+            initializeViewer(modelUrl, textureUrl);
+            updateUIFromState();
+            setupEventListeners();
+        }
+
+        function initializeViewer(modelUrl, textureUrl) {
+            const container = document.getElementById('viewer-container');
+            if (!modelUrl) {
+                container.innerHTML = '<div style="color:white; display:flex; justify-content:center; align-items:center; height:100%;">No Model URL provided. Pass ?modelUrl=...</div>';
+                return;
+            }
+
+            modelViewer = document.createElement('model-viewer');
+            modelViewer.setAttribute('src', modelUrl);
+            modelViewer.setAttribute('ar', 'false');
+            modelViewer.setAttribute('camera-controls', 'true');
+            modelViewer.setAttribute('auto-rotate', 'false');
+            modelViewer.setAttribute('crossorigin', 'anonymous');
+            modelViewer.style.backgroundColor = '#1F1F1F';
+
+            // Apply loaded state to viewer attributes
+            modelViewer.setAttribute('camera-orbit', state.cameraOrbit);
+            modelViewer.setAttribute('field-of-view', state.fieldOfView);
+            modelViewer.setAttribute('shadow-intensity', state.shadowIntensity);
+            modelViewer.setAttribute('exposure', state.exposure);
+
+            modelViewer.addEventListener('load', async () => {
+                updateBaseColor(state.baseColor);
+                updateBaseColor(state.baseColor);
+                populateUVSelect();
+
+                populateMaterialList();
+
+                if (textureUrl) {
+                    try {
+                        wrapTexture = await modelViewer.createTexture(textureUrl);
+                        await applyTextureToBody();
+                    } catch (e) {
+                        console.error("Texture load error", e);
+                    }
+                }
+            });
+
+            container.appendChild(modelViewer);
+        }
+
+        // --- UI & VIEWER LOGIC ---
+
+        function populateMaterialList() {
+            const matList = document.getElementById('material-list');
+            matList.innerHTML = '';
+            if (!modelViewer || !modelViewer.model) return;
+
+            // Auto-initialize bodyMaterials if empty (first load)
+            if (!state.bodyMaterials || state.bodyMaterials.length === 0) {
+                state.bodyMaterials = [];
+                modelViewer.model.materials.forEach((mat) => {
+                    const materialKey = mat.name || '';
+                    const lowerName = materialKey.toLowerCase();
+
+                    // Use same heuristic as applyTextureToBody
+                    let isBodyMaterial = false;
+
+                    if (modelSlug === 'model_3' || modelSlug === 'model_3_2024plus') {
+                        // For Model 3, mark "Paint" matching materials as body (e.g. Paint, Paint.001)
+                        isBodyMaterial = materialKey === 'Paint' || materialKey.startsWith('Paint.');
+                    } else {
+                        // For other models, use heuristic matching
+                        isBodyMaterial = (
+                            materialKey === '' ||
+                            lowerName.includes('paint') ||
+                            lowerName.includes('exterior') ||
+                            lowerName.includes('body') ||
+                            materialKey === 'EXT_BODY' ||
+                            materialKey === 'Stainless_Steel_Exterior'
+                        );
+                    }
+
+                    if (isBodyMaterial) {
+                        state.bodyMaterials.push(materialKey);
+                    }
+                });
+
+                console.log(`Auto-detected body materials: ${state.bodyMaterials.join(', ')}`);
+            }
+
+            modelViewer.model.materials.forEach((mat) => {
+                const materialKey = mat.name || '';
+                const displayName = mat.name || '(unnamed)';
+
+                const rowDiv = document.createElement('div');
+                rowDiv.style.display = 'flex';
+                rowDiv.style.justifyContent = 'space-between';
+                rowDiv.style.alignItems = 'center';
+                rowDiv.style.marginBottom = '4px';
+
+                const leftDiv = document.createElement('div');
+                leftDiv.style.display = 'flex';
+                leftDiv.style.alignItems = 'center';
+                leftDiv.style.gap = '8px';
+                leftDiv.style.overflow = 'hidden';
+                leftDiv.style.flex = '1';
+                leftDiv.style.minWidth = '0'; // 允许收缩
+
+                const chkVisible = document.createElement('input');
+                chkVisible.type = 'checkbox';
+                chkVisible.checked = !state.hiddenMaterials.includes(materialKey);
+                chkVisible.title = 'Toggle Visibility';
+                chkVisible.style.flexShrink = '0'; // 防止复选框被压缩
+                chkVisible.addEventListener('change', (e) => {
+                    const visible = e.target.checked;
+                    setMaterialVisibility(mat, visible);
+                    if (visible) {
+                        state.hiddenMaterials = state.hiddenMaterials.filter((n) => n !== materialKey);
+                    } else if (!state.hiddenMaterials.includes(materialKey)) {
+                        state.hiddenMaterials.push(materialKey);
+                    }
+                });
+                setMaterialVisibility(mat, chkVisible.checked);
+
+                const label = document.createElement('span');
+                label.innerText = displayName;
+                label.style.fontSize = '12px';
+                label.style.textOverflow = 'ellipsis';
+                label.style.whiteSpace = 'nowrap';
+                label.style.overflow = 'hidden';
+                label.title = displayName;
+
+                leftDiv.appendChild(chkVisible);
+                leftDiv.appendChild(label);
+
+                const rightDiv = document.createElement('div');
+                rightDiv.style.display = 'flex';
+                rightDiv.style.alignItems = 'center';
+                rightDiv.style.gap = '5px';
+                rightDiv.style.flexShrink = '0'; // 防止右侧被压缩
+
+                const bodyLabel = document.createElement('label');
+                bodyLabel.innerText = 'Body';
+                bodyLabel.style.fontSize = '10px';
+                bodyLabel.style.color = '#888';
+                bodyLabel.style.cursor = 'pointer';
+                bodyLabel.style.display = 'flex';
+                bodyLabel.style.alignItems = 'center';
+                bodyLabel.style.gap = '3px';
+                bodyLabel.style.whiteSpace = 'nowrap'; // 防止换行
+
+                const chkBody = document.createElement('input');
+                chkBody.type = 'checkbox';
+                chkBody.checked = state.bodyMaterials.includes(materialKey);
+                chkBody.title = 'Mark as Car Body';
+                chkBody.addEventListener('change', (e) => {
+                    const isBody = e.target.checked;
+                    if (isBody) {
+                        if (!state.bodyMaterials.includes(materialKey)) {
+                            state.bodyMaterials.push(materialKey);
+                        }
+                    } else {
+                        state.bodyMaterials = state.bodyMaterials.filter((n) => n !== materialKey);
+                    }
+                    // Re-apply texture in case the body definition changed
+                    applyTextureToBody();
+                });
+
+                bodyLabel.appendChild(chkBody);
+                rightDiv.appendChild(bodyLabel);
+
+                rowDiv.appendChild(leftDiv);
+                rowDiv.appendChild(rightDiv);
+                matList.appendChild(rowDiv);
+            });
+        }
+
+        function updateUIFromState() {
+            document.getElementById('scale').value = state.scale;
+            document.getElementById('val-scale').innerText = state.scale + 'x';
+            document.getElementById('rotation').value = state.rotation;
+            document.getElementById('val-rotation').innerText = state.rotation + 'deg';
+            document.getElementById('shadow').value = state.shadowIntensity;
+            document.getElementById('val-shadow').innerText = state.shadowIntensity;
+            document.getElementById('exposure').value = state.exposure;
+            document.getElementById('val-exposure').innerText = state.exposure;
+            document.getElementById('base-color').value = state.baseColor;
+            document.getElementById('val-base-color').innerText = state.baseColor;
+            document.getElementById('mirror').checked = state.mirror;
+            document.getElementById('mirror').checked = state.mirror;
+            // document.getElementById('uv-select').value = state.uvSet; // Handled in populateUVSelect
+            document.getElementById('camera-val').innerText = state.cameraOrbit;
+        }
+
+        function setMaterialVisibility(material, visible) {
+            const color = material.pbrMetallicRoughness.baseColorFactor;
+            const originalAlpha = color ? color[3] : 1.0;
+
+            // Check if this is a glass material
+            const materialName = (material.name || '').toLowerCase();
+            const isGlass = materialName.includes('glass') ||
+                materialName.includes('window') ||
+                materialName.includes('windshield');
+
+            if (!visible) {
+                material.setAlphaMode('BLEND');
+                material.pbrMetallicRoughness.setBaseColorFactor([color[0], color[1], color[2], 0.0]);
+            } else {
+                // For glass materials, preserve transparency
+                if (isGlass) {
+                    material.setAlphaMode('BLEND');
+                    // If alpha was 0 or 1, set a reasonable glass transparency
+                    const glassAlpha = (originalAlpha === 0 || originalAlpha === 1) ? 0.3 : originalAlpha;
+                    material.pbrMetallicRoughness.setBaseColorFactor([color[0], color[1], color[2], glassAlpha]);
+                } else {
+                    // For non-glass materials, make them fully opaque
+                    material.pbrMetallicRoughness.setBaseColorFactor([color[0], color[1], color[2], 1.0]);
+                    material.setAlphaMode('OPAQUE');
+                }
+            }
+        }
+
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            return [r, g, b, 1.0];
+        }
+
+        function updateBaseColor(hexColor) {
+            if (!modelViewer || !modelViewer.model) return;
+            const rgba = hexToRgb(hexColor);
+            modelViewer.model.materials.forEach(material => {
+                if (state.bodyMaterials.includes(material.name || '')) {
+                    material.pbrMetallicRoughness.setBaseColorFactor(rgba);
+                }
+            });
+        }
+
+        function getThreeScene() {
+            try {
+                const sceneSymbol = Object.getOwnPropertySymbols(modelViewer).find((s) => s.description === 'scene');
+                return sceneSymbol ? modelViewer[sceneSymbol] : null;
+            } catch {
+                return null;
+            }
+        }
+
+        function ensureThreeJsBodyTexture() {
+            const scene = getThreeScene();
+            if (!scene) return;
+
+            const baseColorHex = parseInt(state.baseColor.replace('#', ''), 16);
+            let referenceMap = null;
+
+            // 1) Find any existing map to use as reference.
+            // First, prefer a map from an existing body material.
+            scene.traverse((node) => {
+                if (!node.isMesh || !node.material || referenceMap) return;
+                const materials = Array.isArray(node.material) ? node.material : [node.material];
+                for (const mat of materials) {
+                    const key = mat.name || '';
+                    if (state.bodyMaterials.includes(key) && mat.map) {
+                        referenceMap = mat.map;
+                        return;
+                    }
+                }
+            });
+
+            // Fallback: if no body material had a map, grab ANY map from the entire scene.
+            if (!referenceMap) {
+                scene.traverse((node) => {
+                    if (!node.isMesh || !node.material || referenceMap) return;
+                    const materials = Array.isArray(node.material) ? node.material : [node.material];
+                    for (const mat of materials) {
+                        if (mat.map) {
+                            referenceMap = mat.map;
+                            return;
+                        }
+                    }
+                });
+            }
+
+            if (!referenceMap) {
+                console.warn("Could not find any reference texture map on the model to apply to texture-less body parts.");
+                return;
+            }
+
+            // 2) Apply map + white/base color to body materials that are missing a map.
+            scene.traverse((node) => {
+                if (!node.isMesh || !node.material) return;
+                const materials = Array.isArray(node.material) ? node.material : [node.material];
+                for (const mat of materials) {
+                    const key = mat.name || '';
+                    if (!state.bodyMaterials.includes(key)) continue;
+
+                    if (!mat.map) {
+                        mat.map = referenceMap;
+                    }
+
+                    if (mat.color && Number.isFinite(baseColorHex)) {
+                        mat.color.setHex(baseColorHex);
+                    }
+
+                    mat.needsUpdate = true;
+                    if (mat.map) mat.map.needsUpdate = true;
+                }
+            });
+        }
+
+        async function applyTextureToBody() {
+            if (!modelViewer || !modelViewer.model) return;
+
+            const rgba = hexToRgb(state.baseColor);
+
+            // Helper function to determine if a material is a body material
+            const isBodyMaterial = (materialName) => {
+                const key = materialName || '';
+
+                // If bodyMaterials is explicitly defined and not empty, use it
+                if (state.bodyMaterials && state.bodyMaterials.length > 0) {
+                    return state.bodyMaterials.includes(key);
+                }
+
+                // For Model 3, only apply to "Paint" material
+                // For other models, use heuristic matching
+                if (modelSlug === 'model_3' || modelSlug === 'model_3_2024plus') {
+                    return key === 'Paint' || key.startsWith('Paint.');
+                }
+
+                // Fallback heuristic for other models
+                const lowerName = key.toLowerCase();
+                return (
+                    key === '' ||
+                    lowerName.includes('paint')
+                );
+            };
+
+            // 1. Use Public API (Safe)
+            if (wrapTexture) {
+                const rgba = state.baseColor ? hexToRgb(state.baseColor) : [1, 1, 1, 1];
+                let appliedCount = 0;
+                modelViewer.model.materials.forEach((material) => {
+                    if (isBodyMaterial(material.name)) {
+                        const pbr = material.pbrMetallicRoughness;
+                        if (pbr.baseColorTexture) {
+                            pbr.baseColorTexture.setTexture(wrapTexture);
+                            pbr.setBaseColorFactor(rgba);
+                            appliedCount++;
+                        }
+                    }
+                });
+            }
+
+            const scene = getThreeScene();
+
+            if (scene) {
+                // 1. Ensure we have a valid texture map for the body
+                ensureThreeJsBodyTexture();
+
+                // 2. Apply texture properties
+                scene.traverse((node) => {
+                    if (!node.isMesh || !node.material) return;
+                    const materials = Array.isArray(node.material) ? node.material : [node.material];
+
+                    materials.forEach((mat) => {
+                        if (!isBodyMaterial(mat.name)) return;
+
+                        // Ensure double sided rendering
+                        mat.side = 2; // DoubleSide
+
+                        // If config has base color, apply it
+                        if (state.baseColor && mat.color) {
+                            mat.color.setHex(parseInt(state.baseColor.replace('#', ''), 16));
+                        }
+
+                        // Fallback manual assignment
+                        if (!mat.map && wrapTexture && wrapTexture.source) {
+                            mat.map = wrapTexture;
+                            mat.needsUpdate = true;
+                        }
+
+                        if (mat.map) {
+                            if (mat.map.center && mat.map.center.set) {
+                                mat.map.center.set(0.5, 0.5);
+                            }
+
+                            if (state.rotation !== undefined && mat.map.rotation !== undefined) {
+                                mat.map.rotation = (state.rotation * Math.PI) / 180;
+                            }
+
+                            if (state.scale !== undefined && mat.map.repeat && mat.map.repeat.set) {
+                                const scaleX = state.mirror ? -state.scale : state.scale;
+                                mat.map.repeat.set(scaleX, state.scale);
+                            }
+
+                            if (!mat.map.isConfigured) {
+                                if (typeof mat.map.wrapS !== 'undefined') mat.map.wrapS = 1000; // RepeatWrapping
+                                if (typeof mat.map.wrapT !== 'undefined') mat.map.wrapT = 1000; // RepeatWrapping
+                                mat.map.flipY = false;
+                                mat.map.encoding = 3001;
+                                mat.map.isConfigured = true;
+                            }
+
+                            mat.map.needsUpdate = true;
+                        }
+
+                        mat.needsUpdate = true;
+                    });
+                });
+            }
+        }
+
+        function updateTextureTransform() {
+            try {
+                const scene = modelViewer[Object.getOwnPropertySymbols(modelViewer).find(s => s.description === 'scene')];
+                if (!scene) return;
+
+                scene.traverse(node => {
+                    if (node.isMesh && node.material) {
+                        const mat = Array.isArray(node.material) ? node.material : [node.material];
+                        mat.forEach(m => {
+                            if (state.bodyMaterials.includes(m.name || '')) {
+                                if (m.map) {
+                                    m.map.center.set(0.5, 0.5);
+                                    m.map.rotation = (state.rotation * Math.PI) / 180;
+                                    const scaleX = state.mirror ? -state.scale : state.scale;
+                                    m.map.repeat.set(scaleX, state.scale);
+                                    m.map.wrapS = 1000;
+                                    m.map.wrapT = 1000;
+                                    m.color.setHex(parseInt(state.baseColor.replace('#', ''), 16));
+                                    m.map.needsUpdate = true;
+                                    m.needsUpdate = true;
+                                }
+                            }
+                        });
+                    }
+                });
+            } catch (e) {
+                console.warn("Could not access Three.js scene for UV transform:", e);
+            }
+        }
+
+        function populateUVSelect() {
+            if (!modelViewer || !modelViewer.model) return;
+            const scene = getThreeScene();
+            if (!scene) return;
+
+            // Detect available UV sets from the first mesh found
+            let availableUVs = ['uv'];
+            scene.traverse((node) => {
+                if (node.isMesh && node.geometry && availableUVs.length === 1) {
+                    if (node.geometry.attributes.uv1) availableUVs.push('uv1');
+                    if (node.geometry.attributes.uv2) availableUVs.push('uv2');
+                }
+            });
+
+            // Populate Dropdown
+            const select = document.getElementById('uv-select');
+            select.innerHTML = '';
+
+            const optionMap = {
+                'uv': 'Default (UVMap)',
+                'uv1': 'Unique (UVMap.001)',
+                'uv2': 'Unique (UVMap.002)'
+            };
+
+            availableUVs.forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = optionMap[key] || key;
+                select.appendChild(opt);
+            });
+
+            // Set current value from state.
+            // Priority: If current is 'uv' (default) but 'uv1' is available, upgrade to 'uv1'.
+            // This ensures "Unique" is prioritized unless user specifically chose something else (though here we reset on model load)
+
+            let target = state.uvSet;
+
+            // If we are on default 'uv', and available has 'uv1', switch to it.
+            if (target === 'uv' && availableUVs.includes('uv1')) {
+                target = 'uv1';
+            }
+
+            // Validity check
+            if (!availableUVs.includes(target)) {
+                target = 'uv'; // Fallback
+            }
+
+            state.uvSet = target;
+            select.value = state.uvSet;
+
+            // Apply it
+            switchUVSet(state.uvSet);
+        }
+
+        function switchUVSet(targetSet) {
+            if (!modelViewer || !modelViewer.model) return;
+            const scene = getThreeScene();
+            if (!scene) return;
+
+            scene.traverse((node) => {
+                if (node.isMesh && node.geometry) {
+                    const geom = node.geometry;
+
+                    // Init Originals Store
+                    if (!geom.userData.originalUVs) {
+                        geom.userData.originalUVs = {};
+                        if (geom.attributes.uv) geom.userData.originalUVs.uv = geom.attributes.uv;
+                        if (geom.attributes.uv1) geom.userData.originalUVs.uv1 = geom.attributes.uv1;
+                        if (geom.attributes.uv2) geom.userData.originalUVs.uv2 = geom.attributes.uv2;
+                    }
+
+                    const originals = geom.userData.originalUVs;
+
+                    // Apply buffer attribute
+                    // If target is available in originals, use it. Otherwise fallback to default 'uv'.
+                    if (originals[targetSet]) {
+                        geom.attributes.uv = originals[targetSet];
+                        geom.attributes.uv.needsUpdate = true;
+                    } else if (originals.uv) {
+                        // Fallback
+                        geom.attributes.uv = originals.uv;
+                        geom.attributes.uv.needsUpdate = true;
+                    }
+                }
+            });
+        }
+
+        // Deprecated but kept for compatibility logic (now redirects to populateUVSelect)
+        function updateUVs() {
+            populateUVSelect();
+        }
+
+        function applyHiddenMaterials() {
+            if (!modelViewer || !modelViewer.model) return;
+            modelViewer.model.materials.forEach(mat => {
+                setMaterialVisibility(mat, !state.hiddenMaterials.includes(mat.name || ''));
+            });
+        }
+
+        // --- EXPORTED API FOR PUPPETEER ---
+
+        window.applyConfig = async (config) => {
+            console.log("Applying config from Puppeteer:", config);
+            // Merge config
+            state = { ...state, ...config };
+
+            // Update ModelViewer attributes (Camera, etc)
+            if (config.cameraOrbit) modelViewer.setAttribute('camera-orbit', config.cameraOrbit);
+            if (config.shadowIntensity) modelViewer.setAttribute('shadow-intensity', config.shadowIntensity);
+            if (config.exposure) modelViewer.setAttribute('exposure', config.exposure);
+            if (config.fieldOfView) modelViewer.setAttribute('field-of-view', config.fieldOfView);
+
+            // Jump camera if requested (usually for screenshots we want instant jump)
+            modelViewer.jumpCameraToGoal();
+
+            // Update Internal Logic
+            if (config.hiddenMaterials) applyHiddenMaterials();
+            updateBaseColor(state.baseColor);
+
+            // UVs
+            // UVs
+            if (config.uvSet) {
+                state.uvSet = config.uvSet;
+                switchUVSet(state.uvSet);
+            }
+
+            // Texture Transforms
+            await applyTextureToBody();
+
+            // Notify UI (optional, but good for debugging visualizer)
+            updateUIFromState();
+
+            // Signal readiness
+            return true;
+        };
+
+        // Signal ready
+        window.__modelViewerReady = false;
+
+        // --- UI EVENT BINDINGS ---
+
+        function setupEventListeners() {
+            // Model and texture selectors
+            document.getElementById('model-select').addEventListener('change', async (e) => {
+                const selectedSlug = e.target.value;
+                if (!selectedSlug) return;
+
+                const selectedOption = e.target.selectedOptions[0];
+                const modelPath = selectedOption.dataset.path;
+                const modelFolder = selectedOption.dataset.folder;
+
+                await populateTextureSelect(selectedSlug, modelFolder);
+                await switchModel(selectedSlug, modelPath);
+            });
+
+            document.getElementById('texture-select').addEventListener('change', (e) => {
+                switchTexture(e.target.value);
+            });
+
+            // Existing controls
+            document.getElementById('scale').addEventListener('input', (e) => {
+                state.scale = parseFloat(e.target.value);
+                applyTextureToBody();
+                updateUIFromState();
+            });
+            document.getElementById('rotation').addEventListener('input', (e) => {
+                state.rotation = parseFloat(e.target.value);
+                applyTextureToBody();
+                updateUIFromState();
+            });
+            document.getElementById('shadow').addEventListener('input', (e) => {
+                state.shadowIntensity = parseFloat(e.target.value);
+                modelViewer.setAttribute('shadow-intensity', state.shadowIntensity);
+                updateUIFromState();
+            });
+            document.getElementById('exposure').addEventListener('input', (e) => {
+                state.exposure = parseFloat(e.target.value);
+                modelViewer.setAttribute('exposure', state.exposure);
+                updateUIFromState();
+            });
+
+            document.getElementById('base-color').addEventListener('input', (e) => {
+                state.baseColor = e.target.value;
+                updateBaseColor(state.baseColor);
+                applyTextureToBody();
+                updateUIFromState();
+            });
+
+            document.getElementById('mirror').addEventListener('change', (e) => {
+                state.mirror = e.target.checked;
+                applyTextureToBody();
+                updateUIFromState();
+            });
+
+            document.getElementById('uv-select').addEventListener('change', (e) => {
+                state.uvSet = e.target.value;
+                switchUVSet(state.uvSet);
+                applyTextureToBody();
+                // Removed updateUIFromState call to prevent refreshing the dropdown while selecting
+            });
+
+            document.getElementById('auto-rotate').addEventListener('change', (e) => {
+                const autoRotate = e.target.checked;
+                if (autoRotate) {
+                    modelViewer.setAttribute('auto-rotate', '');
+                } else {
+                    modelViewer.removeAttribute('auto-rotate');
+                }
+            });
+
+            document.getElementById('btn-set-camera').addEventListener('click', () => {
+                const orbit = modelViewer.getCameraOrbit();
+                const orbitStr = `${orbit.theta}rad ${orbit.phi}rad ${orbit.radius}m`;
+                console.log("Current Orbit:", orbitStr);
+                alert("Check console for current camera-orbit string");
+            });
+
+            document.getElementById('btn-save').addEventListener('click', async () => {
+                const status = document.getElementById('status');
+                status.innerText = "Saving...";
+
+                // Prune default values from the model-specific config to keep it clean
+                const modelConfig = {};
+                for (const key in defaultConfig) {
+                    if (JSON.stringify(state[key]) !== JSON.stringify(fullConfig.defaults[key])) {
+                        modelConfig[key] = state[key];
+                    }
+                }
+
+                // Ensure bodyMaterials is saved even if it's empty and default is empty
+                if (state.bodyMaterials.length > 0 || (fullConfig.models[modelSlug] && fullConfig.models[modelSlug].bodyMaterials)) {
+                    modelConfig.bodyMaterials = state.bodyMaterials;
+                }
+
+
+                fullConfig.models[modelSlug] = modelConfig;
+
+                try {
+                    const res = await fetch('/save-config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fullConfig, null, 2)
+                    });
+                    const json = await res.json();
+                    status.innerText = json.success ? "Saved!" : "Error!";
+                    status.style.color = json.success ? "#4caf50" : "#f44336";
+                } catch (e) {
+                    console.error(e);
+                    status.innerText = "Network Error";
+                    status.style.color = "#f44336";
+                }
+                setTimeout(() => status.innerText = "", 2000);
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                // Reset only the current model's settings to the defaults
+                state = { ...fullConfig.defaults };
+                state.hiddenMaterials = state.hiddenMaterials || [];
+                state.bodyMaterials = state.bodyMaterials || [];
+
+                updateUIFromState();
+
+                if (modelViewer && modelViewer.model) {
+                    populateMaterialList();
+                    updateBaseColor(state.baseColor);
+                    updateUVs();
+                    updateTextureTransform();
+                    modelViewer.cameraOrbit = state.cameraOrbit;
+                }
+            });
+        }
+
+        function linkInput(id, key, suffix = '', cb) {
+            const el = document.getElementById(id);
+            const valEl = document.getElementById(`val-${id}`);
+            if (!el) return;
+            el.addEventListener('input', e => {
+                const val = (typeof state[key] === 'boolean' || typeof state[key] === 'string') ? e.target.value : parseFloat(e.target.value);
+                state[key] = val;
+                if (valEl) valEl.innerText = val + suffix;
+                if (cb) cb(val);
+                updateTextureTransform();
+            });
+        }
+
+        // --- START THE APP ---
+        initializeApp();
+
+    </script>
+</body>
+
+</html>

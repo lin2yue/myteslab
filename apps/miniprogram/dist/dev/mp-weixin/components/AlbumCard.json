@@ -1,0 +1,7 @@
+{
+  "component": true,
+  "usingComponents": {
+    "ui-card": "./UiCard",
+    "ui-badge": "./UiBadge"
+  }
+}

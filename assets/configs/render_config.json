@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "scale": 1,
+    "rotation": 0,
+    "shadowIntensity": 1,
+    "exposure": 1.0,
+    "cameraOrbit": "225deg 75deg 85%",
+    "fieldOfView": "30deg",
+    "baseColor": "#FFFFFF",
+    "mirror": false,
+    "useUniqueUVs": true,
+    "hiddenMaterials": [
+      "Ground_Plane"
+    ],
+    "environmentImage": "neutral",
+    "shadowSoftness": 1
+  },
+  "models": {
+    "cybertruck": {
+      "cameraOrbit": "225deg 75deg 85%",
+      "bodyMaterials": [
+        "Paint",
+        "Paint_Rough",
+        "Stainless_Steel_Exterior",
+        "Stainless_Steel_Rough"
+      ]
+    }
+  }
+}

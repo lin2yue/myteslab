@@ -1,0 +1,28 @@
+{
+    "Index": {
+        "title": "MyTesLab",
+        "description": "可视化你的下一个造型：定制特斯拉改色设计的终极工作室",
+        "welcome": "定制您的专属特斯拉",
+        "welcome_desc": "实时 3D 预览高精度改色贴纸,多种款式随心选择。",
+        "explore": "探索改色方案",
+        "loading": "加载中",
+        "no_wraps": "未找到相关贴图方案",
+        "features": {
+            "3d_preview": "3D 实时预览",
+            "3d_preview_desc": "基于 WebGL 的高精度实时渲染",
+            "official_wraps": "官方贴图方案",
+            "official_wraps_desc": "收录特斯拉官方推出的各类改色贴纸",
+            "one_click_download": "一键获取贴图",
+            "one_click_download_desc": "直接获取高清纹理文件用于后续施工"
+        }
+    },
+    "Common": {
+        "back_to_home": "返回首页",
+        "download": "下载贴图",
+        "free_download": "免费下载,无需登录",
+        "applicable_models": "适用车型",
+        "tips": "💡 拖拽旋转 | 滚轮缩放 | 双击重置",
+        "loading_model": "加载3D模型中...",
+        "model_error": "模型加载失败,请检查模型文件"
+    }
+}

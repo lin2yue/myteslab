@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Wrap Visualizer</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1F1F1F;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        .placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-family: sans-serif;
+            font-size: 16px;
+        }
+
+        #viewer-container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <!-- Import the component -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+</head>
+
+<body>
+    <div id="viewer-container"></div>
+
+    <script type="module">
+        const container = document.getElementById('viewer-container');
+        window.__modelViewerReady = false;
+        window.__modelViewerError = null;
+        let modelViewer = null;
+        let state = {};
+
+        function getParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                modelUrl: params.get('modelUrl'),
+                textureUrl: params.get('textureUrl')
+            };
+        }
+
+        // --- Shared Helpers (Matches tweak.html) ---
+
+        function getThreeScene() {
+            try {
+                const sym = Object.getOwnPropertySymbols(modelViewer).find((s) => s.description === 'scene');
+                return sym ? modelViewer[sym] : null;
+            } catch {
+                return null;
+            }
+        }
+
+        function isBodyMaterial(name) {
+            const key = name || '';
+            // If we have explicit bodyMaterials in state, use them
+            if (state.bodyMaterials && state.bodyMaterials.length > 0) {
+                return state.bodyMaterials.includes(key);
+            }
+
+            // Fallback heuristic
+            const lowerName = String(name || '').toLowerCase();
+            return (
+                key === '' ||
+                lowerName.includes('paint')
+            );
+        }
+
+        function ensureThreeJsBodyTexture() {
+            const scene = getThreeScene();
+            if (!scene) return;
+
+            let referenceMap = null;
+
+            // Find valid map
+            scene.traverse((node) => {
+                if (!node.isMesh || !node.material || referenceMap) return;
+                const mats = Array.isArray(node.material) ? node.material : [node.material];
+                for (const mat of mats) {
+                    if (isBodyMaterial(mat.name) && mat.map) {
+                        referenceMap = mat.map;
+                        return;
+                    }
+                }
+            });
+
+            if (!referenceMap) return;
+
+            // Apply to others
+            scene.traverse((node) => {
+                if (!node.isMesh || !node.material) return;
+                const mats = Array.isArray(node.material) ? node.material : [node.material];
+                mats.forEach((mat) => {
+                    if (!isBodyMaterial(mat.name)) return;
+                    if (!mat.map) {
+                        mat.map = referenceMap;
+                        mat.needsUpdate = true;
+                    }
+                });
+            });
+        }
+
+        function hexToRgba(hex) {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            return [r, g, b, 1]; // Assuming full opacity
+        }
+
+        async function applyTextureToBody() {
+            if (!modelViewer || !modelViewer.model) return;
+
+            const { textureUrl } = getParams();
+            const url = state.textureUrl || textureUrl;
+
+            let wrapTexture = null;
+            if (url) {
+                try {
+                    wrapTexture = await modelViewer.createTexture(url);
+                } catch (e) { console.warn("Texture load failed", e); }
+            }
+
+            // 1. Use Public API (Safe)
+            if (wrapTexture) {
+                const rgba = state.baseColor ? hexToRgba(state.baseColor) : [1, 1, 1, 1];
+                modelViewer.model.materials.forEach((material) => {
+                    console.log(`DEBUG: Found material '${material.name}'`);
+                    if (isBodyMaterial(material.name)) {
+                        // console.log(`Public API: Applying to ${material.name}`);
+                        const pbr = material.pbrMetallicRoughness;
+                        if (pbr.baseColorTexture) {
+                            pbr.baseColorTexture.setTexture(wrapTexture);
+                            pbr.setBaseColorFactor(rgba); // Use the helper
+                        }
+                    }
+                });
+            }
+
+            // 2. Use Three.js for Transforms & Fallbacks
+            const scene = getThreeScene();
+            if (scene) {
+                ensureThreeJsBodyTexture();
+
+                scene.traverse((node) => {
+                    if (!node.isMesh || !node.material) return;
+                    const materials = Array.isArray(node.material) ? node.material : [node.material];
+
+                    materials.forEach((mat) => {
+                        if (!isBodyMaterial(mat.name)) return;
+
+                        // Fallback BaseColor if not set via Public API or if it's a Three-only material
+                        if (state.baseColor && mat.color) {
+                            mat.color.setHex(parseInt(state.baseColor.replace('#', ''), 16));
+                        }
+
+                        // Force DoubleSide
+                        mat.side = 2;
+
+                        // If map missing (fallback), apply it manually
+                        if (!mat.map && wrapTexture && wrapTexture.source) {
+                            mat.map = wrapTexture;
+                            mat.needsUpdate = true;
+                        }
+
+                        // Apply Transforms to the map (whether from Public API or Manual)
+                        if (mat.map) {
+                            if (mat.map.center && mat.map.center.set) {
+                                mat.map.center.set(0.5, 0.5);
+                            }
+
+                            if (state.rotation !== undefined && mat.map.rotation !== undefined) {
+                                mat.map.rotation = (state.rotation * Math.PI) / 180;
+                            }
+
+                            if (state.scale !== undefined && mat.map.repeat && mat.map.repeat.set) {
+                                const scaleX = state.mirror ? -state.scale : state.scale;
+                                mat.map.repeat.set(scaleX, state.scale);
+                            }
+
+                            // encoding property is deprecated in newer three.js (is now colorSpace), 
+                            // but model-viewer might still use it. 
+                            // Only set it if we manually assigned the texture.
+                            // If Public API set it, it's likely correct.
+                            if (!mat.map.isConfigured) {
+                                if (typeof mat.map.wrapS !== 'undefined') mat.map.wrapS = 1000;
+                                if (typeof mat.map.wrapT !== 'undefined') mat.map.wrapT = 1000;
+                                mat.map.flipY = false;
+                                mat.map.encoding = 3001; // sRGB
+                                mat.map.isConfigured = true;
+                            }
+
+                            mat.map.needsUpdate = true;
+                        }
+                        mat.needsUpdate = true;
+                    });
+                });
+            } else {
+                console.warn("No Three.js scene found!");
+            }
+        }
+
+        function switchUVSet(targetSet) {
+            if (!modelViewer || !modelViewer.model) return;
+            const scene = getThreeScene();
+            if (!scene) return;
+
+            scene.traverse((node) => {
+                if (node.isMesh && node.geometry) {
+                    const geom = node.geometry;
+
+                    // Init Originals Store
+                    if (!geom.userData.originalUVs) {
+                        geom.userData.originalUVs = {};
+                        if (geom.attributes.uv) geom.userData.originalUVs.uv = geom.attributes.uv;
+                        if (geom.attributes.uv1) geom.userData.originalUVs.uv1 = geom.attributes.uv1;
+                        if (geom.attributes.uv2) geom.userData.originalUVs.uv2 = geom.attributes.uv2;
+                    }
+
+                    const originals = geom.userData.originalUVs;
+
+                    // Apply buffer attribute
+                    // If target is available in originals, use it. Otherwise fallback to default 'uv'.
+                    if (originals[targetSet]) {
+                        geom.attributes.uv = originals[targetSet];
+                        geom.attributes.uv.needsUpdate = true;
+                    } else if (originals.uv) {
+                        // Fallback
+                        geom.attributes.uv = originals.uv;
+                        geom.attributes.uv.needsUpdate = true;
+                    }
+                }
+            });
+        }
+
+        function applyHiddenMaterials() {
+            if (!modelViewer || !modelViewer.model) return;
+            if (!state.hiddenMaterials) return;
+
+            modelViewer.model.materials.forEach(mat => {
+                const shouldHide = state.hiddenMaterials.includes(mat.name || '');
+                // Set Alpha to 0 if hidden
+                const color = mat.pbrMetallicRoughness.baseColorFactor;
+                if (shouldHide && color[3] > 0) {
+                    mat.pbrMetallicRoughness.setBaseColorFactor([color[0], color[1], color[2], 0.0]);
+                    mat.setAlphaMode('BLEND');
+                }
+            });
+        }
+
+        function updateBaseColor(color) {
+            // Already handled in applyTextureToBody for Three.js, but ModelViewer API might be needed too?
+            // Tweak.html does it via scene graph mostly.
+        }
+
+        // --- EXPORTED API ---
+
+        window.applyConfig = async (config) => {
+            console.log("Applying config:", config);
+            state = { ...state, ...config };
+
+            if (config.cameraOrbit) modelViewer.setAttribute('camera-orbit', config.cameraOrbit);
+            if (config.shadowIntensity) modelViewer.setAttribute('shadow-intensity', config.shadowIntensity);
+            if (config.exposure) modelViewer.setAttribute('exposure', config.exposure);
+            if (config.fieldOfView) modelViewer.setAttribute('field-of-view', config.fieldOfView);
+            if (config.environmentImage) modelViewer.setAttribute('environment-image', config.environmentImage);
+            if (config.shadowSoftness !== undefined) modelViewer.setAttribute('shadow-softness', config.shadowSoftness);
+
+            modelViewer.jumpCameraToGoal();
+
+            if (config.hiddenMaterials) applyHiddenMaterials();
+
+            if (config.uvSet) {
+                switchUVSet(config.uvSet);
+            } else if (config.useUniqueUVs) {
+                switchUVSet('uv1'); // Legacy support
+            }
+
+            await applyTextureToBody();
+
+            return true;
+        };
+
+
+        // --- INIT ---
+        const { modelUrl } = getParams();
+        if (modelUrl) {
+            modelViewer = document.createElement('model-viewer');
+            modelViewer.setAttribute('src', modelUrl);
+            modelViewer.setAttribute('ar', 'false');
+            // Basic defaults
+            modelViewer.setAttribute('camera-controls', 'false'); // headless usually
+            modelViewer.removeAttribute('auto-rotate');
+            modelViewer.style.backgroundColor = '#1F1F1F';
+            modelViewer.style.width = '100%';
+            modelViewer.style.height = '100%';
+
+            modelViewer.addEventListener('load', () => {
+                window.__modelViewerReady = true;
+                // We do NOT apply config here automatically anymore. 
+                // We wait for Puppeteer to call applyConfig.
+                console.log("Model loaded. Waiting for applyConfig.");
+            });
+
+            modelViewer.addEventListener('error', (e) => {
+                window.__modelViewerError = e.detail.message;
+                window.__modelViewerReady = true; // Unblock wait
+            });
+
+            container.appendChild(modelViewer);
+        } else {
+            window.__modelViewerReady = true;
+            container.innerText = "No modelUrl provided";
+        }
+    </script>
+</body>
+
+</html>

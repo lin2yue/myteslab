@@ -1,0 +1,27 @@
+[
+    {
+        "name": "Model 3 (Pre-2024)",
+        "slug": "model-3-legacy",
+        "gltf": "Model3_High.gltf"
+    },
+    {
+        "name": "Model 3 Highland",
+        "slug": "model-3-highland",
+        "gltf": "Poppyseed.gltf"
+    },
+    {
+        "name": "Model Y (Pre-2025)",
+        "slug": "model-y-legacy",
+        "gltf": "ModelY_High.gltf"
+    },
+    {
+        "name": "Model Y Juniper",
+        "slug": "model-y-juniper",
+        "gltf": "Bayberry.gltf"
+    },
+    {
+        "name": "Cybertruck",
+        "slug": "cybertruck",
+        "gltf": "Cybertruck.gltf"
+    }
+]

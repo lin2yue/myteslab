@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "锁车音",
+  "usingComponents": {
+    "global-player": "../../components/GlobalPlayer",
+    "instructions-modal": "../../components/InstructionsModal",
+    "audio-card": "../../components/AudioCard",
+    "ui-icon": "../../components/UiIcon",
+    "album-card": "../../components/AlbumCard"
+  }
+}

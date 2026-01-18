@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "探索",
+  "usingComponents": {
+    "audio-card": "../../components/AudioCard",
+    "global-player": "../../components/GlobalPlayer",
+    "modal": "../../components/InstructionsModal",
+    "section-header": "../../components/SectionHeader",
+    "wrap-card": "../../components/WrapCard"
+  }
+}

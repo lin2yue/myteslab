@@ -1,0 +1,26 @@
+🔍 Fetching database records (wraps)...
+✅ Found 117 wraps, referencing 234 unique OSS files.
+🔍 Listing OSS files (previews/ & catalog/)...
+✅ Found 748 relevant files on OSS.
+
+====== AUDIT REPORT ======
+DB References: 234
+OSS Files scanned: 748
+
+✅ No broken links found.
+
+🗑️  ORPHANED FILES (On OSS, unused by DB): 514
+   Total wasted space: 90.39 MB
+   Example orphans:
+ - previews/wraps/Cybertruck-cybertruck-official-ani-v1768476639943.png (259.4KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-blue-v1768476638102.png (182.2KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-brown-v1768476654631.png (167.0KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-green-v1768476636350.png (172.3KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-pink-v1768476634678.png (194.7KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-sand-v1768476632854.png (192.2KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-snow-v1768476652776.png (192.9KB)
+ - previews/wraps/Cybertruck-cybertruck-official-camo-stealth-v1768476631013.png (154.3KB)
+ - previews/wraps/Cybertruck-cybertruck-official-clay-v1768476629180.png (294.9KB)
+ - previews/wraps/Cybertruck-cybertruck-official-cosmic-burst-v1768476627326.png (275.5KB)
+
+📋 Full orphan list saved to: /Users/linpengfei/work/t-media/oss_audit_orphans_1768672926929.json

@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "专辑详情",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "audio-card": "../../components/AudioCard",
+    "global-player": "../../components/GlobalPlayer",
+    "instructions-modal": "../../components/InstructionsModal",
+    "ui-icon": "../../components/UiIcon"
+  }
+}

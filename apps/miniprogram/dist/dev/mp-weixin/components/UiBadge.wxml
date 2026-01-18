@@ -1,0 +1,1 @@
+<view class="bg-blacks30 backdrop-blur-md text-whites80 text-xs font-semibold px-3 py-1d5 rounded-full border border-whites20" bindtap="{{a}}"><slot/></view>

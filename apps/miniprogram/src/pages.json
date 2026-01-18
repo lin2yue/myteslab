@@ -1,0 +1,93 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "探索"
+			}
+		},
+		{
+			"path": "pages/albums/index",
+			"style": {
+				"navigationBarTitleText": "锁车音"
+			}
+		},
+		{
+			"path": "pages/tutorial/index",
+			"style": {
+				"navigationBarTitleText": "教程"
+			}
+		},
+		{
+			"path": "pages/albums-list/index",
+			"style": {
+				"navigationBarTitleText": "专辑"
+			}
+		},
+		{
+			"path": "pages/library/index",
+			"style": {
+				"navigationBarTitleText": "所有音频"
+			}
+		},
+		{
+			"path": "pages/album-detail/index",
+			"style": {
+				"navigationBarTitleText": "专辑详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/wraps/index",
+			"style": {
+				"navigationBarTitleText": "车身涂装"
+			}
+		},
+		{
+			"path": "pages/wrap-detail/index",
+			"style": {
+				"navigationBarTitleText": "涂装详情"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "Tesla Sounds",
+		"navigationBarBackgroundColor": "#111111",
+		"backgroundColor": "#111111",
+		"backgroundColorTop": "#111111",
+		"backgroundColorBottom": "#111111"
+	},
+	"tabBar": {
+		"color": "#666666",
+		"selectedColor": "#FFFFFF",
+		"backgroundColor": "#111111",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "探索",
+				"iconPath": "static/tabbar/discover.png",
+				"selectedIconPath": "static/tabbar/discover-active.png"
+			},
+			{
+				"pagePath": "pages/albums/index",
+				"text": "锁车音",
+				"iconPath": "static/tabbar/albums.png",
+				"selectedIconPath": "static/tabbar/albums-active.png"
+			},
+			{
+				"pagePath": "pages/wraps/index",
+				"text": "涂装",
+				"iconPath": "static/tabbar/wraps.png",
+				"selectedIconPath": "static/tabbar/wraps-active.png"
+			},
+			{
+				"pagePath": "pages/tutorial/index",
+				"text": "教程",
+				"iconPath": "static/tabbar/tutorial.png",
+				"selectedIconPath": "static/tabbar/tutorial-active.png"
+			}
+		]
+	}
+}

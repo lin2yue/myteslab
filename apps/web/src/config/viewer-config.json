@@ -1,0 +1,34 @@
+{
+    "defaults": {
+        "cameraOrbit": "225deg 75deg 85%",
+        "fieldOfView": "30deg",
+        "exposure": 1.0,
+        "environmentImage": "neutral",
+        "shadowIntensity": 1,
+        "shadowSoftness": 1,
+        "autoRotate": false,
+        "interactionPrompt": "none",
+        "uvSet": "uv1",
+        "scale": 1,
+        "rotation": 0,
+        "mirror": false
+    },
+    "models": {
+        "cybertruck": {
+            "cameraOrbit": "200deg 80deg 90%",
+            "exposure": 1.2
+        },
+        "model-3": {
+            "cameraOrbit": "225deg 75deg 85%"
+        },
+        "model-3-2024-plus": {
+            "cameraOrbit": "225deg 75deg 85%"
+        },
+        "model-y-pre-2025": {
+            "cameraOrbit": "225deg 75deg 85%"
+        },
+        "model-y-2025-plus": {
+            "cameraOrbit": "225deg 75deg 85%"
+        }
+    }
+}

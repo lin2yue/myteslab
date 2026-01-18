@@ -1,0 +1,160 @@
+{
+    "cybertruck": [
+        {
+            "name": "Ani",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Ani.png"
+        },
+        {
+            "name": "Camo Blue",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Blue.png"
+        },
+        {
+            "name": "Camo Brown",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Brown.png"
+        },
+        {
+            "name": "Camo Green",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Green.png"
+        },
+        {
+            "name": "Camo Pink",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Pink.png"
+        },
+        {
+            "name": "Camo Sand",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Sand.png"
+        },
+        {
+            "name": "Camo Snow",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Snow.png"
+        },
+        {
+            "name": "Camo Stealth",
+            "path": "/uploads/catalog/Cybertruck/wraps/Official/Camo_Stealth.png"
+        }
+    ],
+    "model_3": [
+        {
+            "name": "Acid Drip",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Acid_Drip.png"
+        },
+        {
+            "name": "Ani",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Ani.png"
+        },
+        {
+            "name": "Apocalypse",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Apocalypse.png"
+        },
+        {
+            "name": "Avocado Green",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Avocado_Green.png"
+        },
+        {
+            "name": "Camo",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Camo.png"
+        },
+        {
+            "name": "Cosmic Burst",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Cosmic_Burst.png"
+        },
+        {
+            "name": "Divide",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Divide.png"
+        },
+        {
+            "name": "Doge",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Doge.png"
+        },
+        {
+            "name": "Dot Matrix",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Dot_Matrix.png"
+        },
+        {
+            "name": "Ice Cream",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Ice_Cream.png"
+        },
+        {
+            "name": "Leopard",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Leopard.png"
+        },
+        {
+            "name": "Pixel Art",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Pixel_Art.png"
+        },
+        {
+            "name": "Reindeer",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Reindeer.png"
+        },
+        {
+            "name": "Sakura",
+            "path": "/uploads/catalog/Model-3/wraps/Official/Sakura.png"
+        }
+    ],
+    "model_3_2024plus": [
+        {
+            "name": "Acid Drip",
+            "path": "/uploads/catalog/Model-3-2024+/wraps/Official/Acid_Drip.png"
+        },
+        {
+            "name": "Ani",
+            "path": "/uploads/catalog/Model-3-2024+/wraps/Official/Ani.png"
+        },
+        {
+            "name": "Apocalypse",
+            "path": "/uploads/catalog/Model-3-2024+/wraps/Official/Apocalypse.png"
+        },
+        {
+            "name": "Doge",
+            "path": "/uploads/catalog/Model-3-2024+/wraps/Official/Doge.png"
+        },
+        {
+            "name": "Sakura",
+            "path": "/uploads/catalog/Model-3-2024+/wraps/Official/Sakura.png"
+        }
+    ],
+    "model_y": [
+        {
+            "name": "Acid Drip",
+            "path": "/uploads/catalog/Model-Y/wraps/Official/Acid_Drip.png"
+        },
+        {
+            "name": "Ani",
+            "path": "/uploads/catalog/Model-Y/wraps/Official/Ani.png"
+        },
+        {
+            "name": "Apocalypse",
+            "path": "/uploads/catalog/Model-Y/wraps/Official/Apocalypse.png"
+        },
+        {
+            "name": "Doge",
+            "path": "/uploads/catalog/Model-Y/wraps/Official/Doge.png"
+        },
+        {
+            "name": "Sakura",
+            "path": "/uploads/catalog/Model-Y/wraps/Official/Sakura.png"
+        }
+    ],
+    "model_y_2025plus": [
+        {
+            "name": "Acid Drip",
+            "path": "/uploads/catalog/Model-Y-2025+/wraps/Official/Acid_Drip.png"
+        },
+        {
+            "name": "Ani",
+            "path": "/uploads/catalog/Model-Y-2025+/wraps/Official/Ani.png"
+        },
+        {
+            "name": "Apocalypse",
+            "path": "/uploads/catalog/Model-Y-2025+/wraps/Official/Apocalypse.png"
+        },
+        {
+            "name": "Doge",
+            "path": "/uploads/catalog/Model-Y-2025+/wraps/Official/Doge.png"
+        },
+        {
+            "name": "Sakura",
+            "path": "/uploads/catalog/Model-Y-2025+/wraps/Official/Sakura.png"
+        }
+    ]
+}

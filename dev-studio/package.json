@@ -1,0 +1,14 @@
+{
+  "name": "dev-studio",
+  "version": "1.0.0",
+  "description": "本地3D模型和预览参数调试工作区",
+  "scripts": {
+    "dev": "node server.js",
+    "sync": "node sync-config.js",
+    "test-preview": "node ../scripts/generate_previews.js --output ./test-previews"
+  },
+  "dependencies": {
+    "ali-oss": "^6.23.0",
+    "dotenv": "^16.0.0"
+  }
+}
