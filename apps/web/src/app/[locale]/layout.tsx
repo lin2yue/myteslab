@@ -38,6 +38,9 @@ export async function generateMetadata({
     title,
     description,
     metadataBase: new URL('https://myteslab.com'),
+    verification: {
+      google: 'ePlud_UhwMRjIZzM4kHYXLL3TuhADQs1dMCeYguF00w',
+    },
     alternates: {
       canonical: `/${locale}`,
       languages: {
