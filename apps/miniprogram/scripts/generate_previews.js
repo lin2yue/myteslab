@@ -10,7 +10,7 @@ const { createClient } = require('@supabase/supabase-js');
 const repoRoot = path.resolve(__dirname, '..');
 const PORT = 3001;
 const DEV_SERVER_URL = `http://localhost:${PORT}`;
-const SCREENSHOT_DIR = path.join(repoRoot, 'previews');
+const SCREENSHOT_DIR = path.join(repoRoot, 'assets', '3d-previews');
 const PREVIEW_WIDTH = 1024;
 const PREVIEW_HEIGHT = 768;
 
@@ -192,7 +192,7 @@ async function main() {
   await fs.mkdir(SCREENSHOT_DIR, { recursive: true });
 
   // 1. Scan Local Models from Catalog
-  const catalogDir = path.join(repoRoot, 'uploads', 'catalog');
+  const catalogDir = path.join(repoRoot, 'assets', 'models');
   if (!fsSync.existsSync(catalogDir)) {
     console.error(`❌ Catalog directory not found: ${catalogDir}`);
     server.close();

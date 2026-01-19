@@ -159,6 +159,14 @@
         </div>
 
         <div class="control-group">
+            <label>Model Version</label>
+            <select id="version-select"
+                style="width:100%; padding:8px; background:#333; color:white; border:1px solid #555; border-radius:4px; cursor:pointer;">
+                <option value="">Latest</option>
+            </select>
+        </div>
+
+        <div class="control-group">
             <label>Wrap Texture</label>
             <select id="texture-select"
                 style="width:100%; padding:8px; background:#333; color:white; border:1px solid #555; border-radius:4px; cursor:pointer;">
@@ -544,6 +552,7 @@
                 option.textContent = model.name;
                 option.dataset.path = model.path;
                 option.dataset.folder = model.folder || model.name;
+                option.dataset.versions = JSON.stringify(model.versions || []);
                 select.appendChild(option);
             });
 
@@ -552,8 +561,36 @@
                 select.value = modelSlug;
                 const selectedOption = select.selectedOptions[0];
                 if (selectedOption) {
+                    populateVersionSelect(selectedOption);
                     populateTextureSelect(modelSlug, selectedOption.dataset.folder);
+                } else {
+                    // Determine latest version for the first model if nothing selected
                 }
+            }
+        }
+
+        function populateVersionSelect(modelOption) {
+            const select = document.getElementById('version-select');
+            select.innerHTML = '';
+
+            const versionsRaw = modelOption.dataset.versions;
+            if (!versionsRaw) return;
+
+            const versions = JSON.parse(versionsRaw);
+
+            versions.forEach((v, index) => {
+                const option = document.createElement('option');
+                option.value = v.path;
+                option.textContent = v.version > 0 ? `v${v.version} (${v.filename})` : v.filename;
+                // Default to first item (which is sorted to be latest in server.js)
+                if (index === 0) option.selected = true;
+                select.appendChild(option);
+            });
+
+            // Trigger model load with selected version
+            if (select.value) {
+                const modelSlug = document.getElementById('model-select').value;
+                switchModel(modelSlug, select.value);
             }
         }
 
@@ -563,33 +600,42 @@
 
             let textures = [];
 
-            try {
-                // Try to fetch textures from the server directory listing
-                const wrapsPath = `/uploads/catalog/${modelFolder}/wraps/Official/`;
-                const response = await fetch(wrapsPath);
+            // 1. Try to get textures from catalogData (provided by server API)
+            if (catalogData.textures && catalogData.textures[selectedModelSlug]) {
+                textures = catalogData.textures[selectedModelSlug];
+                console.log(`Loaded ${textures.length} textures from API for ${selectedModelSlug}`);
+            }
 
-                if (response.ok) {
-                    const html = await response.text();
+            // 2. If API didn't provide textures, try fetch fallback (legacy / static host)
+            if (textures.length === 0) {
+                try {
+                    // Try to fetch textures from the server directory listing
+                    const wrapsPath = `/uploads/catalog/${modelFolder}/wraps/Official/`;
+                    const response = await fetch(wrapsPath);
 
-                    // Parse directory listing HTML to extract .png files
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const links = doc.querySelectorAll('a');
+                    if (response.ok) {
+                        const html = await response.text();
 
-                    links.forEach(link => {
-                        const href = link.getAttribute('href');
-                        if (href && href.endsWith('.png')) {
-                            const filename = decodeURIComponent(href);
-                            const name = filename.replace('.png', '').replace(/_/g, ' ');
-                            textures.push({
-                                name: name,
-                                path: wrapsPath + filename
-                            });
-                        }
-                    });
+                        // Parse directory listing HTML to extract .png files
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const links = doc.querySelectorAll('a');
+
+                        links.forEach(link => {
+                            const href = link.getAttribute('href');
+                            if (href && href.endsWith('.png')) {
+                                const filename = decodeURIComponent(href);
+                                const name = filename.replace('.png', '').replace(/_/g, ' ');
+                                textures.push({
+                                    name: name,
+                                    path: wrapsPath + filename
+                                });
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch textures from server:', e);
                 }
-            } catch (e) {
-                console.error('Failed to fetch textures from server:', e);
             }
 
             // If no textures found from server, use fallback data
@@ -736,6 +782,22 @@
             initializeViewer(modelUrl, textureUrl);
             updateUIFromState();
             setupEventListeners();
+
+            // Event listener for version select
+            document.getElementById('version-select').addEventListener('change', (e) => {
+                const modelSlug = document.getElementById('model-select').value;
+                switchModel(modelSlug, e.target.value);
+            });
+
+            // Hook up model select to update versions
+            document.getElementById('model-select').addEventListener('change', (e) => {
+                const slug = e.target.value;
+                const option = e.target.selectedOptions[0];
+                if (slug && option) {
+                    populateVersionSelect(option);
+                    populateTextureSelect(slug, option.dataset.folder);
+                }
+            });
         }
 
         function initializeViewer(modelUrl, textureUrl) {

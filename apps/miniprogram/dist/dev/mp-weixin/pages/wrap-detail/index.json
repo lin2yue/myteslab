@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "涂装详情",
-  "usingComponents": {
-    "instructions-modal": "../../components/InstructionsModal",
-    "ui-icon": "../../components/UiIcon"
-  }
-}

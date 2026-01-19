@@ -1,9 +1,0 @@
-{
-  "navigationBarTitleText": "所有音频",
-  "usingComponents": {
-    "audio-card": "../../components/AudioCard",
-    "global-player": "../../components/GlobalPlayer",
-    "instructions-modal": "../../components/InstructionsModal",
-    "ui-icon": "../../components/UiIcon"
-  }
-}

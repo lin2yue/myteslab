@@ -76,8 +76,10 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
                 // 这在特斯拉车型的异步拆解中非常常见, 以支持非对称贴图
                 let availableUVs = ['uv']
                 scene.traverse((node: any) => {
-                    if (node.isMesh && node.geometry && availableUVs.length === 1) {
-                        if (node.geometry.attributes.uv1) availableUVs.push('uv1')
+                    if (node.isMesh && node.geometry) {
+                        if (node.geometry.attributes.uv1 && !availableUVs.includes('uv1')) {
+                            availableUVs.push('uv1')
+                        }
                     }
                 })
 
@@ -108,11 +110,20 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
                             const name = material.name?.toLowerCase() || ''
                             // 匹配车身材质
                             if (name.includes('paint') || name.includes('body') || name.includes('exterior') || name.includes('stainless')) {
-                                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
+                                try {
+                                    if (material.pbrMetallicRoughness.baseColorTexture) {
+                                        material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
+                                    } else {
+                                        // 如果没有 baseColorTexture 槽位，尝试直接设置 (某些版本的 model-viewer 或特定模型可能出现)
+                                        console.log(`材质 ${name} 缺少 baseColorTexture 槽位，尝试备选方案`)
+                                    }
+                                } catch (e) {
+                                    console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
+                                }
                             }
                         })
 
-                        // 2. 通过 Three.js 直接调整纹理参数 (高级步骤)
+                        // 2. 通过 Three.js 直接调整纹理参数并同步到材质 (高级步骤)
                         // 这部分逻辑同步自 tweak.html, 用于处理 scale/rotation/mirror
                         const threeTexture = (texture as any).source?.texture || (texture as any).texture
                         if (threeTexture) {
@@ -130,13 +141,19 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
                             threeTexture.needsUpdate = true
                         }
 
-                        // 3. 确保材质属性 (双面渲染等)
+                        // 3. 兜底逻辑：遍历 Three.js 场景直接覆盖材质贴图
+                        // 这样即使 Model Viewer API 没认出来的材质（如初始无贴图的），也能强行换上
                         scene.traverse((node: any) => {
                             if (node.isMesh && node.material) {
                                 const mats = Array.isArray(node.material) ? node.material : [node.material]
                                 mats.forEach((m: any) => {
                                     const name = m.name?.toLowerCase() || ''
                                     if (name.includes('paint') || name.includes('body') || name.includes('exterior') || name.includes('stainless')) {
+                                        // 直接设置 Three.js 材质贴图
+                                        if (threeTexture) {
+                                            m.map = threeTexture
+                                            m.color.setRGB(1, 1, 1) // 重置颜色为白色，避免自带颜色干扰
+                                        }
                                         m.side = 2 // DoubleSide
                                         m.needsUpdate = true
                                     }

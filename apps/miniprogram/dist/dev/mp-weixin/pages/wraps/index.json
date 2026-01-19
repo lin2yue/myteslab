@@ -1,8 +1,0 @@
-{
-  "navigationBarTitleText": "车身涂装",
-  "usingComponents": {
-    "section-header": "../../components/SectionHeader",
-    "ui-icon": "../../components/UiIcon",
-    "wrap-card": "../../components/WrapCard"
-  }
-}

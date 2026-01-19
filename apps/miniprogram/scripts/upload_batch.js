@@ -140,7 +140,9 @@ async function main() {
     console.log('🚀 Starting Batch Uploader...');
 
     // 1. Scan for Audio Files
-    const pattern = 'uploads/**/*.{mp3,wav,m4a,flac}';
+    // Path relative to script execution (apps/miniprogram/scripts) -> repo root -> assets/audio
+    const assetsAudioDir = path.resolve(__dirname, '../../assets/audio');
+    const pattern = path.join(assetsAudioDir, '**/*.{mp3,wav,m4a,flac}');
     const files = glob.sync(pattern);
 
     if (files.length === 0) {
@@ -189,7 +191,7 @@ async function processFile(filePath) {
         console.log(`   ⬆️ Uploading...`);
         await ossClient.put(ossKey, filePath, {
             headers: {
-                 'Content-Disposition': contentDisposition
+                'Content-Disposition': contentDisposition
             }
         });
 

@@ -32,10 +32,6 @@ export default async function HomePage({
 
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
-              <div className="text-sm text-gray-500">
-                {/* 注意：这里的总数现在只是初始加载的数量。如果需要显示全局总数，需要 api 额外返回 count */}
-                {locale === 'zh' ? '探索贴图库' : 'Explore Wraps'}
-              </div>
             </div>
           </div>
         </div>

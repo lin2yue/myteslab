@@ -90,10 +90,10 @@ const FOLDER_TO_SLUG = {
 };
 
 async function uploadModelFile(slug, filePath) {
-    const filename = 'model.glb'; // 统一使用model.glb命名
+    const filename = path.basename(filePath); // 使用实际文件名（包含版本号）
     const ossKey = `${TARGET_PREFIX}/${slug}/${filename}`;
 
-    console.log(`📤 上传中: ${slug}...`);
+    console.log(`📤 上传中: ${slug} (${filename})...`);
 
     const fileStats = fs.statSync(filePath);
     const fileSizeMB = (fileStats.size / (1024 * 1024)).toFixed(2);
@@ -118,12 +118,31 @@ async function main() {
 
     for (const folderName of modelFolders) {
         const slug = FOLDER_TO_SLUG[folderName];
-        let modelPath = path.join(MODELS_DIR, folderName, 'model.glb');
+        const files = fs.readdirSync(path.join(MODELS_DIR, folderName));
+        let modelPath;
         let useFallback = false;
 
-        // 检查 model.glb 是否有效 (至少 100KB)
-        if (!fs.existsSync(modelPath) || fs.statSync(modelPath).size < 100 * 1024) {
-            useFallback = true;
+        // 自动查找最大版本号的文件 (model_vN.glb)
+        const versionedFiles = files
+            .filter(f => f.match(/^model_v(\d+)\.glb$/))
+            .map(f => {
+                const match = f.match(/^model_v(\d+)\.glb$/);
+                return { name: f, version: parseInt(match[1], 10) };
+            })
+            .sort((a, b) => b.version - a.version);
+
+        if (versionedFiles.length > 0) {
+            // 找到最新版本
+            modelPath = path.join(MODELS_DIR, folderName, versionedFiles[0].name);
+            console.log(`🔍 ${folderName}: 发现最新版本 ${versionedFiles[0].name}`);
+        } else {
+            // 降级策略：寻找 model.glb
+            modelPath = path.join(MODELS_DIR, folderName, 'model.glb');
+            if (fs.existsSync(modelPath)) {
+                console.log(`⚠️ ${folderName}: 未找到版本化文件，使用 model.glb`);
+            } else {
+                useFallback = true;
+            }
         }
 
         if (useFallback) {
@@ -131,8 +150,7 @@ async function main() {
             if (fs.existsSync(fallbackPath)) {
                 modelPath = fallbackPath;
             } else {
-                // 如果没有以 slug 命名的文件，再找找看有没有其他较大的 glb
-                const files = fs.readdirSync(path.join(MODELS_DIR, folderName));
+                // 如果没有以 slug 命名的文件，再找找看有没有其他较大的 glb (排除备份文件)
                 const glbFiles = files.filter(f => f.endsWith('.glb') && f !== 'model.glb' && !f.includes('backup'));
                 if (glbFiles.length > 0) {
                     modelPath = path.join(MODELS_DIR, folderName, glbFiles[0]);

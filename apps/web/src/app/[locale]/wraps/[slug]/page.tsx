@@ -6,6 +6,7 @@ import { ModelViewer } from '@/components/ModelViewer'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap } from '@/lib/api'
+import { getOptimizedImageUrl } from '@/lib/images'
 
 export async function generateMetadata({
     params,
@@ -28,7 +29,7 @@ export async function generateMetadata({
         : wrap.description || `查看 ${name} - MyTesLab 提供的优质特斯拉车身贴图设计。`
 
     const title = `${name} | MyTesLab`
-    const imageUrl = wrap.preview_image_url || wrap.image_url
+    const imageUrl = getOptimizedImageUrl(wrap.preview_image_url || wrap.image_url, { width: 1200, quality: 85 })
     const absoluteImageUrl = imageUrl.startsWith('http')
         ? imageUrl
         : `https://myteslab.com${imageUrl}`

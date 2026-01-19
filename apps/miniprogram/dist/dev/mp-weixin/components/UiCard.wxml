@@ -1,1 +1,0 @@
-<view class="bg-gradient-to-br from-whites10 to-transparent border border-whites10 rounded-2xl overflow-hidden"><slot/></view>

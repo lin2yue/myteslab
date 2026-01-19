@@ -31,13 +31,16 @@ yarn-error.log*
 # vercel
 .vercel
 
-# Assets (Local only)
-assets/
+# 排除大型3D模型文件（已托管在CDN）
+assets/models/**/*.glb
+assets/models/**/*.blend
+assets/models/**/*.blend1
+assets/models/**/*.png
 
-# 小程序构建产物
-apps/miniprogram/dist/
-apps/miniprogram/unpackage/
-apps/miniprogram/public/uploads/
+# 小程序大型文件
+apps/miniprogram/uploads/**
+apps/miniprogram/downloads/**
+apps/miniprogram/public/uploads/**
 
 # 开发工具
 dev-studio/node_modules/

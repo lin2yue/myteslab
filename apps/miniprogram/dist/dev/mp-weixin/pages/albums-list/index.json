@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "专辑",
-  "usingComponents": {
-    "global-player": "../../components/GlobalPlayer",
-    "album-card": "../../components/AlbumCard"
-  }
-}

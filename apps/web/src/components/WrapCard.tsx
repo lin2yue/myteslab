@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import type { Wrap } from '@/lib/types'
+import { getOptimizedImageUrl } from '@/lib/images'
 
 interface WrapCardProps {
     wrap: Wrap
@@ -19,7 +20,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
                 <div className="aspect-[4/3] relative bg-gray-100">
                     {wrap.preview_image_url ? (
                         <Image
-                            src={wrap.preview_image_url}
+                            src={getOptimizedImageUrl(wrap.preview_image_url, { width: 800, quality: 80 })}
                             alt={name}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-300"

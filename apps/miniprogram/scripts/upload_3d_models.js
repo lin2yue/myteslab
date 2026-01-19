@@ -52,7 +52,7 @@ const normalizeBaseUrl = (input) => String(input || '').replace(/\/+$/, '');
 const ossBase = `https://${OSS_CONFIG.bucket}.${OSS_CONFIG.region}.aliyuncs.com`;
 const publicBase = normalizeBaseUrl(process.env.CDN_DOMAIN) || ossBase;
 
-const MODELS_DIR = path.join(repoRoot, 'uploads/catalog');
+const MODELS_DIR = path.join(repoRoot, 'assets/models');
 const TARGET_PREFIX = 'models/wraps';
 
 const required = ['OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];

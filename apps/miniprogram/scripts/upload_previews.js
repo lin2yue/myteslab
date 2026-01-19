@@ -6,7 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Config
 const repoRoot = path.resolve(__dirname, '..');
-const PREVIEWS_DIR = path.join(repoRoot, 'previews');
+const PREVIEWS_DIR = path.join(repoRoot, 'assets', '3d-previews');
 
 // --- Helpers ---
 

@@ -5,8 +5,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 // --- Config ---
 const repoRoot = path.resolve(__dirname, '..');
-const catalogDir = path.join(repoRoot, 'uploads', 'catalog');
-const previewsDir = path.join(repoRoot, 'previews');
+const catalogDir = path.join(repoRoot, 'assets', 'models');
+const previewsDir = path.join(repoRoot, 'assets', '3d-previews');
 
 // --- Env Loading ---
 const loadEnvFileIfPresent = (filePath) => {
@@ -167,7 +167,12 @@ async function main() {
                 // Paths
                 const localTexturePath = path.join(catDir, f);
                 const expectedPreviewName = `${m.slug}-${cat.toLowerCase()}-${wrapSlug}.png`;
-                const localPreviewPath = path.join(previewsDir, m.slug, expectedPreviewName);
+
+                // Safety check: localPreviewPath only valid if previewsDir exists
+                let localPreviewPath = null;
+                if (fs.existsSync(previewsDir)) {
+                    localPreviewPath = path.join(previewsDir, m.slug, expectedPreviewName);
+                }
 
                 // OSS Keys
                 const textureOssKey = `catalog/${m.slug}/wraps/${cat}/${f}`;
@@ -317,11 +322,15 @@ async function main() {
     // B. Delete Orphans (OSS -> null)
     const orphans = allOssFiles.filter(f => !expectedOssKeys.has(f.name));
     // Filter out only relevant folders to avoid destroying other things in bucket
-    const relevantOrphans = orphans.filter(f =>
-        f.name.startsWith('catalog/') ||
-        (f.name.startsWith('previews/') && f.name.includes('/wraps/')) || // safety
-        (f.name.startsWith('previews/') && f.name.includes('-official-')) // Generated previews naming scheme
-    );
+    const relevantOrphans = orphans.filter(f => {
+        if (f.name.startsWith('catalog/')) return true;
+
+        // Safety: Only delete previews if we are actively managing previews (confirmer previewsDir exists locally)
+        if (fs.existsSync(previewsDir) && f.name.startsWith('previews/')) {
+            if (f.name.includes('/wraps/') || f.name.includes('-official-')) return true;
+        }
+        return false;
+    });
     // actually check if it looks like a generated preview or catalog file.
     // keys in expectedOssKeys are all compliant. 
     // We should only delete if we are SURE. 
