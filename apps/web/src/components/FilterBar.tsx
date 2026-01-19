@@ -47,9 +47,8 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
     }
 
     return (
-        <div className="mb-6">
-            {/* Capsule-style tab container */}
-            <div className="inline-flex bg-gray-100 rounded-full p-1 gap-1">
+        <div className="mb-6 -mx-4 px-4 overflow-x-auto no-scrollbar">
+            <div className="inline-flex bg-gray-100 rounded-full p-1 gap-1 min-w-max">
                 {/* All Models Tab */}
                 <button
                     onClick={() => handleModelChange('model-3-2024')}

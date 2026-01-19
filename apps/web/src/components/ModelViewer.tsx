@@ -50,7 +50,6 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
         // 样式
         viewer.style.width = '100%'
         viewer.style.height = '100%'
-        viewer.style.minHeight = '500px'
 
         // 获取 Three.js 场景的助手函数
         const getThreeScene = () => {

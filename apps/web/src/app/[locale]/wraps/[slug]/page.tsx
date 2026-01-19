@@ -117,7 +117,7 @@ export default async function WrapDetailPage({
                 <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
                     {/* 左侧: 3D 预览 */}
                     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div className="relative w-full aspect-[4/3] bg-gray-100">
+                        <div className="relative w-full aspect-square sm:aspect-[4/3] bg-gray-100">
                             <ModelViewer
                                 modelUrl={proxiedModelUrl}
                                 textureUrl={wrap.wrap_image_url || wrap.image_url ? `/api/proxy?url=${encodeURIComponent(wrap.wrap_image_url || wrap.image_url)}` : undefined}

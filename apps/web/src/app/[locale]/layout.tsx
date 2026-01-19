@@ -28,7 +28,7 @@ export async function generateMetadata({
 
   const title = locale === 'en'
     ? 'MyTesLab - Visualize Your Tesla Wraps'
-    : 'MyTesLab - 特斯拉车身改色预览平台'
+    : 'MyTesLab - 特斯拉车身贴膜免费下载'
 
   const description = locale === 'en'
     ? 'Visualize your next look: The ultimate studio for custom Tesla wrap designs. Preview wraps on Cybertruck, Model 3, Model Y, and more.'
