@@ -24,5 +24,33 @@
         "tips": "💡 Drag to Rotate | Scroll to Zoom | Double Click to Reset",
         "loading_model": "Loading 3D model...",
         "model_error": "Failed to load model, please check the model file"
+    },
+    "Login": {
+        "title": "Sign in to your account",
+        "email_label": "Email address",
+        "email_placeholder": "Email address",
+        "password_label": "Password",
+        "password_placeholder": "Password",
+        "forgot_password": "Forgot your password?",
+        "sign_in": "Sign in",
+        "sign_up": "Sign up",
+        "or": "Or",
+        "trial_start": "start your 14-day free trial",
+        "loading": "Processing...",
+        "check_email": "Registration successful! Please check your email to confirm your account."
+    },
+    "Profile": {
+        "title": "My Profile",
+        "user_details": "User Details",
+        "email": "Email",
+        "display_name": "Display Name",
+        "credits": "Credits",
+        "available_credits": "available credits",
+        "total_earned": "Total Earned",
+        "buy_more": "Buy More Credits (Coming Soon)",
+        "generated_wraps": "Generated Wraps",
+        "no_generated_wraps": "No generated wraps yet. Try the AI generator!",
+        "download_history": "Download History",
+        "no_downloads": "You haven't downloaded any wraps yet."
     }
 }

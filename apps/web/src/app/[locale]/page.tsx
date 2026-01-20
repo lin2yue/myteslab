@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import AuthButton from '@/components/auth/AuthButton'
 import { getWraps, getModels } from '@/lib/api'
 
 export default async function HomePage({
@@ -32,6 +33,7 @@ export default async function HomePage({
 
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
+              <AuthButton />
             </div>
           </div>
         </div>

@@ -136,7 +136,7 @@ pnpm build:mp-weixin
 - ✅ 响应式设计
 - ✅ CDN 资源代理 (CORS 处理)
 
-详见：[apps/web/README.md](file:///Users/linpengfei/work/tesla-studio-monorepo/apps/web/README.md)
+详见：[docs/guides/i18n_guide.md](docs/guides/i18n_guide.md) 和 [apps/web/README.md](apps/web/README.md)
 
 ### 小程序版特性
 - 微信生态优化
@@ -203,10 +203,16 @@ pnpm build:mp-weixin
 
 ## 📚 相关文档
 
-- [Web MVP 状态报告](file:///Users/linpengfei/.gemini/antigravity/brain/28dbf412-09db-4255-aa55-1162273c20d1/mvp_status.md)
-- [多语言实现指南](file:///Users/linpengfei/.gemini/antigravity/brain/28dbf412-09db-4255-aa55-1162273c20d1/walkthrough.md)
-- [Monorepo 架构分析](file:///Users/linpengfei/.gemini/antigravity/brain/28dbf412-09db-4255-aa55-1162273c20d1/monorepo_analysis.md)
+所有项目文档已整合至 `docs/` 目录：
 
+- **[文档中心首页](docs/README.md)**
+- **[AI 上下文 (CONTEXT)](docs/CONTEXT.md)** (⭐ AI 必读)
+- [AI 协作指南](docs/guides/ai_workflow_guide.md)
+- [MVP 状态报告](docs/reports/mvp_status_report.md)
+- [多语言实现指南](docs/guides/i18n_guide.md)
+- [Monorepo 架构分析](docs/architecture/monorepo_analysis.md)
+- [数据库设置指南](docs/guides/database_setup.md)
+- [环境配置指南](docs/guides/environment_setup.md)
 ---
 
 ## 🐛 常见问题
