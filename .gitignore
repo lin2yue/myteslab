@@ -68,6 +68,9 @@ Thumbs.db
 # Turbo
 .turbo/
 
+# Lockfiles (pnpm is the workspace source of truth)
+apps/web/package-lock.json
+
 # Misc
 *.tsbuildinfo
 .cache/

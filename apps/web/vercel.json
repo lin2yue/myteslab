@@ -1,5 +1,5 @@
 {
-    "buildCommand": "next build",
+    "buildCommand": "NEXT_DISABLE_TURBOPACK=1 next build",
     "installCommand": "pnpm install --no-frozen-lockfile",
     "outputDirectory": ".next"
 }

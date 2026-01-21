@@ -1,12 +1,17 @@
-import { createClient } from '@/utils/supabase/server'
+import { unstable_cache } from 'next/cache'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Wrap, Model } from '@/lib/types'
 
-/**
- * Get a Supabase client for API calls
- */
-async function getSupabase() {
-    return await createClient()
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+const publicSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+    },
+})
 
 /**
  * 将数据库记录规范化为 Wrap 接口格式
@@ -48,6 +53,91 @@ function normalizeWrap(w: any, category: string = 'official'): Wrap {
 /**
  * 获取贴图列表（支持分页和车型过滤）
  */
+async function fetchWrapsInternal(
+    modelSlug: string | undefined,
+    page: number,
+    pageSize: number,
+    sortBy: 'latest' | 'popular'
+): Promise<Wrap[]> {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    if (modelSlug) {
+        const { data: model } = await publicSupabase
+            .from('wrap_models')
+            .select('id')
+            .eq('slug', modelSlug)
+            .single()
+
+        let officialWraps: any[] = []
+        if (model) {
+            const { data: mappings } = await publicSupabase
+                .from('wrap_model_map')
+                .select('wrap_id')
+                .eq('model_id', model.id)
+
+            if (mappings && mappings.length > 0) {
+                const wrapIds = mappings.map((m: { wrap_id: string }) => m.wrap_id)
+                const { data } = await publicSupabase
+                    .from('wraps')
+                    .select('*')
+                    .in('id', wrapIds)
+                officialWraps = data || []
+            }
+        }
+
+        const { data: userWraps } = await publicSupabase
+            .from('generated_wraps')
+            .select('*')
+            .eq('model_slug', modelSlug)
+            .eq('is_public', true)
+            .order('created_at', { ascending: false })
+            .limit(100)
+
+        const allWraps = [
+            ...(officialWraps || []).map((w: unknown) => normalizeWrap(w as any, 'official')),
+            ...(userWraps || []).map((w: unknown) => normalizeWrap(w as any, 'community'))
+        ]
+
+        const sortFn = sortBy === 'popular'
+            ? (a: Wrap, b: Wrap) => (b.download_count || 0) - (a.download_count || 0)
+            : (a: Wrap, b: Wrap) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+        return allWraps
+            .sort(sortFn)
+            .slice(from, to + 1) as Wrap[]
+    }
+
+    // 获取所有贴图（分页）
+    // 1. 官方
+    const { data: officialData } = await publicSupabase
+        .from('wraps')
+        .select('*')
+    // .eq('is_active', true)
+
+    // 2. 用户公开
+    const { data: userData } = await publicSupabase
+        .from('generated_wraps')
+        .select('*')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+    // 3. 合并
+    const combinedWraps = [
+        ...(officialData || []).map((w: unknown) => normalizeWrap(w as any, 'official')),
+        ...(userData || []).map((w: unknown) => normalizeWrap(w as any, 'community'))
+    ]
+
+    const sortFn = sortBy === 'popular'
+        ? (a: Wrap, b: Wrap) => (b.download_count || 0) - (a.download_count || 0)
+        : (a: Wrap, b: Wrap) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+    return combinedWraps
+        .sort(sortFn)
+        .slice(from, to + 1) as Wrap[]
+}
+
 export async function getWraps(
     modelSlug?: string,
     page: number = 1,
@@ -55,89 +145,11 @@ export async function getWraps(
     sortBy: 'latest' | 'popular' = 'latest'
 ): Promise<Wrap[]> {
     try {
-        const supabase = await getSupabase()
-        const from = (page - 1) * pageSize
-        const to = from + pageSize - 1
-
-        // 如果指定了车型
-        if (modelSlug) {
-            // 1. 获取官方贴图
-            const { data: model } = await supabase
-                .from('wrap_models')
-                .select('id')
-                .eq('slug', modelSlug)
-                .single()
-
-            let officialWraps: any[] = []
-            if (model) {
-                const { data: mappings } = await supabase
-                    .from('wrap_model_map')
-                    .select('wrap_id')
-                    .eq('model_id', model.id)
-
-                if (mappings && mappings.length > 0) {
-                    const wrapIds = mappings.map(m => m.wrap_id)
-                    const { data } = await supabase
-                        .from('wraps')
-                        .select('*')
-                        .in('id', wrapIds)
-                    // .eq('is_active', true) // 去掉可能不存在的字段过滤
-                    officialWraps = data || []
-                }
-            }
-
-            // 2. 获取用户公开贴图
-            const { data: userWraps } = await supabase
-                .from('generated_wraps')
-                .select('*')
-                .eq('model_slug', modelSlug)
-                .eq('is_public', true)
-                .order('created_at', { ascending: false })
-                .limit(100)
-
-            // 3. 合并并格式化
-            const allWraps = [
-                ...(officialWraps || []).map(w => normalizeWrap(w, 'official')),
-                ...(userWraps || []).map(w => normalizeWrap(w, 'community'))
-            ]
-
-            const sortFn = sortBy === 'popular'
-                ? (a: Wrap, b: Wrap) => (b.download_count || 0) - (a.download_count || 0)
-                : (a: Wrap, b: Wrap) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-
-            return allWraps
-                .sort(sortFn)
-                .slice(from, to + 1) as Wrap[]
-        }
-
-        // 获取所有贴图（分页）
-        // 1. 官方
-        const { data: officialData } = await supabase
-            .from('wraps')
-            .select('*')
-        // .eq('is_active', true)
-
-        // 2. 用户公开
-        const { data: userData } = await supabase
-            .from('generated_wraps')
-            .select('*')
-            .eq('is_public', true)
-            .order('created_at', { ascending: false })
-            .limit(100)
-
-        // 3. 合并
-        const combinedWraps = [
-            ...(officialData || []).map(w => normalizeWrap(w, 'official')),
-            ...(userData || []).map(w => normalizeWrap(w, 'community'))
-        ]
-
-        const sortFn = sortBy === 'popular'
-            ? (a: Wrap, b: Wrap) => (b.download_count || 0) - (a.download_count || 0)
-            : (a: Wrap, b: Wrap) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-
-        return combinedWraps
-            .sort(sortFn)
-            .slice(from, to + 1) as Wrap[]
+        return await unstable_cache(
+            () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
+            ['wraps', modelSlug || 'all', String(page), String(pageSize), sortBy],
+            { revalidate: 300 }
+        )()
     } catch (error) {
         console.error('获取贴图异常:', error)
         return []
@@ -149,9 +161,8 @@ export async function getWraps(
  */
 export async function getWrap(slug: string): Promise<Wrap | null> {
     try {
-        const supabase = await getSupabase()
         // 1. 先从官方贴图表找
-        const { data: officialWrap, error: officialError } = await supabase
+        const { data: officialWrap } = await publicSupabase
             .from('wraps')
             .select('*, wrap_model_map(wrap_models(model_3d_url, slug))')
             .eq('slug', slug)
@@ -170,7 +181,7 @@ export async function getWrap(slug: string): Promise<Wrap | null> {
         }
 
         // 2. 如果没找到，尝试从用户生成表找 (slug 此时是 UUID)
-        const { data: userWrap } = await supabase
+        const { data: userWrap } = await publicSupabase
             .from('generated_wraps')
             .select('*')
             .eq('id', slug)
@@ -178,7 +189,7 @@ export async function getWrap(slug: string): Promise<Wrap | null> {
 
         if (userWrap) {
             // 获取对应的车型模型 URL
-            const { data: model } = await supabase
+            const { data: model } = await publicSupabase
                 .from('wrap_models')
                 .select('model_3d_url')
                 .eq('slug', userWrap.model_slug)
@@ -203,19 +214,24 @@ export async function getWrap(slug: string): Promise<Wrap | null> {
  */
 export async function getModels(): Promise<Model[]> {
     try {
-        const supabase = await getSupabase()
-        const { data, error } = await supabase
-            .from('wrap_models')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true })
+        return await unstable_cache(
+            async () => {
+                const { data, error } = await publicSupabase
+                    .from('wrap_models')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true })
 
-        if (error) {
-            console.error('获取车型失败:', error)
-            return []
-        }
+                if (error) {
+                    console.error('获取车型失败:', error)
+                    return []
+                }
 
-        return data || []
+                return data || []
+            },
+            ['models'],
+            { revalidate: 3600 }
+        )()
     } catch (error) {
         console.error('获取车型异常:', error)
         return []
@@ -227,17 +243,14 @@ export async function getModels(): Promise<Model[]> {
  */
 export async function incrementDownloadCount(wrapId: string): Promise<void> {
     try {
-        const supabase = await getSupabase()
-        // 获取当前计数
-        const { data: wrap } = await supabase
+        const { data: wrap } = await publicSupabase
             .from('wraps')
             .select('download_count')
             .eq('id', wrapId)
             .single()
 
         if (wrap) {
-            // 更新计数
-            await supabase
+            await publicSupabase
                 .from('wraps')
                 .update({ download_count: (wrap.download_count || 0) + 1 })
                 .eq('id', wrapId)

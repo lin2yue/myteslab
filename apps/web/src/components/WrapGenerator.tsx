@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import Image from 'next/image'
 import { flipImage180 } from '@/lib/utils/image-utils'
 
 interface GenerationHistory {
@@ -255,7 +256,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
             const ctx = canvas.getContext('2d');
             if (!ctx) return reject('No canvas context');
 
-            const img = new Image();
+            const img = new window.Image();
             img.crossOrigin = 'anonymous';
 
             img.onload = () => {
@@ -263,7 +264,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
 
-                const mask = new Image();
+                const mask = new window.Image();
                 mask.crossOrigin = 'anonymous';
 
                 mask.onload = () => {
@@ -272,10 +273,10 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                     ctx.globalCompositeOperation = 'source-over';
                     resolve(canvas.toDataURL('image/png'));
                 };
-                mask.onerror = (e) => reject(e);
+                mask.onerror = (e: unknown) => reject(e);
                 mask.src = maskSrc;
             };
-            img.onerror = (e) => reject(e);
+            img.onerror = (e: unknown) => reject(e);
             img.src = imageSrc;
         });
     }
@@ -288,8 +289,6 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
         onClick?: (e: React.MouseEvent<HTMLDivElement>) => void,
         isActive?: boolean
     }) => {
-        const [res, setRes] = useState<{ w: number, h: number } | null>(null)
-
         return (
             <div
                 className={`comparison-item ${onClick ? 'clickable' : ''} ${isActive ? 'active' : ''}`}
@@ -297,17 +296,13 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
             >
                 <span className="comparison-label">{label} {onClick && '👆'}</span>
                 <div style={{ position: 'relative' }}>
-                    <img
+                    <Image
                         className="result-image"
                         src={src}
                         alt={alt}
-                        onLoad={(e) => setRes({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                        fill
+                        sizes="100vw"
                     />
-                    {res && (
-                        <div className="resolution-tag">
-                            {res.w} x {res.h}
-                        </div>
-                    )}
                 </div>
             </div>
         )
@@ -550,7 +545,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                     <div className="reference-images">
                         {referenceImages.map((img, index) => (
                             <div key={index} className="reference-image">
-                                <img src={img} alt={`Ref ${index + 1}`} />
+                                <Image src={img} alt={`Ref ${index + 1}`} fill sizes="100vw" />
                                 <button className="remove-image" onClick={() => removeImage(index)}>×</button>
                             </div>
                         ))}
@@ -600,10 +595,13 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                             />
                         </div>
                     ) : (
-                        <img
+                                                <Image
                             className="result-image"
                             src={generatedImage}
                             alt="生成的贴膜设计"
+                            fill
+                            sizes="100vw"
+                            priority
                         />
                     )}
                 </div>
@@ -661,7 +659,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                                     </div>
                                 ) : (
                                     <div className="history-thumbnail" onClick={() => loadFromHistory(item)}>
-                                        <img src={item.imageDataUrl} alt={item.prompt} />
+                                        <Image src={item.imageDataUrl} alt={item.prompt} fill sizes="100vw" />
                                     </div>
                                 )}
 

@@ -82,7 +82,7 @@ export default function AIGeneratorMain({
 
             if (error) throw error
             if (data) setHistory(data)
-        } catch (err: any) {
+        } catch (err) {
             console.error('Fetch history error:', err)
         } finally {
             isFetchingRef.current = false
@@ -141,8 +141,9 @@ export default function AIGeneratorMain({
             // 刷新历史
             setTimeout(fetchHistory, 1000)
 
-        } catch (err: any) {
-            alert(`生成失败: ${err.message}`)
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            alert(`生成失败: ${message}`)
         } finally {
             setIsGenerating(false)
         }
@@ -215,8 +216,9 @@ export default function AIGeneratorMain({
             alert(tGen('publish_success'));
             // 刷新历史
             fetchHistory();
-        } catch (err: any) {
-            alert(`发布失败: ${err.message}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            alert(`发布失败: ${message}`);
         } finally {
             setIsPublishing(false);
         }
@@ -224,9 +226,9 @@ export default function AIGeneratorMain({
 
     const takeSnapshot = () => {
         // 实现 3D 截图功能
-        const viewer = document.getElementById('ai-viewer') as any
-        if (viewer) {
-            const url = viewer.toDataURL()
+        const viewer = document.getElementById('ai-viewer')
+        if (viewer && 'toDataURL' in viewer && typeof (viewer as { toDataURL: () => string }).toDataURL === 'function') {
+            const url = (viewer as { toDataURL: () => string }).toDataURL()
             const link = document.createElement('a')
             link.download = `myteslab-design-${selectedModel}.png`
             link.href = url

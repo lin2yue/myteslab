@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { login, signup } from './actions';
@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client';
 
 export default function LoginForm() {
     const t = useTranslations('Login');
+    const locale = useLocale();
     const searchParams = useSearchParams();
     const error = searchParams.get('error');
     const success = searchParams.get('success');
@@ -19,7 +20,7 @@ export default function LoginForm() {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/api/auth/callback`,
+                redirectTo: `${window.location.origin}/api/auth/callback?next=/${locale}`,
                 queryParams: {
                     access_type: 'offline',
                     prompt: 'consent',

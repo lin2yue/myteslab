@@ -22,9 +22,10 @@ export default async function HomePage({
 
   const sortBy = (sort as 'latest' | 'popular') || 'latest'
 
-  // 初始加载第一页数据 (12条)
-  const wraps = await getWraps(model, 1, 12, sortBy)
-  const models = await getModels()
+  const [wraps, models] = await Promise.all([
+    getWraps(model, 1, 12, sortBy),
+    getModels(),
+  ])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">

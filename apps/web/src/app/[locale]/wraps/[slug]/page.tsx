@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
-import { ModelViewer } from '@/components/ModelViewer'
+import { ModelViewerClient } from '@/components/ModelViewerClient'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap } from '@/lib/api'
@@ -125,7 +125,7 @@ export default async function WrapDetailPage({
                     {/* 左侧: 3D 预览 */}
                     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                         <div className="relative w-full aspect-square sm:aspect-[4/3] bg-gray-100">
-                            <ModelViewer
+                            <ModelViewerClient
                                 modelUrl={proxiedModelUrl}
                                 textureUrl={textureUrl}
                                 modelSlug={wrap.model_slug}

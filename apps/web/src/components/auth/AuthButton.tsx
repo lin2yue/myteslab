@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { Link } from '@/i18n/routing';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 export default function AuthButton() {
@@ -77,9 +78,11 @@ export default function AuthButton() {
                 className="flex items-center gap-2 focus:outline-none"
             >
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-gray-200">
-                    <img
+                                        <Image
                         src={avatarUrl || defaultAvatar}
                         alt="User Avatar"
+                        width={32}
+                        height={32}
                         className="h-full w-full object-cover"
                     />
                 </div>
