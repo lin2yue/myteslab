@@ -5,14 +5,7 @@ import { useTranslations } from 'next-intl'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
 import { Link } from '@/i18n/routing'
 import { createClient } from '@/utils/supabase/client'
-import { flipImage180, rotateImage } from '@/lib/utils/image-utils'
-
-interface Task {
-    id: string
-    prompt: string
-    status: 'pending' | 'processing' | 'completed' | 'failed'
-    created_at: string
-}
+import Image from 'next/image'
 
 interface GenerationHistory {
     id: string
@@ -26,10 +19,11 @@ interface GenerationHistory {
 export default function AIGeneratorMain({
     initialCredits,
     models,
-    locale
+    locale: _locale
 }: {
     initialCredits: number,
-    models: any[],
+    models: Array<{ slug: string; name: string; modelUrl?: string }>,
+
     locale: string
 }) {
     const t = useTranslations('Common')
@@ -356,53 +350,27 @@ export default function AIGeneratorMain({
                                                 style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(to right, transparent, #3b82f6, transparent)' }} />
                                         </div>
                                     )}
-                                    {history.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            onClick={async () => {
-                                                const cdnUrl = getCdnUrl(item.texture_url);
-                                                // 自动处理 CORS：如果是远程 URL，且非同源，则通过代理加载
-                                                let displayUrl = cdnUrl;
-                                                if (cdnUrl.startsWith('http') && !cdnUrl.includes(window.location.origin)) {
-                                                    displayUrl = `/api/proxy?url=${encodeURIComponent(cdnUrl)}`;
-                                                }
-
-                                                console.log('Applying texture from history:', { original: item.texture_url, cdn: cdnUrl, display: displayUrl });
-
-                                                setCurrentTexture(displayUrl);
-                                                setSelectedModel(item.model_slug);
-                                                setActiveWrapId(item.id);
-                                            }}
-                                            className={`flex gap-3 p-3 rounded-xl border transition-all group cursor-pointer ${activeWrapId === item.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/30'}`}
-                                        >
-                                            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                <img
-                                                    src={getCdnUrl(item.texture_url)}
-                                                    alt="wrap"
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        console.error('Failed to load history image:', item.texture_url);
-                                                        e.currentTarget.src = 'https://placehold.co/100x100?text=Error'; // Fallback
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <p className="text-xs text-gray-600 line-clamp-1 italic flex-1">"{item.prompt}"</p>
-                                                    {item.is_public && (
-                                                        <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[8px] font-bold rounded uppercase">
-                                                            Public
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex justify-between mt-2">
-                                                    <span className="text-[10px] text-gray-400 uppercase">{item.model_slug}</span>
-                                                    <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">Apply →</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </>
+                                      {history.map((item) => (
+                                          <HistoryItem
+                                                key={item.id}
+                                                item={item}
+                                                activeWrapId={activeWrapId}
+                                                getCdnUrl={getCdnUrl}
+                                                onClick={() => {
+                                                    const cdnUrl = getCdnUrl(item.texture_url);
+                                                    // 自动处理 CORS：如果是远程 URL，且非同源，则通过代理加载
+                                                    let displayUrl = cdnUrl;
+                                                    if (cdnUrl.startsWith('http') && !cdnUrl.includes(window.location.origin)) {
+                                                        displayUrl = `/api/proxy?url=${encodeURIComponent(cdnUrl)}`;
+                                                    }
+                                                    console.log('Applying texture from history:', { original: item.texture_url, cdn: cdnUrl, display: displayUrl });
+                                                    setCurrentTexture(displayUrl);
+                                                    setSelectedModel(item.model_slug);
+                                                    setActiveWrapId(item.id);
+                                                }}
+                                          />
+                                      ))}
+                                 </>
                             )}
                         </div>
                     </div>
@@ -460,4 +428,53 @@ export default function AIGeneratorMain({
     )
 
 
+}
+
+function HistoryItem({
+    item,
+    activeWrapId,
+    onClick,
+    getCdnUrl
+}: {
+    item: GenerationHistory;
+    activeWrapId: string | null;
+    onClick: () => void;
+    getCdnUrl: (url: string) => string;
+}) {
+    const [imgSrc, setImgSrc] = useState(getCdnUrl(item.texture_url));
+
+    return (
+        <div
+            onClick={onClick}
+            className={`flex gap-3 p-3 rounded-xl border transition-all group cursor-pointer ${activeWrapId === item.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/30'}`}
+        >
+            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                <Image
+                    src={imgSrc}
+                    alt="wrap"
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                        console.error('Failed to load history image:', item.texture_url);
+                        setImgSrc('https://placehold.co/100x100?text=Error'); // Fallback
+                    }}
+                />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start mb-1">
+                    <p className="text-xs text-gray-600 line-clamp-1 italic flex-1">&quot;{item.prompt}&quot;</p>
+                    {item.is_public && (
+                        <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[8px] font-bold rounded uppercase">
+                            Public
+                        </span>
+                    )}
+                </div>
+                <div className="flex justify-between mt-2">
+                    <span className="text-[10px] text-gray-400 uppercase">{item.model_slug}</span>
+                    <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">Apply →</span>
+                </div>
+            </div>
+        </div>
+    );
 }
