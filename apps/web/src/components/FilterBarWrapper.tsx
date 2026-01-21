@@ -7,15 +7,16 @@ import type { Model } from '@/lib/types'
 interface FilterBarWrapperProps {
     models: Model[]
     children: ReactNode
+    sortBy?: 'latest' | 'popular'
 }
 
-export function FilterBarWrapper({ models, children }: FilterBarWrapperProps) {
+export function FilterBarWrapper({ models, children, sortBy = 'latest' }: FilterBarWrapperProps) {
     const [isLoading, setIsLoading] = useState(false)
 
     return (
         <>
             <div className="mb-8">
-                <FilterBar models={models} onLoadingChange={setIsLoading} />
+                <FilterBar models={models} onLoadingChange={setIsLoading} sortBy={sortBy} />
             </div>
             <div className="relative">
                 {children}

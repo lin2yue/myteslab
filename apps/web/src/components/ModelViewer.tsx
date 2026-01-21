@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
 import { useTranslations } from 'next-intl'
 
 import viewerConfig from '@/config/viewer-config.json'
@@ -10,13 +10,75 @@ interface ModelViewerProps {
     textureUrl?: string
     modelSlug?: string
     className?: string
+    id?: string
+    autoRotate?: boolean
+    environment?: string
 }
 
-export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }: ModelViewerProps) {
+export interface ModelViewerRef {
+    takeHighResScreenshot: () => Promise<string | null>
+}
+
+export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
+    modelUrl,
+    textureUrl,
+    modelSlug,
+    className = '',
+    id,
+    autoRotate: propAutoRotate,
+    environment = 'neutral'
+}, ref) => {
     const t = useTranslations('Common')
     const containerRef = useRef<HTMLDivElement>(null)
+    const viewerElementRef = useRef<any>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+
+    useImperativeHandle(ref, () => ({
+        takeHighResScreenshot: async () => {
+            const viewer = viewerElementRef.current;
+            if (!viewer) return null;
+
+            // 1. 记录原始状态
+            const originalWidth = viewer.style.width;
+            const originalHeight = viewer.style.height;
+            const originalMinRenderScale = viewer.getAttribute('min-render-scale');
+
+            try {
+                // 2. 临时提升质量
+                viewer.setAttribute('min-render-scale', '1');
+
+                // 3. 等待渲染队列清空 (确保尺寸调整和纹理应用完成)
+                // 注意：不再将元素移出视口，因为部分浏览器在元素不在视口内时会停止渲染导致黑屏
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                await new Promise(resolve => setTimeout(resolve, 300)); // 给 GPU 渲染缓冲时间
+
+                // 4. 捕捉截图 (使用 model-viewer 的 toBlob 更加稳定)
+                const blob = await viewer.toBlob({
+                    mimeType: 'image/jpeg',
+                    qualityArgument: 0.9,
+                    idealAspect: true
+                });
+
+                if (!blob) return null;
+
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+
+            } finally {
+                // 5. 还原状态
+                if (originalMinRenderScale) {
+                    viewer.setAttribute('min-render-scale', originalMinRenderScale);
+                } else {
+                    viewer.removeAttribute('min-render-scale');
+                }
+            }
+        }
+    }));
 
     useEffect(() => {
         // 动态导入 model-viewer 以避免 SSR 错误
@@ -26,23 +88,29 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
 
         const viewer = document.createElement('model-viewer') as any
 
+        if (id) viewer.id = id
+        viewerElementRef.current = viewer;
+
         // 获取特定车型配置或使用默认配置
         const config = {
             ...viewerConfig.defaults,
             ...(modelSlug && (viewerConfig.models as any)[modelSlug] ? (viewerConfig.models as any)[modelSlug] : {})
         }
 
+        const finalAutoRotate = propAutoRotate !== undefined ? propAutoRotate : config.autoRotate;
+        const finalEnvironment = environment || config.environmentImage;
+
         // 基础配置
         viewer.setAttribute('src', modelUrl)
         viewer.setAttribute('camera-controls', 'true')
         viewer.setAttribute('touch-action', 'pan-y')
         viewer.setAttribute('interaction-prompt', config.interactionPrompt || 'none')
-        viewer.setAttribute('auto-rotate', config.autoRotate ? 'true' : 'false')
+        viewer.setAttribute('auto-rotate', finalAutoRotate ? 'true' : 'false')
 
         // 渲染配置
         viewer.setAttribute('camera-orbit', config.cameraOrbit)
         viewer.setAttribute('field-of-view', config.fieldOfView)
-        viewer.setAttribute('environment-image', config.environmentImage)
+        viewer.setAttribute('environment-image', finalEnvironment)
         viewer.setAttribute('shadow-intensity', config.shadowIntensity.toString())
         viewer.setAttribute('shadow-softness', config.shadowSoftness.toString())
         viewer.setAttribute('exposure', config.exposure.toString())
@@ -91,6 +159,10 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
                         if (node.isMesh && node.geometry) {
                             const geom = node.geometry
                             if (geom.attributes[targetUV]) {
+                                // 备份原始 uv
+                                if (!geom.userData.originalUV) {
+                                    geom.userData.originalUV = geom.attributes.uv;
+                                }
                                 // 交换 UV 属性，使得所有默认使用 UV 的贴图都映射到 targetUV
                                 geom.attributes.uv = geom.attributes[targetUV]
                                 geom.attributes.uv.needsUpdate = true
@@ -108,14 +180,18 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
                         // 1. 通过 Model Viewer API 设置纹理 (基础步骤)
                         materials.forEach((material: any) => {
                             const name = material.name?.toLowerCase() || ''
-                            // 匹配车身材质
-                            if (name.includes('paint') || name.includes('body') || name.includes('exterior') || name.includes('stainless')) {
+                            // 匹配车身材质: 包含 paint, body, exterior, stainless 或为空 (通常是主车身)
+                            const isBody = name === '' ||
+                                name.includes('paint') ||
+                                name.includes('body') ||
+                                name.includes('exterior') ||
+                                name.includes('stainless') ||
+                                name === 'ext_body'
+
+                            if (isBody) {
                                 try {
                                     if (material.pbrMetallicRoughness.baseColorTexture) {
                                         material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
-                                    } else {
-                                        // 如果没有 baseColorTexture 槽位，尝试直接设置 (某些版本的 model-viewer 或特定模型可能出现)
-                                        console.log(`材质 ${name} 缺少 baseColorTexture 槽位，尝试备选方案`)
                                     }
                                 } catch (e) {
                                     console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
@@ -142,13 +218,19 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
                         }
 
                         // 3. 兜底逻辑：遍历 Three.js 场景直接覆盖材质贴图
-                        // 这样即使 Model Viewer API 没认出来的材质（如初始无贴图的），也能强行换上
                         scene.traverse((node: any) => {
                             if (node.isMesh && node.material) {
                                 const mats = Array.isArray(node.material) ? node.material : [node.material]
                                 mats.forEach((m: any) => {
                                     const name = m.name?.toLowerCase() || ''
-                                    if (name.includes('paint') || name.includes('body') || name.includes('exterior') || name.includes('stainless')) {
+                                    const isBody = name === '' ||
+                                        name.includes('paint') ||
+                                        name.includes('body') ||
+                                        name.includes('exterior') ||
+                                        name.includes('stainless') ||
+                                        name === 'ext_body'
+
+                                    if (isBody) {
                                         // 直接设置 Three.js 材质贴图
                                         if (threeTexture) {
                                             m.map = threeTexture
@@ -179,7 +261,7 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
         return () => {
             viewer.remove()
         }
-    }, [modelUrl, textureUrl])
+    }, [modelUrl, textureUrl, modelSlug, propAutoRotate, environment])
 
     return (
         <div className={`relative ${className}`}>
@@ -213,4 +295,4 @@ export function ModelViewer({ modelUrl, textureUrl, modelSlug, className = '' }:
             )}
         </div>
     )
-}
+})

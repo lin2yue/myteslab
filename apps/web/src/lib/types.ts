@@ -24,6 +24,7 @@ export interface Wrap {
     preview_image_url: string  // 预览图URL
     model_3d_url?: string  // 3D模型URL
     model_slug?: string    // 车型Slug
+    author_name?: string   // 作者名称
     download_count: number
     is_active: boolean
     sort_order?: number

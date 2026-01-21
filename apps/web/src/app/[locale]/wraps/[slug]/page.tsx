@@ -91,7 +91,13 @@ export default async function WrapDetailPage({
 
     // 获取模型 URL (通过代理解决 CORS)
     const modelUrl = wrap.model_3d_url || 'https://cdn.tewan.club/models/wraps/cybertruck/model.glb'
-    const proxiedModelUrl = `/api/proxy?url=${encodeURIComponent(modelUrl)}`
+    const proxiedModelUrl = modelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(modelUrl)}` : modelUrl
+
+    // 获取贴图 URL
+    const rawTextureUrl = wrap.wrap_image_url || wrap.image_url
+    const textureUrl = rawTextureUrl
+        ? (rawTextureUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawTextureUrl)}` : rawTextureUrl)
+        : undefined
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -121,7 +127,7 @@ export default async function WrapDetailPage({
                         <div className="relative w-full aspect-square sm:aspect-[4/3] bg-gray-100">
                             <ModelViewer
                                 modelUrl={proxiedModelUrl}
-                                textureUrl={wrap.wrap_image_url || wrap.image_url ? `/api/proxy?url=${encodeURIComponent(wrap.wrap_image_url || wrap.image_url)}` : undefined}
+                                textureUrl={textureUrl}
                                 modelSlug={wrap.model_slug}
                                 className="w-full h-full"
                             />

@@ -30,11 +30,25 @@ export async function GET(request: NextRequest) {
         // 获取文件内容
         const buffer = await response.arrayBuffer()
 
+        // 智能判断 Content-Type
+        let contentType = response.headers.get('Content-Type');
+        if (!contentType || contentType === 'application/octet-stream') {
+            if (url.toLowerCase().endsWith('.png')) {
+                contentType = 'image/png';
+            } else if (url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.jpeg')) {
+                contentType = 'image/jpeg';
+            } else if (url.toLowerCase().endsWith('.webp')) {
+                contentType = 'image/webp';
+            } else if (url.toLowerCase().endsWith('.glb')) {
+                contentType = 'model/gltf-binary';
+            }
+        }
+
         // 返回文件,设置正确的CORS头
         return new NextResponse(buffer, {
             status: 200,
             headers: {
-                'Content-Type': response.headers.get('Content-Type') || 'model/gltf-binary',
+                'Content-Type': contentType || 'application/octet-stream',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type',

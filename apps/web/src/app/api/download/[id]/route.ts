@@ -8,37 +8,60 @@ export async function GET(
     try {
         const { id } = await params
 
-        // 1. 获取贴图信息
-        const { data: wrap, error } = await supabase
+        // 1. 获取贴图信息 - 尝试从两个表中获取
+        let wrapData: any = null;
+        let fileNamePrefix = 'wrap';
+
+        // 先查正式贴图表
+        const { data: wrap, error: wrapError } = await supabase
             .from('wraps')
             .select('*')
             .eq('id', id)
             .single()
 
-        if (error || !wrap) {
+        if (wrap && !wrapError) {
+            wrapData = {
+                url: wrap.wrap_image_url || wrap.image_url,
+                slug: wrap.slug
+            };
+            fileNamePrefix = wrap.slug;
+        } else {
+            // 再查 AI 生成贴图表
+            const { data: genWrap, error: genError } = await supabase
+                .from('generated_wraps')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            if (genWrap && !genError) {
+                wrapData = {
+                    url: genWrap.texture_url,
+                    slug: `ai-wrap-${id.substring(0, 8)}`
+                };
+                fileNamePrefix = wrapData.slug;
+            }
+        }
+
+        if (!wrapData || !wrapData.url) {
             return NextResponse.json(
                 { error: '贴图不存在' },
                 { status: 404 }
             )
         }
 
-        // 2. 增加下载计数
-        await supabase.rpc('increment_download_count', {
-            wrap_id: id
-        })
-
-        // 3. 获取贴图文件 URL（优先使用 wrap_image_url，否则使用 image_url）
-        const wrapUrl = wrap.wrap_image_url || wrap.image_url
-
-        if (!wrapUrl) {
-            return NextResponse.json(
-                { error: '贴图文件不存在' },
-                { status: 404 }
-            )
+        // 2. 增加下载计数 (仅对正式贴图)
+        if (!id.includes('-') || id.length > 10) { // 简单判断是否是 UUID
+            try {
+                await supabase.rpc('increment_download_count', {
+                    wrap_id: id
+                });
+            } catch (e) {
+                // 忽略可能的报错（例如表不匹配）
+            }
         }
 
-        // 4. 从 CDN 获取文件并强制下载
-        const response = await fetch(wrapUrl)
+        // 3. 从 CDN 获取文件并强制下载
+        const response = await fetch(wrapData.url)
 
         if (!response.ok) {
             return NextResponse.json(
@@ -50,8 +73,8 @@ export async function GET(
         // 获取文件内容
         const blob = await response.blob()
 
-        // 生成文件名（使用 wrap slug 作为文件名）
-        const filename = `${wrap.slug}.png`
+        // 生成文件名
+        const filename = `${fileNamePrefix}.png`
 
         // 返回文件，添加 Content-Disposition header 强制下载
         return new NextResponse(blob, {
@@ -69,3 +92,4 @@ export async function GET(
         )
     }
 }
+

@@ -14,9 +14,22 @@ export type OSSImageOptions = {
 export function getOptimizedImageUrl(url: string | undefined | null, options: OSSImageOptions = {}): string {
     if (!url) return '';
 
-    // 如果不是 CDN/OSS 链接，直接返回
-    if (!url.includes('cdn.tewan.club') && !url.includes('aliyuncs.com')) {
-        return url;
+    const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club';
+    let targetUrl = url;
+
+    // 强制资源走 CDN
+    if (url.includes('aliyuncs.com')) {
+        try {
+            const urlObj = new URL(url);
+            targetUrl = `${cdnUrl}${urlObj.pathname}${urlObj.search}`;
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // 如果不是 CDN/OSS 链接且重写后也不是，直接返回
+    if (!targetUrl.includes('cdn.tewan.club') && !targetUrl.includes('aliyuncs.com')) {
+        return targetUrl;
     }
 
     const { width, height, format = 'webp', quality, resize = 'lfit' } = options;
@@ -40,10 +53,10 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: OS
         processParts.push(`quality,q_${quality}`);
     }
 
-    if (processParts.length === 0) return url;
+    if (processParts.length === 0) return targetUrl;
 
-    const separator = url.includes('?') ? '&' : '?';
+    const separator = targetUrl.includes('?') ? '&' : '?';
     const processQuery = `x-oss-process=${processParts.join('/')}`;
 
-    return `${url}${separator}${processQuery}`;
+    return `${targetUrl}${separator}${processQuery}`;
 }

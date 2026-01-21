@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Wrap 生成调试工具</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1014;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Sidebar - Controls */
+        .sidebar {
+            width: 380px;
+            background: #18191f;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: #23242a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+
+        .checkbox-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            background: #23242a;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .checkbox-group input {
+            width: auto;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            text-transform: none;
+            color: #d0d0d0;
+        }
+
+        button#generateBtn {
+            margin-top: auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: filter 0.2s;
+        }
+
+        button#generateBtn:hover {
+            filter: brightness(1.1);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 3D Preview Area */
+        .preview-area {
+            flex: 1;
+            background: #000;
+            position: relative;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            --poster-color: transparent;
+        }
+
+        .model-info-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+        }
+
+        /* Results Panel (Bottom Sheet style) */
+        .results-panel {
+            height: 320px;
+            background: #18191f;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 12px 20px;
+            font-weight: 600;
+            color: #a0a0a0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-scroll {
+            flex: 1;
+            overflow-x: auto;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .result-card {
+            min-width: 260px;
+            background: #23242a;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px;
+        }
+
+        .result-card h3 {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .result-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            background: #121212;
+            /* Checkerboard needed? */
+            border-radius: 6px;
+        }
+
+        .image-info {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #666;
+            font-family: monospace;
+        }
+
+        /* Status & Logs */
+        .status-toast {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            border-radius: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-weight: 500;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .status-toast.visible {
+            opacity: 1;
+        }
+
+        .status-toast.success {
+            background: rgba(46, 125, 50, 0.9);
+        }
+
+        .status-toast.error {
+            background: rgba(198, 40, 40, 0.9);
+        }
+
+        .status-toast.loading {
+            background: rgba(21, 101, 192, 0.9);
+        }
+
+        .debug-overlay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            color: #0f0;
+            font-family: 'Monaco', monospace;
+            font-size: 11px;
+            padding: 12px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+            z-index: 50;
+        }
+
+        .debug-item {
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 2px;
+        }
+
+        .debug-time {
+            color: #888;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">🎨 Tesla Studio Debug</div>
+
+        <div class="form-group">
+            <label>车型 Model</label>
+            <select id="modelSelect">
+                <option value="cybertruck">Cybertruck</option>
+                <option value="model-3">Model 3</option>
+                <option value="model-3-2024-plus">Model 3 2024+</option>
+                <option value="model-y-pre-2025">Model Y (Pre-2025)</option>
+                <option value="model-y-2025-plus">Model Y 2025+</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Prompt</label>
+            <textarea id="promptInput" style="min-height: 80px;"
+                placeholder="Enter design description...">Super Mario themed wrap</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>System Prompt (Debug)</label>
+            <textarea id="systemPrompt" placeholder="Default implementation plan prompt"></textarea>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="enableFlip" checked>
+            <label for="enableFlip">Enable Flip Sandwich</label>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="showDebug" checked>
+            <label for="showDebug">Show Debug Logs</label>
+        </div>
+
+        <button id="generateBtn" onclick="generate()">Generate Wrap</button>
+
+        <!-- History Section -->
+        <div class="history-section"
+            style="margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+            <div
+                style="font-size: 14px; font-weight: 600; color: #a0a0a0; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <span>HISTORY</span>
+                <button onclick="fetchHistory()"
+                    style="background:none; border:none; color:#667eea; cursor:pointer; font-size:12px; padding: 0;">Refresh</button>
+            </div>
+            <div id="historyList"
+                style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                <!-- History Items -->
+                <div style="font-size: 12px; color: #666;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div id="statusToast" class="status-toast">Ready</div>
+
+        <!-- 3D Preview -->
+        <div class="preview-area">
+            <div class="model-info-overlay">
+                <span id="currentModelName">Cybertruck</span> | 3D Preview
+            </div>
+            <model-viewer id="viewer" src="http://localhost:3000/models/Cybertruck/cybertruck.glb" camera-controls
+                auto-rotate shadow-intensity="1" environment-image="neutral" ar>
+            </model-viewer>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="results-panel">
+            <div class="panel-header">
+                GENERATION RESULTS
+            </div>
+            <div class="results-scroll" id="results">
+                <!-- Placeholders or Results will go here -->
+                <div
+                    style="display: flex; align-items: center; justify-content: center; width: 100%; color: #444; font-size: 14px;">
+                    Wait for generation...
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Overlay -->
+        <div id="debugInfo" class="debug-overlay"></div>
+    </div>
+
+    <script>
+        let debugLogs = [];
+
+        function log(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLogs.push({ timestamp, message, data });
+            updateDebugInfo();
+        }
+
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            if (document.getElementById('showDebug').checked) {
+                debugDiv.style.display = 'block';
+                debugDiv.innerHTML = debugLogs.map(log =>
+                    `<div class="debug-item"><span class="debug-time">[${log.timestamp}]</span> ${log.message}${log.data ? '<br>' + JSON.stringify(log.data, null, 2) : ''}</div>`
+                ).join('');
+                debugDiv.scrollTop = debugDiv.scrollHeight;
+            } else {
+                debugDiv.style.display = 'none';
+            }
+        }
+
+        function showStatus(message, type) {
+            const el = document.getElementById('statusToast');
+            el.textContent = message;
+            el.className = `status-toast visible ${type}`;
+
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    el.className = 'status-toast';
+                }, 3000);
+            }
+        }
+
+        async function flipImage180(imageDataUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        reject(new Error('Failed to get canvas context'));
+                        return;
+                    }
+
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.rotate(Math.PI);
+                    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+                    resolve(canvas.toDataURL('image/png'));
+                };
+
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = imageDataUrl;
+            });
+        }
+
+        // Model paths mapping
+        const MODEL_PATHS = {
+            'cybertruck': '/models/Cybertruck/cybertruck.glb',
+            'model-3': '/models/model-3/model_3.glb',
+            'model-3-2024-plus': '/models/model-3-2024-plus/model_3_2024plus.glb',
+            'model-y-pre-2025': '/models/model-y-pre-2025/model_v2.glb',
+            'model-y-2025-plus': '/models/model-y-2025-plus/model_y_2025plus.glb',
+        };
+
+        // Material names for each model
+        const MATERIAL_NAMES = {
+            'cybertruck': 'car_paint',
+            'model-3': 'CarPaint',
+            'model-3-2024-plus': 'CarPaint',
+            'model-y-pre-2025': 'CarPaint',
+            'model-y-2025-plus': 'CarPaint'
+        };
+
+        // Update model when select changes
+        document.getElementById('modelSelect').addEventListener('change', (e) => {
+            const slug = e.target.value;
+            const path = MODEL_PATHS[slug];
+            const viewer = document.getElementById('viewer');
+            if (path) {
+                viewer.src = `http://localhost:3000${path}`;
+                document.getElementById('currentModelName').textContent = slug;
+                log('切换模型', { slug, path });
+            }
+        });
+
+        // UV Logic synced from ModelViewer.tsx
+        const viewer = document.getElementById('viewer');
+        viewer.addEventListener('load', () => {
+            log('模型加载完成，检查 UV 设置...');
+
+            const getThreeScene = () => {
+                try {
+                    const sceneSymbol = Object.getOwnPropertySymbols(viewer).find((s) => s.description === 'scene');
+                    return sceneSymbol ? viewer[sceneSymbol] : null;
+                } catch {
+                    return null;
+                }
+            };
+
+            const scene = getThreeScene();
+            if (scene) {
+                let availableUVs = ['uv'];
+                scene.traverse((node) => {
+                    if (node.isMesh && node.geometry) {
+                        if (node.geometry.attributes.uv1 && !availableUVs.includes('uv1')) {
+                            availableUVs.push('uv1');
+                        }
+                    }
+                });
+
+                // Default to using uv1 if available (same as production config logic)
+                const useUV1 = availableUVs.includes('uv1');
+
+                if (useUV1) {
+                    log('检测到 UV1，正在切换 UV 映射...');
+                    let swapCount = 0;
+                    scene.traverse((node) => {
+                        if (node.isMesh && node.geometry) {
+                            const geom = node.geometry;
+                            if (geom.attributes.uv1) {
+                                // Swap UV1 to UV slot
+                                geom.attributes.uv = geom.attributes.uv1;
+                                geom.attributes.uv.needsUpdate = true;
+                                swapCount++;
+                            }
+                        }
+                    });
+                    log('UV 映射切换完成', { affectedMeshes: swapCount });
+                } else {
+                    log('未检测到 UV1，保持默认 UV');
+                }
+            } else {
+                log('无法获取 Three.js 场景，UV 调整跳过');
+            }
+        });
+
+        async function applyTextureToModel(textureDataUrl, modelSlug) {
+            const viewer = document.getElementById('viewer');
+            if (!viewer || !viewer.model) {
+                log('模型未加载完成或未就绪');
+                return;
+            }
+
+            try {
+                const texture = await viewer.createTexture(textureDataUrl);
+                const materialName = MATERIAL_NAMES[modelSlug] || 'CarPaint';
+                const material = viewer.model.materials.find(m => m.name === materialName);
+
+                if (material) {
+                    material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+
+                    // Apply texture parameters to match production (ModelViewer.tsx)
+                    const threeTexture = texture.source?.texture || texture.texture;
+                    if (threeTexture) {
+                        threeTexture.center.set(0.5, 0.5);
+                        threeTexture.rotation = 0;
+                        threeTexture.repeat.set(1, 1);
+                        threeTexture.wrapS = 1000; // RepeatWrapping
+                        threeTexture.wrapT = 1000; // RepeatWrapping
+                        threeTexture.flipY = false;
+                        threeTexture.needsUpdate = true;
+                    }
+
+                    log('纹理已应用到模型', { material: materialName, params: 'Aligned with Production' });
+                } else {
+                    const fallbackMat = viewer.model.materials.find(m =>
+                        m.name.toLowerCase().includes('paint') ||
+                        m.name.toLowerCase().includes('body')
+                    );
+                    if (fallbackMat) {
+                        fallbackMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                        log('使用备用材质应用纹理', { material: fallbackMat.name });
+                    } else {
+                        log('❌ 未找到合适的材质应用纹理');
+                    }
+                }
+            } catch (error) {
+                log('应用纹理失败', { error: error.message });
+            }
+        }
+
+        async function generate() {
+            debugLogs = [];
+            const model = document.getElementById('modelSelect').value;
+            const prompt = document.getElementById('promptInput').value;
+            const systemPrompt = document.getElementById('systemPrompt').value;
+            const enableFlip = document.getElementById('enableFlip').checked;
+            const btn = document.getElementById('generateBtn');
+
+            if (!prompt.trim()) {
+                alert('请输入设计描述');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            showStatus('generating...', 'loading');
+            log('开始生成', { model, prompt, enableFlip });
+
+            try {
+                const response = await fetch('http://localhost:3000/api/wrap/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        modelSlug: model,
+                        prompt: prompt.trim(),
+                        systemPrompt: systemPrompt.trim() || undefined,
+                        enableFlip: enableFlip
+                    })
+                });
+
+                log('API 响应', { status: response.status });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || '生成失败');
+                }
+
+                log('生成成功', { imageSize: data.image.dataUrl.length });
+
+                let originalImage = data.image.dataUrl;
+                let flippedImage = originalImage;
+
+                if (enableFlip) {
+                    log('开始客户端翻转...');
+                    flippedImage = await flipImage180(originalImage);
+                    log('翻转完成');
+                }
+
+                // Auto-Save
+                const timestamp = Date.now();
+                const filenameRaw = `wrap_${model}_${timestamp}_raw.png`;
+                const filenameFlipped = `wrap_${model}_${timestamp}_flipped.png`;
+
+                log('正在自动保存...', { filenameRaw });
+                showStatus('Saving images...', 'loading');
+
+                // Save Raw
+                await saveImage(originalImage, filenameRaw);
+
+                fetchHistory();
+                // Save Flipped (if enabled, otherwise save raw as main)
+                if (enableFlip) {
+                    await saveImage(flippedImage, filenameFlipped);
+                }
+
+                displayResults(originalImage, flippedImage, model, filenameFlipped);
+                showStatus('✅ Save & Generate Success!', 'success');
+
+                log('正在应用到 3D 模型...');
+                await applyTextureToModel(flippedImage, model);
+
+            } catch (error) {
+                log('错误', { error: error.message });
+                showStatus(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Wrap';
+            }
+        }
+
+        async function saveImage(base64, filename) {
+            try {
+                const res = await fetch('http://localhost:3000/api/wrap/save-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64, filename })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    log('保存成功', { url: data.url });
+                    addToHistory(data.url, filename);
+                } else {
+                    log('保存失败', data);
+                }
+            } catch (e) {
+                log('保存请求错误', e);
+            }
+        }
+
+        function addToHistory(url, filename) {
+            // Simple session history in debug log for now
+            log('History Added', { filename, url });
+        }
+
+        function displayResults(originalImage, flippedImage, model, savedFilename) {
+            const resultsDiv = document.getElementById('results');
+            const originalImg = new Image();
+            originalImg.src = originalImage;
+            const flippedImg = new Image();
+            flippedImg.src = flippedImage;
+
+            originalImg.onload = () => {
+                flippedImg.onload = () => {
+                    resultsDiv.innerHTML = `
+                        <div class="result-card">
+                            <h3>Raw API Output</h3>
+                            <img src="${originalImage}" alt="Original">
+                            <div class="image-info">${originalImg.width}x${originalImg.height}</div>
+                        </div>
+                        <div class="result-card">
+                            <h3>Flipped (Applied)</h3>
+                            <img src="${flippedImage}" alt="Flipped">
+                            <div class="image-info">
+                                ${flippedImg.width}x${flippedImg.height}<br>
+                                ${savedFilename ? `<a href="http://localhost:3000/generated-wraps/${savedFilename}" target="_blank" style="color: #667eea; text-decoration: none; border-bottom: 1px dashed #667eea;">Download Saved File</a>` : ''}
+                            </div>
+                        </div>
+                        <div class="result-card">
+                            <h3>Mask Reference</h3>
+                            <img src="http://localhost:3000/masks/${model}_mask.png" alt="Mask">
+                            <div class="image-info">Model: ${model}</div>
+                        </div>
+                    `;
+                };
+            };
+        }
+
+        // Init
+        document.getElementById('showDebug').addEventListener('change', updateDebugInfo);
+        fetchHistory(); // Load history on start
+
+        async function fetchHistory() {
+            const listEl = document.getElementById('historyList');
+            listEl.innerHTML = '<div style="font-size: 12px; color: #666;">Loading...</div>';
+
+            try {
+                const res = await fetch('http://localhost:3000/api/wrap/history');
+                const data = await res.json();
+
+                if (data.success && data.files.length > 0) {
+                    listEl.innerHTML = data.files.map(f => `
+                        <div class="history-item" onclick="loadHistory('${f.url}', '${f.filename}')" 
+                             style="cursor: pointer; display: flex; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; transition: all 0.2s; margin-bottom: 4px; align-items: start;">
+                            
+                            <!-- Thumbnail -->
+                            <div style="width: 80px; height: 80px; flex-shrink: 0; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                                <img src="http://localhost:3000${f.url}" style="width: 100%; height: 100%; object-fit: contain;" alt="thumb">
+                            </div>
+                            
+                            <!-- Info -->
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                                <div style="font-weight: 500; color: #e0e0e0; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+                                    ${f.filename.split('_').slice(0, 2).join(' ').toUpperCase()}
+                                </div>
+                                <div style="color: #666; font-size: 11px;">
+                                    ${new Date(parseInt(f.filename.split('_')[2])).toLocaleString()}
+                                </div>
+                                <div style="color: #667eea; font-size: 11px; margin-top: auto;">
+                                    Click to Load →
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div style="font-size: 12px; color: #666; padding: 10px;">No history found</div>';
+                }
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = '<div style="font-size: 12px; color: #d32f2f;">Failed to load history</div>';
+            }
+        }
+
+        async function loadHistory(url, filename) {
+            log('Loading history item...', { filename });
+            showStatus('Loading history...', 'loading');
+
+            try {
+                const fullUrl = `http://localhost:3000${url}`;
+
+                // Helper to determine model from filename
+                let model = 'cybertruck'; // default
+                if (filename.includes('model-3')) model = 'model-3';
+                else if (filename.includes('model-y')) model = 'model-y-pre-2025';
+
+                // Update select
+                const select = document.getElementById('modelSelect');
+                select.value = model;
+                // Trigger change event to load 3D model if needed
+                select.dispatchEvent(new Event('change'));
+
+                displayResults(fullUrl, fullUrl, model, filename);
+
+                log('Applying history texture to model...');
+                // Allow model to load first if changed
+                setTimeout(async () => {
+                    await applyTextureToModel(fullUrl, model);
+                    showStatus('History Loaded', 'success');
+                }, 500);
+
+            } catch (e) {
+                log('Error loading history', e);
+                showStatus('Failed to load', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

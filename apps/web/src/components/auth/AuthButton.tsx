@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 export default function AuthButton() {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
@@ -15,30 +16,36 @@ export default function AuthButton() {
 
     useEffect(() => {
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            if (user) {
-                // Fetch profile for avatar
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('avatar_url')
-                    .eq('id', user.id)
-                    .single();
-                if (profile?.avatar_url) {
-                    setAvatarUrl(profile.avatar_url);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                console.log('AuthButton: Initial user check:', user?.id);
+                setUser(user);
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('avatar_url')
+                        .eq('id', user.id)
+                        .single();
+                    if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
                 }
+            } catch (e) {
+                console.error('AuthButton: Get user error:', e);
+            } finally {
+                setIsLoading(false);
             }
         };
         getUser();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
+            (event, session) => {
+                console.log('AuthButton: Auth state changed:', event, session?.user?.id);
                 setUser(session?.user ?? null);
+                setIsLoading(false);
             }
         );
 
         return () => subscription.unsubscribe();
-    }, []);
+    }, [supabase]);
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
@@ -60,6 +67,8 @@ export default function AuthButton() {
     }, [isMenuOpen]);
 
     const defaultAvatar = `https://ui-avatars.com/api/?name=${user?.email?.charAt(0) || 'U'}&background=random`;
+
+    if (isLoading) return <div className="w-8 h-8" />; // Loading placeholder
 
     return user ? (
         <div className="relative" onClick={(e) => e.stopPropagation()}>

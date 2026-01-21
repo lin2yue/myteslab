@@ -25,6 +25,7 @@
 ## 4. Key Architectural Decisions (ADRs)
 - **No Shared Code Package:** We deliberately kept `packages/shared` empty. Code sharing is done via copy-paste or parallel implementation until duplication becomes critical (Rule of 3).
 - **Direct Asset References:** Assets live in `assets/` but are uploaded to OSS. Web uses CDN URLs.
+- **Centralized AI Masks:** AI generation masks are stored in `assets/masks` (Monorepo root) and served via dynamic API routes to ensure consistency across the pipeline.
 - **i18n Strategy:** URL-based routing (`/en`, `/zh`) using `next-intl`.
 
 ## 5. Active Context & Next Steps
@@ -36,10 +37,17 @@
     - [ ] Generate Sitemap.xml.
     - [ ] Setup Sentry for error tracking.
     - [ ] Setup Vercel Analytics.
-    - [ ] **User System**:
-        - [ ] Database Schema (Profiles, Credits, Assets).
-        - [ ] Supabase Auth Integration.
-        - [ ] User Profile & Assets UI.
+    - [x] **User System**:
+        - [x] Database Schema (Profiles, Credits, Assets).
+        - [x] Supabase Auth Integration (Email & Google).
+        - [x] User Profile & Localization.
+    - [x] **AI Generation**:
+        - [x] Backend: Credit deduction RPC & Task tracking.
+        - [x] API: Integration with Gemini for wrap generation.
+        - [x] Orientation Logic: Pre-rotated masks in `assets/masks`, post-generation rotation (M3/Y: 180, CT: 90 CW).
+        - [ ] UI: Generator page logic refinement & History UI optimization.
+    - [ ] **Monetization**:
+        - [ ] Configure payment system (Stripe/PayPal for credits).
 
 ## 6. Where to Find Knowledge
 - **Architecture Analysis:** `docs/architecture/monorepo_analysis.md`

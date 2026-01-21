@@ -20,6 +20,7 @@ tesla-studio-monorepo/
 │   └── miniprogram/    # uni-app 微信小程序
 ├── assets/             # 共享资源
 │   ├── models/         # 3D 车型模型 (.glb)
+│   ├── masks/          # AI 生成所需的车身 Mask (车头已旋转校正)
 │   └── catalog/        # 贴图纹理和预览图
 ├── dev-studio/         # 本地开发调试工具
 │   └── tweak.html      # 3D 模型和贴图调试界面

@@ -14,7 +14,9 @@
             "official_wraps_desc": "Collection of various wrap designs from Tesla Official",
             "one_click_download": "One-click Download",
             "one_click_download_desc": "Directly get high-definition texture files for installation"
-        }
+        },
+        "sort_latest": "Latest",
+        "sort_popular": "Popular"
     },
     "Common": {
         "back_to_home": "Back to Home",
@@ -23,7 +25,11 @@
         "applicable_models": "Compatible Models",
         "tips": "💡 Drag to Rotate | Scroll to Zoom | Double Click to Reset",
         "loading_model": "Loading 3D model...",
-        "model_error": "Failed to load model, please check the model file"
+        "model_error": "Failed to load model, please check the model file",
+        "nav": {
+            "gallery": "Discover",
+            "ai_generator": "AI Design"
+        }
     },
     "Login": {
         "title": "Sign in to your account",
@@ -51,6 +57,39 @@
         "generated_wraps": "Generated Wraps",
         "no_generated_wraps": "No generated wraps yet. Try the AI generator!",
         "download_history": "Download History",
-        "no_downloads": "You haven't downloaded any wraps yet."
+        "no_downloads": "You haven't downloaded any wraps yet.",
+        "confirm_delete": "Are you sure you want to delete this creation? This cannot be undone and will also unpublish it.",
+        "delete_failed": "Delete failed, please try again.",
+        "update_failed": "Update failed, please try again.",
+        "published": "Published",
+        "unpublish": "Unpublish",
+        "publish": "Publish",
+        "delete": "Delete",
+        "update_success": "Status updated successfully",
+        "edit": "Edit Profile"
+    },
+    "Generator": {
+        "title": "AI Design Center",
+        "history": "History",
+        "refresh": "Refresh",
+        "no_history": "No history yet",
+        "balance": "Balance: {count} times",
+        "buy_package": "🛒 Buy Generation Package",
+        "buy_short": "Buy",
+        "prompt_placeholder": "Describe the design you want...",
+        "generate_btn": "✨ Generate Now",
+        "generating": "Generating...",
+        "day_mode": "☀️ Day Mode",
+        "night_mode": "🌙 Night Mode",
+        "auto_rotate_on": "🔄 Stop Rotation",
+        "auto_rotate_off": "▶️ Auto Rotate",
+        "screenshot": "📸 Take Snapshot",
+        "download_png": "💾 Download PNG",
+        "publish": "🌐 Publish",
+        "publish_success": "Published successfully to discovery section",
+        "already_published": "✅ Already Public",
+        "nav_back": "Back to Home",
+        "insufficient_credits": "Insufficient credits, please buy a package",
+        "generate_error": "Generation failed, please try again"
     }
 }

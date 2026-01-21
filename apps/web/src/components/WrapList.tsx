@@ -10,23 +10,24 @@ interface WrapListProps {
     initialWraps: Wrap[]
     model?: string
     locale: string
+    sortBy?: 'latest' | 'popular'
 }
 
 const PAGE_SIZE = 12
 
-export function WrapList({ initialWraps, model, locale }: WrapListProps) {
+export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: WrapListProps) {
     const [wraps, setWraps] = useState<Wrap[]>(initialWraps)
     const [page, setPage] = useState(1)
     const [loading, setLoading] = useState(false)
     const [hasMore, setHasMore] = useState(initialWraps.length >= PAGE_SIZE)
     const t = useTranslations('Index')
 
-    // 当模型过滤改变时重置状态
+    // 当模型过滤或排序改变时重置状态
     useEffect(() => {
         setWraps(initialWraps)
         setPage(1)
         setHasMore(initialWraps.length >= PAGE_SIZE)
-    }, [initialWraps])
+    }, [initialWraps, model, sortBy])
 
     const loadMore = async () => {
         if (loading || !hasMore) return
@@ -35,7 +36,7 @@ export function WrapList({ initialWraps, model, locale }: WrapListProps) {
         const nextPage = page + 1
 
         try {
-            const newWraps = await fetchMoreWraps(model, nextPage)
+            const newWraps = await fetchMoreWraps(model, nextPage, sortBy)
             if (newWraps.length > 0) {
                 setWraps(prev => [...prev, ...newWraps])
                 setPage(nextPage)

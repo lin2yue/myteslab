@@ -3,19 +3,24 @@
  */
 
 /**
- * Flip an image 180 degrees (upside-down)
+ * Rotate an image by specified degrees
  * @param imageDataUrl Base64 data URL of the image
- * @returns Promise<string> Flipped image as base64 data URL
+ * @param degrees Degrees to rotate (CW)
+ * @returns Promise<string> Rotated image as base64 data URL
  */
-export async function flipImage180(imageDataUrl: string): Promise<string> {
+export async function rotateImage(imageDataUrl: string, degrees: number): Promise<string> {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
 
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            const radian = (degrees * Math.PI) / 180;
+
+            // Calculate new dimensions after rotation
+            const is90 = Math.abs(degrees % 180) === 90;
+            canvas.width = is90 ? img.height : img.width;
+            canvas.height = is90 ? img.width : img.height;
 
             const ctx = canvas.getContext('2d');
             if (!ctx) {
@@ -23,9 +28,9 @@ export async function flipImage180(imageDataUrl: string): Promise<string> {
                 return;
             }
 
-            // Flip 180 degrees: translate to center, rotate, translate back
+            // Move to center, rotate, then draw back
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(Math.PI); // 180 degrees
+            ctx.rotate(radian);
             ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
             resolve(canvas.toDataURL('image/png'));
@@ -34,4 +39,12 @@ export async function flipImage180(imageDataUrl: string): Promise<string> {
         img.onerror = () => reject(new Error('Failed to load image'));
         img.src = imageDataUrl;
     });
+}
+
+/**
+ * Flip an image 180 degrees (upside-down)
+ * Kept for backward compatibility
+ */
+export async function flipImage180(imageDataUrl: string): Promise<string> {
+    return rotateImage(imageDataUrl, 180);
 }

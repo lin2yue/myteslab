@@ -91,6 +91,7 @@ export interface GenerateWrapResult {
     mimeType?: string;
     error?: string;
     usage?: any; // Token usage info if available
+    finalPrompt?: string; // The exact prompt sent to AI
 }
 
 /**
@@ -104,6 +105,7 @@ export async function generateWrapTexture(
     // Get mask configuration
     const maskDimensions = getMaskDimensions(modelSlug); // Keeping original function name as getMaskDimensions
 
+    let textPrompt = '';
     try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
@@ -113,7 +115,7 @@ export async function generateWrapTexture(
         // Build the prompt
         // Use simplified editing prompt if mask is provided (Image Editing Mode)
         // Otherwise use full generation prompt (though mask is currently required)
-        const textPrompt = maskImageBase64
+        textPrompt = maskImageBase64
             ? buildEditingPrompt(prompt, modelName)
             : buildWrapPrompt(modelName, prompt);
 
@@ -203,7 +205,8 @@ export async function generateWrapTexture(
                     imageBase64: base64,
                     dataUrl: `data:${mimeType};base64,${base64}`,
                     mimeType: mimeType,
-                    usage: usageMetadata
+                    usage: usageMetadata,
+                    finalPrompt: textPrompt // Include the prompt in success response
                 };
             }
         }
@@ -226,7 +229,8 @@ export async function generateWrapTexture(
         console.error('Error calling Gemini API:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
+            finalPrompt: textPrompt // Still return the prompt even on catch
         };
     }
 }
