@@ -43,7 +43,6 @@ export default function Navbar() {
                             >
                                 {tCommon('nav.gallery')}
                             </Link>
-                            {/* 暂时隐藏 AI Design 入口
                             <Link
                                 href="/ai-generate/generate"
                                 className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${isAiPage
@@ -53,7 +52,6 @@ export default function Navbar() {
                             >
                                 {tCommon('nav.ai_generator')}
                             </Link>
-                            */}
                         </nav>
 
                         {/* Mobile Nav Links (Simple Icon) */}
@@ -63,13 +61,11 @@ export default function Navbar() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                                 </svg>
                             </Link>
-                            {/* 暂时隐藏 AI Design 入口 (Mobile)
                             <Link href="/ai-generate/generate" className={`p-2 rounded-lg ${isAiPage ? 'text-blue-600 bg-blue-50' : 'text-gray-500'}`}>
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a2 2 0 00-1.96 1.414l-.722 2.166a2 2 0 00.556 2.228l1.714 1.428a2 2 0 002.57 0l1.714-1.428a2 2 0 00.556-2.228l-.722-2.166zM12 9V7m0 12v-2m4.636-9.636l-1.414-1.414M6.778 17.222l-1.414-1.414M17.222 17.222l1.414-1.414M6.778 6.778l1.414 1.414M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                             </Link>
-                            */}
                         </div>
 
                         <div className="h-6 w-[1px] bg-gray-200 dark:bg-zinc-800 mx-1" />
