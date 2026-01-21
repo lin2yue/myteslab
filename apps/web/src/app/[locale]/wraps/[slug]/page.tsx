@@ -7,6 +7,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
+import { createClient } from '@/utils/supabase/server'
 
 export async function generateMetadata({
     params,
@@ -14,7 +15,8 @@ export async function generateMetadata({
     params: Promise<{ slug: string, locale: string }>
 }): Promise<Metadata> {
     const { slug, locale } = await params
-    const wrap = await getWrap(slug)
+    const supabase = await createClient()
+    const wrap = await getWrap(slug, supabase)
 
     if (!wrap) {
         return {
@@ -29,7 +31,7 @@ export async function generateMetadata({
         : wrap.description || `查看 ${name} - MyTesLab 提供的优质特斯拉车身贴图设计。`
 
     const title = `${name} | MyTesLab`
-    const imageUrl = getOptimizedImageUrl(wrap.preview_image_url || wrap.image_url, { width: 1200, quality: 85 })
+    const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200, quality: 85 })
     const absoluteImageUrl = imageUrl.startsWith('http')
         ? imageUrl
         : `https://myteslab.com${imageUrl}`
@@ -79,7 +81,8 @@ export default async function WrapDetailPage({
     params: Promise<{ slug: string, locale: string }>
 }) {
     const { slug, locale } = await params
-    const wrap = await getWrap(slug)
+    const supabase = await createClient()
+    const wrap = await getWrap(slug, supabase)
     const t = await getTranslations('Common')
 
     if (!wrap) {
@@ -94,33 +97,23 @@ export default async function WrapDetailPage({
     const proxiedModelUrl = modelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(modelUrl)}` : modelUrl
 
     // 获取贴图 URL
-    const rawTextureUrl = wrap.wrap_image_url || wrap.image_url
-    const textureUrl = rawTextureUrl
-        ? (rawTextureUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawTextureUrl)}` : rawTextureUrl)
+    const textureUrl = wrap.texture_url
+        ? (wrap.texture_url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(wrap.texture_url)}` : wrap.texture_url)
         : undefined
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            {/* Header */}
-            <header className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between">
-                        <Link
-                            href="/"
-                            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            {t('back_to_home')}
-                        </Link>
-                        <LanguageSwitcher />
-                    </div>
-                </div>
-            </header>
-
+        <div className="flex flex-col min-h-screen">
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 py-8">
+            <main className="max-w-7xl mx-auto px-4 py-8 lg:py-12 flex-1">
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors mb-6 text-sm font-medium"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    {t('back_to_home')}
+                </Link>
                 <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
                     {/* 左侧: 3D 预览 */}
                     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -169,7 +162,7 @@ export default async function WrapDetailPage({
                         <DownloadButton
                             wrapId={wrap.id}
                             wrapName={name}
-                            wrapSlug={wrap.slug}
+                            wrapSlug={wrap.slug || wrap.id}
                             locale={locale}
                         />
                     </div>
@@ -185,7 +178,7 @@ export default async function WrapDetailPage({
                         '@type': 'Product',
                         name,
                         description: description || `Premium Tesla wrap design - ${name}`,
-                        image: wrap.preview_image_url || wrap.image_url,
+                        image: wrap.preview_url || wrap.texture_url,
                         brand: {
                             '@type': 'Brand',
                             name: 'MyTesLab',

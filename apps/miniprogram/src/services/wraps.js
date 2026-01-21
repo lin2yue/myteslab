@@ -35,91 +35,41 @@ export const wrapsService = {
         const { client, error } = ensureClient();
         if (!client) return { data: [], error };
 
-        const safeCategory = normalizeString(category);
         const safeSearch = normalizeString(search);
         const safeModelId = normalizeString(modelId);
         const safeModelSlug = normalizeString(modelSlug);
 
-        let resolvedModelId = safeModelId;
+        let finalModelSlug = safeModelSlug;
 
-        if (!resolvedModelId && safeModelSlug) {
-            const { data: model, error: modelError } = await client
+        // 如果只有 modelId，尝试获取 slug (为了兼容旧逻辑)
+        if (!finalModelSlug && safeModelId) {
+            const { data: model } = await client
                 .from('wrap_models')
-                .select('id')
-                .eq('slug', safeModelSlug)
+                .select('slug')
+                .eq('id', safeModelId)
                 .maybeSingle();
-
-            if (modelError) {
-                console.error('Error fetching wrap model id:', modelError);
-                return { data: [], error: modelError };
-            }
-
-            resolvedModelId = model && model.id ? model.id : '';
+            finalModelSlug = model?.slug || '';
         }
 
         const from = Math.max(0, (Number(page) - 1) * Number(pageSize));
         const to = from + Number(pageSize) - 1;
 
-        if (resolvedModelId) {
-            const { data: mappings, error: mapError } = await client
-                .from('wrap_model_map')
-                .select('wrap_id')
-                .eq('model_id', resolvedModelId);
-
-            if (mapError) {
-                console.error('Error fetching wrap mappings:', mapError);
-                return { data: [], error: mapError };
-            }
-
-            const ids = (mappings || []).map((m) => m && m.wrap_id).filter(Boolean);
-            if (ids.length === 0) return { data: [], error: null };
-
-            let query = client
-                .from('wraps')
-                .select('*')
-                .in('id', ids)
-                .eq('is_active', true);
-
-            if (safeCategory) {
-                query = query.eq('category', safeCategory);
-            }
-
-            if (safeSearch) {
-                const pattern = `*${safeSearch}*`;
-                query = query.or(`name.ilike.${pattern},category.ilike.${pattern}`);
-            }
-
-            query = query
-                .order('sort_order', { ascending: true })
-                .order('created_at', { ascending: false })
-                .range(from, to);
-
-            const { data, error: queryError } = await query;
-
-            if (queryError) {
-                console.error('Error fetching wraps:', queryError);
-                return { data: [], error: queryError };
-            }
-
-            return { data: data || [], error: null };
-        }
-
         let query = client
             .from('wraps')
             .select('*')
-            .eq('is_active', true);
+            .eq('is_public', true)
+            .is('deleted_at', null);
 
-        if (safeCategory) {
-            query = query.eq('category', safeCategory);
+        if (finalModelSlug) {
+            query = query.eq('model_slug', finalModelSlug);
         }
 
         if (safeSearch) {
-            const pattern = `*${safeSearch}*`;
-            query = query.or(`name.ilike.${pattern},category.ilike.${pattern}`);
+            const pattern = `%${safeSearch}%`;
+            query = query.or(`name.ilike.${pattern},prompt.ilike.${pattern}`);
         }
 
         query = query
-            .order('sort_order', { ascending: true })
             .order('created_at', { ascending: false })
             .range(from, to);
 
@@ -130,7 +80,16 @@ export const wrapsService = {
             return { data: [], error: queryError };
         }
 
-        return { data: data || [], error: null };
+        // 数据兼容性映射
+        const mappedData = (data || []).map(w => ({
+            ...w,
+            image_url: w.texture_url,
+            wrap_image_url: w.texture_url,
+            preview_image_url: w.preview_url,
+            category: w.category || (w.user_id === '00000000-0000-0000-0000-000000000000' ? 'official' : 'community')
+        }));
+
+        return { data: mappedData, error: null };
     },
 
     async fetchWrapById(id) {
@@ -151,7 +110,27 @@ export const wrapsService = {
             return { data: null, error: queryError };
         }
 
-        return { data: data || null, error: null };
+        if (!data) return { data: null, error: null };
+
+        const wrap = {
+            ...data,
+            image_url: data.texture_url,
+            wrap_image_url: data.texture_url,
+            preview_image_url: data.preview_url,
+            category: data.category || (data.user_id === '00000000-0000-0000-0000-000000000000' ? 'official' : 'community')
+        };
+
+        // 如果缺少 3D 模型 URL，从模型配置中补全
+        if (!wrap.model_3d_url && wrap.model_slug) {
+            const { data: model } = await client
+                .from('wrap_models')
+                .select('model_3d_url')
+                .eq('slug', wrap.model_slug)
+                .maybeSingle();
+            if (model) wrap.model_3d_url = model.model_3d_url;
+        }
+
+        return { data: wrap, error: null };
     },
 
     async fetchWrapBySlug(slug) {
@@ -172,6 +151,26 @@ export const wrapsService = {
             return { data: null, error: queryError };
         }
 
-        return { data: data || null, error: null };
+        if (!data) return { data: null, error: null };
+
+        const wrap = {
+            ...data,
+            image_url: data.texture_url,
+            wrap_image_url: data.texture_url,
+            preview_image_url: data.preview_url,
+            category: data.category || (data.user_id === '00000000-0000-0000-0000-000000000000' ? 'official' : 'community')
+        };
+
+        // 如果缺少 3D 模型 URL，从模型配置中补全
+        if (!wrap.model_3d_url && wrap.model_slug) {
+            const { data: model } = await client
+                .from('wrap_models')
+                .select('model_3d_url')
+                .eq('slug', wrap.model_slug)
+                .maybeSingle();
+            if (model) wrap.model_3d_url = model.model_3d_url;
+        }
+
+        return { data: wrap, error: null };
     }
 };

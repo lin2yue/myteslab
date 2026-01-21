@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
         // 3. 更新数据库
         const { data: updateData, error: updateError, status: updateStatus } = await supabase
-            .from('generated_wraps')
+            .from('wraps')
             .update({
                 preview_url: previewUrl,
                 is_public: true // 上传预览图通常伴随着发布

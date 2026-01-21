@@ -5,6 +5,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
+import Navbar from '@/components/layout/Navbar';
 import "../globals.css";
 
 const geistSans = Geist({
@@ -93,23 +94,23 @@ export default async function RootLayout({
 }) {
   const { locale } = await params;
 
-  // Ensure that the incoming `locale` is valid
   if (!routing.locales.includes(locale as any)) {
     notFound();
   }
 
-  // Providing all messages to the client
-  // side is the easiest way to get started
   const messages = await getMessages();
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 flex flex-col`}
       >
         <GoogleAnalytics />
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <Navbar />
+          <main className="flex-1 overflow-x-hidden">
+            {children}
+          </main>
         </NextIntlClientProvider>
       </body>
     </html>

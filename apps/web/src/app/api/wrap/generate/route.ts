@@ -267,15 +267,16 @@ export async function POST(request: NextRequest) {
             .eq('id', user.id)
             .single();
 
-        // 插入到真正的历史记录表 generated_wraps
-        const { data: wrapData, error: historyError } = await supabase.from('generated_wraps').insert({
+        // 插入到统一的作品表 wraps
+        const { data: wrapData, error: historyError } = await supabase.from('wraps').insert({
             user_id: user.id,
+            name: (prompt || 'AI生成贴纸').substring(0, 50),
             prompt: prompt,
             model_slug: modelSlug,
             texture_url: savedUrl,
-            preview_url: savedUrl, // 暂时使用贴图作为预览图，首页将展示这个，直到 3D 预览图上传
-            author_name: profile?.display_name || 'Anonymous',
-            is_public: false
+            preview_url: savedUrl,
+            is_public: false, // 默认不公开，用户在个人中心手动发布
+            category: 'community'
         }).select('id').single();
 
         if (historyError) {

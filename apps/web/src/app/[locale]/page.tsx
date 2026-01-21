@@ -28,45 +28,7 @@ export default async function HomePage({
   ])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-8">
-              <Link href="/">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
-              </Link>
-
-              <nav className="hidden md:flex items-center gap-6">
-                <Link
-                  href="/"
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                >
-                  {tCommon('nav.gallery')}
-                </Link>
-                <Link
-                  href="/ai-generate/generate"
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                >
-                  {tCommon('nav.ai_generator')}
-                </Link>
-              </nav>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Mobile Nav Links */}
-              <div className="flex md:hidden items-center gap-4 mr-2">
-                <Link href="/" className="text-xs font-medium text-gray-500">{tCommon('nav.gallery')}</Link>
-                <Link href="/ai-generate/generate" className="text-xs font-medium text-gray-500">{tCommon('nav.ai_generator')}</Link>
-              </div>
-              <LanguageSwitcher />
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="flex flex-col">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         <FilterBarWrapper models={models} sortBy={sortBy}>

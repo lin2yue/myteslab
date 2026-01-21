@@ -7,7 +7,8 @@ import Image from 'next/image';
 
 interface GeneratedWrap {
     id: string;
-    prompt: string | null;
+    name?: string;
+    prompt?: string | null;
     texture_url: string;
     preview_url: string | null;
     is_public: boolean;
@@ -105,13 +106,19 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                                 {wraps.map((wrap) => (
                                     <div key={wrap.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                                         <div className="relative aspect-video bg-gray-100">
-                                            <Image
-                                                src={wrap.preview_url || wrap.texture_url}
-                                                alt={wrap.prompt || 'Generated Wrap'}
-                                                fill
-                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                                className="object-cover"
-                                            />
+                                            {(wrap.preview_url || wrap.texture_url) ? (
+                                                <Image
+                                                    src={wrap.preview_url || wrap.texture_url}
+                                                    alt={wrap.name || wrap.prompt || 'Generated Wrap'}
+                                                    fill
+                                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                                                    No Images
+                                                </div>
+                                            )}
                                             {wrap.is_public && (
                                                 <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
                                                     {t('published')}
@@ -119,8 +126,8 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                                             )}
                                         </div>
                                         <div className="p-4">
-                                            <p className="text-sm text-gray-900 line-clamp-2 mb-4 h-10" title={wrap.prompt || ''}>
-                                                {wrap.prompt || tCommon('untitled')}
+                                            <p className="text-sm text-gray-900 font-bold line-clamp-2 mb-4 h-10" title={wrap.name || wrap.prompt || ''}>
+                                                {wrap.name || wrap.prompt || tCommon('untitled')}
                                             </p>
 
                                             <div className="flex justify-between items-center gap-2">
@@ -164,7 +171,7 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                                         <div className="flex items-center">
                                             <div className="h-12 w-12 flex-shrink-0">
                                                 {item.wraps?.preview_url ? (
-                                                     <Image src={item.wraps.preview_url} alt={item.wraps.name} width={48} height={48} className="rounded object-cover" />
+                                                    <Image src={item.wraps.preview_url} alt={item.wraps.name} width={48} height={48} className="rounded object-cover" />
                                                 ) : (
                                                     <div className="h-12 w-12 rounded bg-gray-200 flex items-center justify-center">
                                                         <span className="text-gray-400 text-xs">No Img</span>

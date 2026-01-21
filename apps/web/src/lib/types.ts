@@ -4,36 +4,50 @@ export interface Model {
     slug: string
     name: string
     name_en?: string
-    model_3d_url: string
+    model_3d_url: string // 统一后的字段名
     is_active: boolean
     sort_order?: number
     created_at: string
 }
 
-// 贴图数据
+// 统一的贴图数据接口
 export interface Wrap {
     id: string
-    slug: string
+    slug: string | null
     name: string
     name_en?: string
     description?: string
     description_en?: string
-    category: string
-    image_url: string  // 贴图纹理URL (可能为空)
-    wrap_image_url?: string // 实际存储的贴图纹理URL
-    preview_image_url: string  // 预览图URL
-    model_3d_url?: string  // 3D模型URL
-    model_slug?: string    // 车型Slug
-    author_name?: string   // 作者名称
+    prompt?: string       // AI 生成使用的提示词
+    category: string      // 'official' | 'community'
+
+    // 核心资源字段
+    texture_url: string   // 纹理大图路径
+    preview_url: string   // 3D/2D 预览图路径
+
+    model_slug?: string    // 适配车型
+    model_3d_url?: string  // 关联车型的 GLB 路径
+
+    user_id?: string       // 所属用户ID (Tesla Studio ID 为全零)
+    author_name?: string   // 从关联表计算出的名称
+    author_avatar_url?: string // 从关联表计算出的头像
+
     download_count: number
+    is_public: boolean
     is_active: boolean
-    sort_order?: number
     created_at: string
     updated_at?: string
+
+    // 冗余字段（仅作类型兼容，后续可逐步移除使用点）
+    image_url?: string
+    wrap_image_url?: string
+    preview_image_url?: string
 }
 
-// 车型-贴图关联
-export interface ModelWrap {
-    model_id: string
+// 下载记录
+export interface UserDownload {
+    id: string
+    user_id: string
     wrap_id: string
+    downloaded_at: string
 }

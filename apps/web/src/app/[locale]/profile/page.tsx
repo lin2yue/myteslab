@@ -37,12 +37,16 @@ export default async function ProfilePage({
         .single();
 
     // Fetch Generated Wraps
-    const { data: generatedWraps } = await supabase
-        .from('generated_wraps')
+    const { data: generatedWraps, error: wrapsError } = await supabase
+        .from('wraps')
         .select('*')
         .eq('user_id', user.id)
-        .is('deleted_at', null)
+        .is('deleted_at', null) // 如果还是查不到，请运行 SQL 脚本加列
         .order('created_at', { ascending: false });
+
+    if (wrapsError) {
+        console.error('Debug: Querying wraps failed:', wrapsError.message);
+    }
 
     // Fetch Downloads (Join with wraps table)
     const { data: downloads } = await supabase
@@ -55,41 +59,11 @@ export default async function ProfilePage({
     const tCommon = await getTranslations('Common');
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-8">
-                        <Link href="/" className="text-xl font-bold text-gray-900">
-                            MyTesLab
-                        </Link>
-
-                        <nav className="hidden md:flex items-center gap-6">
-                            <Link
-                                href="/"
-                                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                            >
-                                {tCommon('nav.gallery')}
-                            </Link>
-                            <Link
-                                href="/ai-generate/generate"
-                                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                            >
-                                {tCommon('nav.ai_generator')}
-                            </Link>
-                        </nav>
-
-                        <h1 className="text-2xl font-bold text-gray-900 border-l border-gray-200 pl-8">{t('title')}</h1>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex md:hidden items-center gap-4 mr-2">
-                            <Link href="/" className="text-xs font-medium text-gray-500">{tCommon('nav.gallery')}</Link>
-                            <Link href="/ai-generate/generate" className="text-xs font-medium text-gray-500">{tCommon('nav.ai_generator')}</Link>
-                        </div>
-                        <AuthButton />
-                    </div>
+        <div className="flex flex-col min-h-screen">
+            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex-1">
+                <div className="flex items-center gap-4 mb-8">
+                    <h1 className="text-3xl font-black text-gray-900">{t('title')}</h1>
                 </div>
-            </header>
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 {/* User Info & Credits */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div className="bg-white overflow-hidden shadow rounded-lg p-6">

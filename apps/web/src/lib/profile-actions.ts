@@ -13,7 +13,7 @@ export async function deleteGeneratedWrap(wrapId: string) {
 
     // Soft delete: set deleted_at to NOW and unpublish
     const { error } = await supabase
-        .from('generated_wraps')
+        .from('wraps')
         .update({
             deleted_at: new Date().toISOString(),
             is_public: false
@@ -38,7 +38,7 @@ export async function updateWrapVisibility(wrapId: string, isPublic: boolean) {
     }
 
     const { error } = await supabase
-        .from('generated_wraps')
+        .from('wraps')
         .update({ is_public: isPublic })
         .eq('id', wrapId)
         .eq('user_id', user.id)

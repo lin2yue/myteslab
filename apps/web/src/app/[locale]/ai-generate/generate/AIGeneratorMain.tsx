@@ -67,16 +67,18 @@ export default function AIGeneratorMain({
         isFetchingRef.current = true
         setIsFetchingHistory(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data: { session } } = await supabase.auth.getSession()
+            const user = session?.user
             if (!user) {
                 console.log('fetchHistory: No user found')
                 return
             }
 
             const { data, error } = await supabase
-                .from('generated_wraps')
+                .from('wraps')
                 .select('*')
                 .eq('user_id', user.id)
+                .is('deleted_at', null)
                 .order('created_at', { ascending: false })
                 .limit(10)
 
@@ -98,8 +100,8 @@ export default function AIGeneratorMain({
         }
 
         // 监听登录状态变化，确保登录瞬间能刷出历史记录
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (isMounted && session?.user) {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (isMounted && session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
                 fetchHistory()
             }
         })
@@ -237,29 +239,12 @@ export default function AIGeneratorMain({
     }
 
     return (
-        <div className="flex flex-col h-screen bg-[#F4F4F4] overflow-hidden">
-            {/* Top Navigation */}
-            <header className="h-16 bg-white border-b border-gray-200 flex items-center px-6 justify-between flex-shrink-0">
-                <div className="flex items-center gap-4">
-                    <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                    </Link>
-                    <h1 className="text-xl font-bold text-gray-900">{tGen('title')}</h1>
-                </div>
-                <div className="flex items-center gap-4">
-                    <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-900">
-                        {tGen('nav_back')}
-                    </Link>
-                </div>
-            </header>
-
+        <div className="flex flex-col h-[calc(100vh-64px)] bg-[#F4F4F4] overflow-hidden">
             {/* Main Content Area */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden w-full max-w-[1600px] mx-auto">
 
-                {/* Left Side: 3D Preview (70%) */}
-                <div className="flex-[7] flex flex-col p-6 gap-6 overflow-hidden">
+                {/* Left Side: 3D Preview (65%) */}
+                <div className="flex-[6.5] flex flex-col p-6 gap-6 overflow-hidden">
                     <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
                         <ModelViewer
                             ref={viewerRef}
@@ -312,7 +297,7 @@ export default function AIGeneratorMain({
                 </div>
 
                 {/* Right Side: Controls (30%) */}
-                <div className="flex-[3] flex flex-col p-6 pl-0 gap-6 overflow-hidden">
+                <div className="flex-[3.5] flex flex-col p-6 pl-0 gap-6 overflow-hidden">
 
                     {/* History List */}
                     <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">

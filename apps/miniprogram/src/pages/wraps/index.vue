@@ -97,11 +97,11 @@ export default defineComponent({
     const fetchModels = async () => {
       const { data } = await wrapsService.fetchModels();
       const MODEL_DISPLAY_NAMES = {
-        'model-3': 'Model 3',
-        'model-3-2024-plus': 'Model 3(焕新版)',
+        'model-3': 'Model 3 (经典款)',
+        'model-3-2024-plus': 'Model 3 (焕新版)',
         'cybertruck': 'Cybertruck',
-        'model-y-pre-2025': 'Model Y',
-        'model-y-2025-plus': 'Model Y(2025+)'
+        'model-y-pre-2025': 'Model Y (经典款)',
+        'model-y-2025-plus': 'Model Y (2025+)'
       };
 
       models.value = data.sort((a, b) => {
