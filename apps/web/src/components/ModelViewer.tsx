@@ -13,6 +13,7 @@ interface ModelViewerProps {
     id?: string
     autoRotate?: boolean
     environment?: string
+    backgroundColor?: string
 }
 
 export interface ModelViewerRef {
@@ -26,7 +27,8 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     className = '',
     id,
     autoRotate: propAutoRotate,
-    environment = 'neutral'
+    environment = 'neutral',
+    backgroundColor
 }, ref) => {
     const t = useTranslations('Common')
     const containerRef = useRef<HTMLDivElement>(null)
@@ -105,7 +107,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         viewer.setAttribute('camera-controls', 'true')
         viewer.setAttribute('touch-action', 'pan-y')
         viewer.setAttribute('interaction-prompt', config.interactionPrompt || 'none')
-        viewer.setAttribute('auto-rotate', finalAutoRotate ? 'true' : 'false')
+
+        if (finalAutoRotate) {
+            viewer.setAttribute('auto-rotate', 'true')
+        } else {
+            viewer.removeAttribute('auto-rotate')
+        }
 
         // 渲染配置
         viewer.setAttribute('camera-orbit', config.cameraOrbit)
@@ -118,6 +125,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         // 样式
         viewer.style.width = '100%'
         viewer.style.height = '100%'
+        if (backgroundColor) {
+            viewer.style.backgroundColor = backgroundColor
+        }
 
         // 获取 Three.js 场景的助手函数
         const getThreeScene = () => {
@@ -261,7 +271,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         return () => {
             viewer.remove()
         }
-    }, [modelUrl, textureUrl, modelSlug, propAutoRotate, environment])
+    }, [modelUrl, textureUrl, modelSlug, propAutoRotate, environment, backgroundColor])
 
     return (
         <div className={`relative ${className}`}>

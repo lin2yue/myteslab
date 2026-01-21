@@ -267,13 +267,10 @@ export default function AIGeneratorMain({
                             modelUrl={models.find(m => m.slug === selectedModel)?.modelUrl || ''}
                             textureUrl={currentTexture || undefined}
                             modelSlug={selectedModel}
-                            environment={isNight ? 'neutral' : 'neutral'}
+                            backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
                             autoRotate={autoRotate}
                             className="w-full h-full"
                         />
-                        <div className="absolute top-4 left-4 bg-white/50 backdrop-filter blur-md px-4 py-2 rounded-full text-sm font-medium text-gray-800">
-                            {models.find(m => m.slug === selectedModel)?.name} - 3D 预览
-                        </div>
                     </div>
 
                     {/* Bottom Controls for 3D */}
@@ -282,7 +279,7 @@ export default function AIGeneratorMain({
                             onClick={() => setIsNight(!isNight)}
                             className="px-6 py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
                         >
-                            {isNight ? tGen('night_mode') : tGen('day_mode')}
+                            {isNight ? tGen('day_mode') : tGen('night_mode')}
                         </button>
                         <button
                             onClick={() => setAutoRotate(!autoRotate)}
@@ -352,27 +349,27 @@ export default function AIGeneratorMain({
                                                 style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(to right, transparent, #3b82f6, transparent)' }} />
                                         </div>
                                     )}
-                                      {history.map((item) => (
-                                          <HistoryItem
-                                                key={item.id}
-                                                item={item}
-                                                activeWrapId={activeWrapId}
-                                                getCdnUrl={getCdnUrl}
-                                                onClick={() => {
-                                                    const cdnUrl = getCdnUrl(item.texture_url);
-                                                    // 自动处理 CORS：如果是远程 URL，且非同源，则通过代理加载
-                                                    let displayUrl = cdnUrl;
-                                                    if (cdnUrl.startsWith('http') && !cdnUrl.includes(window.location.origin)) {
-                                                        displayUrl = `/api/proxy?url=${encodeURIComponent(cdnUrl)}`;
-                                                    }
-                                                    console.log('Applying texture from history:', { original: item.texture_url, cdn: cdnUrl, display: displayUrl });
-                                                    setCurrentTexture(displayUrl);
-                                                    setSelectedModel(item.model_slug);
-                                                    setActiveWrapId(item.id);
-                                                }}
-                                          />
-                                      ))}
-                                 </>
+                                    {history.map((item) => (
+                                        <HistoryItem
+                                            key={item.id}
+                                            item={item}
+                                            activeWrapId={activeWrapId}
+                                            getCdnUrl={getCdnUrl}
+                                            onClick={() => {
+                                                const cdnUrl = getCdnUrl(item.texture_url);
+                                                // 自动处理 CORS：如果是远程 URL，且非同源，则通过代理加载
+                                                let displayUrl = cdnUrl;
+                                                if (cdnUrl.startsWith('http') && !cdnUrl.includes(window.location.origin)) {
+                                                    displayUrl = `/api/proxy?url=${encodeURIComponent(cdnUrl)}`;
+                                                }
+                                                console.log('Applying texture from history:', { original: item.texture_url, cdn: cdnUrl, display: displayUrl });
+                                                setCurrentTexture(displayUrl);
+                                                setSelectedModel(item.model_slug);
+                                                setActiveWrapId(item.id);
+                                            }}
+                                        />
+                                    ))}
+                                </>
                             )}
                         </div>
                     </div>
