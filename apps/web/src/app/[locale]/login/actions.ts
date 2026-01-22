@@ -9,20 +9,49 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function checkUserExists(email: string) {
-    const supabase = createAdminClient();
-    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+    try {
+        // Use regular client to query users table via RPC or public schema
+        // Since auth.users is not directly accessible, we'll use a different approach
+        const supabase = await createClient();
 
-    if (error) {
-        console.error('[checkUserExists] Error:', error.message);
-        return { exists: false, error: error.message };
+        // Try to sign in with a dummy password to check if user exists
+        // This is a workaround since we can't query auth.users directly
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password: '__dummy_password_to_check_existence__'
+        });
+
+        // If we get "Invalid login credentials", user exists but password is wrong
+        // If we get "Email not confirmed", user exists but hasn't confirmed
+        // If we get other errors, we need to check the message
+
+        if (error) {
+            if (error.message === 'Invalid login credentials') {
+                // User exists, password is wrong - they should login
+                return { exists: true, confirmed: true };
+            } else if (error.message === 'Email not confirmed') {
+                // User exists but hasn't confirmed email
+                return { exists: true, confirmed: false };
+            } else if (error.message.includes('User not found') || error.message.includes('not found')) {
+                // User doesn't exist
+                return { exists: false, confirmed: false };
+            } else {
+                // Unknown error, log it
+                console.error('[checkUserExists] Unexpected error:', error.message);
+                // Assume user doesn't exist to allow signup
+                return { exists: false, confirmed: false };
+            }
+        }
+
+        // If no error, user successfully logged in (shouldn't happen with dummy password)
+        // Sign them out immediately
+        await supabase.auth.signOut();
+        return { exists: true, confirmed: true };
+
+    } catch (err) {
+        console.error('[checkUserExists] Unexpected error:', err);
+        return { exists: false, confirmed: false };
     }
-
-    const user = users.find((u) => u.email === email);
-
-    return {
-        exists: !!user,
-        confirmed: !!user?.email_confirmed_at,
-    };
 }
 
 export async function login(formData: FormData) {
