@@ -101,6 +101,8 @@
         "prompt_placeholder": "请输入你想要生成的画面描述...",
         "generate_btn": "立即生成 (5 积分)",
         "generating": "正在生成中...",
+        "saving": "正在保存...",
+        "publishing": "正在发布...",
         "day_mode": "日间模式",
         "night_mode": "夜间模式",
         "auto_rotate_on": "停止旋转",

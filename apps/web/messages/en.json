@@ -101,6 +101,8 @@
         "prompt_placeholder": "Describe the design you want...",
         "generate_btn": "Generate (5 Credits)",
         "generating": "Generating...",
+        "saving": "Saving...",
+        "publishing": "Publishing...",
         "day_mode": "Day Mode",
         "night_mode": "Night Mode",
         "auto_rotate_on": "Stop Rotation",

@@ -25,7 +25,7 @@ export default function Navbar() {
                             <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
                                 <span className="text-white dark:text-black font-black text-xl">T</span>
                             </div>
-                            <span className="text-xl font-black tracking-tighter text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                            <span className="hidden sm:block text-xl font-black tracking-tighter text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
                                 {t('title')}
                             </span>
                         </Link>

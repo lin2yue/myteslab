@@ -262,8 +262,8 @@ export default function AIGeneratorMain({
                 throw new Error('Please login again');
             }
 
-            // 1. 捕捉高分辨率 3D 预览图
-            const previewImageBase64 = await viewerRef.current.takeHighResScreenshot();
+            // 1. 捕捉高分辨率 3D 预览图 (启用镜头拉远以确保车辆完整)
+            const previewImageBase64 = await viewerRef.current.takeHighResScreenshot({ zoomOut: true });
 
             if (!previewImageBase64) {
                 throw new Error('Failed to capture 3D preview');
@@ -316,17 +316,22 @@ export default function AIGeneratorMain({
         setReferenceImages(prev => prev.filter((_, i) => i !== index))
     }
 
-    const takeSnapshot = () => {
-        // 实现 3D 截图功能
-        const viewer = document.getElementById('ai-viewer')
-        if (viewer && 'toDataURL' in viewer && typeof (viewer as { toDataURL: () => string }).toDataURL === 'function') {
-            const url = (viewer as { toDataURL: () => string }).toDataURL()
-            const link = document.createElement('a')
-            link.download = `myteslab-design-${selectedModel}.png`
-            link.href = url
-            link.click()
+    const takeSnapshot = async () => {
+        if (!viewerRef.current) return;
+
+        try {
+            // 手动拍照时不干预视角 (zoomOut: false)
+            const dataUrl = await viewerRef.current.takeHighResScreenshot({ zoomOut: false });
+            if (dataUrl) {
+                const link = document.createElement('a');
+                link.download = `myteslab-design-${selectedModel}-${Date.now()}.png`;
+                link.href = dataUrl;
+                link.click();
+            }
+        } catch (err) {
+            console.error('Snapshot failed:', err);
         }
-    }
+    };
 
     const handleBuyCredits = () => {
         setShowPricing(true)
@@ -424,7 +429,7 @@ export default function AIGeneratorMain({
                             {(isPublishing || isSaving) ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span className="hidden lg:inline">{isSaving ? '正在保存...' : '正在发布...'}</span>
+                                    <span className="hidden lg:inline">{isSaving ? tGen('saving') : tGen('publishing')}</span>
                                 </>
                             ) : (
                                 activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? (
@@ -613,8 +618,8 @@ export default function AIGeneratorMain({
                                         ) : (
                                             <>
                                                 {isFetchingHistory && (
-                                                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-100 overflow-hidden z-10">
-                                                        <div className="w-1/2 h-full bg-blue-500 animate-[loading_1s_infinite_linear]"
+                                                    <div className="absolute top-0 left-0 right-0 h-[1px] overflow-hidden z-10 pointer-events-none">
+                                                        <div className="w-1/2 h-full bg-blue-600 animate-[loading_1s_infinite_linear]"
                                                             style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(to right, transparent, #3b82f6, transparent)' }} />
                                                     </div>
                                                 )}
