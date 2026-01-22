@@ -25,6 +25,7 @@
         "applicable_models": "Compatible Models",
         "tips": "💡 Drag to Rotate | Scroll to Zoom | Double Click to Reset",
         "loading_model": "Loading 3D model...",
+        "applying_texture": "Applying texture...",
         "model_error": "Failed to load model, please check the model file",
         "nav": {
             "gallery": "Discover",

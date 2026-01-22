@@ -7,7 +7,7 @@ export async function GET() {
 
         // Fetch last 5 items (Newest)
         const { data, error } = await supabase
-            .from('generated_wraps')
+            .from('wraps')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(5);

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions';
 import Image from 'next/image';
 
-interface GeneratedWrap {
+interface Wrap {
     id: string;
     name?: string;
     prompt?: string | null;
@@ -25,7 +25,7 @@ interface DownloadItem {
 }
 
 interface ProfileContentProps {
-    generatedWraps: GeneratedWrap[];
+    generatedWraps: Wrap[];
     downloads: DownloadItem[];
 }
 

@@ -13,7 +13,9 @@ interface GenerationHistory {
     preview_url: string
     texture_url: string
     model_slug: string
+    is_active: boolean
     is_public: boolean
+    created_at: string
 }
 
 export default function AIGeneratorMain({
@@ -364,7 +366,11 @@ export default function AIGeneratorMain({
                         <div className="flex-[2] relative">
                             <select
                                 value={selectedModel}
-                                onChange={(e) => setSelectedModel(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedModel(e.target.value)
+                                    setCurrentTexture(null)
+                                    setActiveWrapId(null)
+                                }}
                                 className="w-full h-14 pl-4 pr-10 bg-white border border-gray-200 rounded-xl appearance-none font-medium focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                             >
                                 {models.map(m => (

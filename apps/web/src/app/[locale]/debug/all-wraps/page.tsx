@@ -28,8 +28,9 @@ export default async function AllWrapsDebugPage({
 
     // 2. Fetch all generated wraps across all users
     const { data: wraps, error } = await supabase
-        .from('generated_wraps')
+        .from('wraps')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(100);
 
