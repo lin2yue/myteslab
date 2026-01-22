@@ -49,7 +49,10 @@ function normalizeWrap(w: any): Wrap {
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
         download_count: w.download_count || 0,
-        created_at: w.created_at || new Date().toISOString()
+        created_at: w.created_at || new Date().toISOString(),
+        reference_images: Array.isArray(w.reference_images)
+            ? w.reference_images.map((img: any) => typeof img === 'string' ? ensureCdn(img) : null).filter(Boolean)
+            : []
     } as Wrap
 }
 

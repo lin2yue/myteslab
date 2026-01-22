@@ -86,6 +86,7 @@ export default async function AllWrapsDebugPage({
                             <th className="px-6 py-4">时间 / ID</th>
                             <th className="px-6 py-4">作者 / 车型</th>
                             <th className="px-6 py-4 max-w-xs">Prompt</th>
+                            <th className="px-6 py-4 text-center">References (参考图)</th>
                             <th className="px-6 py-4 text-center">Mask (底稿)</th>
                             <th className="px-6 py-4 text-center">Stored Texture (贴图)</th>
                             <th className="px-6 py-4 text-center">Preview (预览图)</th>
@@ -109,6 +110,24 @@ export default async function AllWrapsDebugPage({
                                         <p className="text-sm text-gray-300 leading-relaxed max-w-xs break-words italic">
                                             "{wrap.prompt}"
                                         </p>
+                                    </td>
+                                    <td className="px-6 py-6 whitespace-nowrap">
+                                        <div className="flex flex-wrap items-center justify-center gap-2 max-w-[200px]">
+                                            {wrap.reference_images && Array.isArray(wrap.reference_images) && wrap.reference_images.length > 0 ? (
+                                                wrap.reference_images.map((refUrl: string, idx: number) => (
+                                                    <a key={idx} href={getCdnUrl(refUrl)} target="_blank" rel="noreferrer" className="block border border-gray-700 rounded overflow-hidden">
+                                                        <ImageResolution
+                                                            src={getCdnUrl(refUrl)}
+                                                            alt={`ref-${idx}`}
+                                                            containerClassName="w-12 h-12 flex flex-col items-center justify-between p-0.5 bg-gray-800"
+                                                            className="max-w-full max-h-10 object-contain hover:scale-110 transition-transform"
+                                                        />
+                                                    </a>
+                                                ))
+                                            ) : (
+                                                <span className="text-gray-600 text-[10px]">None</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-6">
                                         <div className="flex flex-col items-center gap-2">

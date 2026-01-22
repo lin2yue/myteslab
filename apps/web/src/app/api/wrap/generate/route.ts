@@ -99,6 +99,36 @@ export async function POST(request: NextRequest) {
             console.error('Mask processing failed:', error);
         }
 
+        // 4. 处理并转存参考图 (Optional Reference Images)
+        const savedReferenceUrls: string[] = [];
+        if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+            console.log(`[AI-GEN] Processing ${referenceImages.length} reference images for taskId: ${taskId}`);
+            for (let i = 0; i < referenceImages.length; i++) {
+                try {
+                    const base64Data = referenceImages[i];
+                    if (!base64Data) continue;
+
+                    // 处理可能带有的 data:image/xxx;base64, 前缀
+                    const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                    let buffer;
+                    if (matches) {
+                        buffer = Buffer.from(matches[2], 'base64');
+                    } else if (base64Data.includes(',')) {
+                        buffer = Buffer.from(base64Data.split(',')[1], 'base64');
+                    } else {
+                        buffer = Buffer.from(base64Data, 'base64');
+                    }
+
+                    const refFilename = `${taskId}-ref-${i}.png`;
+                    const refUrl = await uploadToOSS(buffer, refFilename, 'wraps/reference');
+                    savedReferenceUrls.push(refUrl);
+                } catch (e) {
+                    console.error(`[AI-GEN] Failed to upload reference image ${i}:`, e);
+                }
+            }
+        }
+
+        // 5. 调用 Gemini 生成纹理 (Call AI)
         // 准备参考图
         const referenceImagesBase64: string[] = [];
         if (referenceImages && Array.isArray(referenceImages)) {
@@ -276,7 +306,8 @@ export async function POST(request: NextRequest) {
             texture_url: savedUrl,
             preview_url: savedUrl,
             is_public: false, // 默认不公开，用户在个人中心手动发布
-            category: 'community'
+            category: 'community',
+            reference_images: savedReferenceUrls
         }).select('id').single();
 
         if (historyError) {

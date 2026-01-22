@@ -37,6 +37,7 @@ export interface Wrap {
     is_active: boolean
     created_at: string
     updated_at?: string
+    reference_images?: string[] // AI 生成使用的参考图 URL 列表
 
     // 冗余字段（仅作类型兼容，后续可逐步移除使用点）
     image_url?: string
