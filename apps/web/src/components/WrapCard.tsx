@@ -35,7 +35,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
 
     return (
         <Link href={`/wraps/${wrap.slug}`}>
-            <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group border border-gray-100 flex flex-col h-full">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group border border-gray-100 dark:border-zinc-800 flex flex-col h-full">
                 {/* 预览图容器 */}
                 <div className="aspect-[4/3] relative bg-gray-50 overflow-hidden">
                     {wrap.preview_image_url ? (
@@ -67,7 +67,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
 
                 {/* 内容区域 */}
                 <div className="p-4 flex flex-col flex-1">
-                    <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 text-base mb-3">
+                    <h3 className="font-bold text-gray-900 dark:text-zinc-100 group-hover:text-blue-600 transition-colors line-clamp-1 text-base mb-3">
                         {name}
                     </h3>
 
@@ -90,17 +90,17 @@ export function WrapCard({ wrap }: WrapCardProps) {
                                     </div>
                                 )}
                             </div>
-                            <span className="text-xs text-gray-600 font-medium truncate">
+                            <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate">
                                 {wrap.author_name}
                             </span>
                         </div>
 
                         {/* 下载量统计 */}
-                        <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                        <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            <span className="text-[11px] font-bold text-gray-500">
+                            <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400">
                                 {wrap.download_count || 0}
                             </span>
                         </div>
