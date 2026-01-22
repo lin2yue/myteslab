@@ -95,21 +95,21 @@
         "history": "History",
         "refresh": "Refresh",
         "no_history": "No history yet",
-        "balance": "Balance: {count} times",
-        "buy_package": "🛒 Buy Generation Package",
+        "balance": "Balance: {count} Credits",
+        "buy_package": "Buy Generation Package",
         "buy_short": "Buy",
         "prompt_placeholder": "Describe the design you want...",
-        "generate_btn": "✨ Generate Now",
+        "generate_btn": "Generate (5 Credits)",
         "generating": "Generating...",
-        "day_mode": "☀️ Day Mode",
-        "night_mode": "🌙 Night Mode",
-        "auto_rotate_on": "🔄 Stop Rotation",
-        "auto_rotate_off": "▶️ Auto Rotate",
-        "screenshot": "📸 Take Snapshot",
-        "download_png": "💾 Download PNG",
-        "publish": "🌐 Publish",
+        "day_mode": "Day Mode",
+        "night_mode": "Night Mode",
+        "auto_rotate_on": "Stop Rotation",
+        "auto_rotate_off": "Auto Rotate",
+        "screenshot": "Take Snapshot",
+        "download_png": "Download PNG",
+        "publish": "Publish",
         "publish_success": "Published successfully to discovery section",
-        "already_published": "✅ Already Public",
+        "already_published": "Already Public",
         "nav_back": "Back to Home",
         "insufficient_credits": "Insufficient credits, please buy a package",
         "generate_error": "Generation failed, please try again",
@@ -118,13 +118,13 @@
         "reference_tip": "1-5 images",
         "upload_reference": "Add",
         "mode_ai": "AI Generation",
-        "mode_diy": "DIY Sticker",
-        "upload_sticker": "Upload Sticker",
-        "sticker_tip": "Upload PNG/JPG to place on the car body",
+        "mode_diy": "DIY Wrap",
+        "upload_sticker": "Upload Wrap Image",
+        "sticker_tip": "Upload PNG/JPG to wrap body",
         "scale": "Scale",
         "rotate": "Rotate",
         "reset": "Reset",
-        "save_diy": "Save Sticker"
+        "save_diy": "Save Wrap"
     },
     "Footer": {
         "tagline": "The ultimate studio for custom Tesla wrap designs",
@@ -181,5 +181,34 @@
             "s3_title": "3. Final Decision",
             "s3_content": "The Platform reserves the right of final interpretation regarding any refund requests or policy abuse."
         }
+    },
+    "Pricing": {
+        "title": "Top Up Your Credits",
+        "subtitle": "Choose the perfect plan for you. 5 credits per generation.",
+        "most_popular": "Most Popular",
+        "tiers": {
+            "starter": "Lite Pack",
+            "explorer": "Pro Pack",
+            "collector": "Ultimate Pack"
+        },
+        "benefits": {
+            "starter": "Perfect for trying out new styles.",
+            "explorer": "The best choice for most Tesla owners.",
+            "collector": "For hardcore modders and creative minds."
+        },
+        "values": {
+            "starter": "Only ${cost} per design",
+            "explorer": "Save 20% compared to Lite",
+            "collector": "Unrestricted creativity at the best price"
+        },
+        "choose_plan": "Choose Plan",
+        "coming_soon": "Coming Soon",
+        "approx_cost": "Only ${cost} per image",
+        "save_percent": "Save {percent}%",
+        "credits": "Credits",
+        "credits_desc": "Standard general balance",
+        "generations": "AI Wrap Designs",
+        "generations_desc": "Estimated (5 credits/gen)",
+        "secure_payment_desc": "Secure payment processed by Paddle. One-time purchase, no subscription."
     }
 }

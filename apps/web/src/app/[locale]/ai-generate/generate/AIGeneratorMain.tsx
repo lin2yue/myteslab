@@ -7,6 +7,11 @@ import { Link } from '@/i18n/routing'
 import { createClient } from '@/utils/supabase/client'
 import Image from 'next/image'
 import StickerEditor from '@/components/sticker/StickerEditor'
+import {
+    Sun, Moon, RotateCw, Pause, Camera, Download, Globe, Check, Loader2,
+    Sparkles, ChevronDown, X, Plus, Palette, ArrowRight
+} from 'lucide-react'
+import PricingModal from '@/components/pricing/PricingModal'
 
 interface GenerationHistory {
     id: string
@@ -59,6 +64,7 @@ export default function AIGeneratorMain({
     const [isSaving, setIsSaving] = useState(false)
     const [referenceImages, setReferenceImages] = useState<string[]>([])
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const [showPricing, setShowPricing] = useState(false)
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -312,15 +318,18 @@ export default function AIGeneratorMain({
         }
     }
 
-    const splitLabel = (label: any) => {
-        if (typeof label !== 'string') return { icon: '', text: '' }
-        const trimmed = label.trim()
-        const parts = trimmed.split(/\s+/)
-        if (parts.length > 1) {
-            return { icon: parts[0], text: parts.slice(1).join(' ') }
-        }
-        return { icon: '', text: trimmed }
+    const handleBuyCredits = () => {
+        setShowPricing(true)
     }
+
+    const handleSelectTier = (tierId: string) => {
+        // TODO: Implement payment logic
+        console.log('Selected tier:', tierId)
+        alert('Payment integration coming soon!')
+        setShowPricing(false)
+    }
+
+
 
     return (
         <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-[#F4F4F4] overflow-y-auto lg:overflow-hidden">
@@ -349,59 +358,53 @@ export default function AIGeneratorMain({
                             onClick={() => setIsNight(!isNight)}
                             className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
                         >
-                            {(() => {
-                                const { icon, text } = splitLabel(isNight ? tGen('day_mode') : tGen('night_mode'))
-                                return (
-                                    <>
-                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
-                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
-                                    </>
-                                )
-                            })()}
+                            {isNight ? (
+                                <>
+                                    <Sun className="w-5 h-5 lg:w-4 lg:h-4" />
+                                    <span className="hidden lg:inline">{tGen('day_mode')}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Moon className="w-5 h-5 lg:w-4 lg:h-4" />
+                                    <span className="hidden lg:inline">{tGen('night_mode')}</span>
+                                </>
+                            )}
                         </button>
                         <button
                             onClick={() => setAutoRotate(!autoRotate)}
                             className={`px-3 py-2 lg:px-6 lg:py-3 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-2 flex-shrink-0 ${autoRotate ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-700'}`}
                         >
-                            {(() => {
-                                const { icon, text } = splitLabel(autoRotate ? tGen('auto_rotate_on') : tGen('auto_rotate_off'))
-                                return (
-                                    <>
-                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
-                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
-                                    </>
-                                )
-                            })()}
+                            {autoRotate ? (
+                                <>
+                                    <Pause className="w-5 h-5 lg:w-4 lg:h-4" />
+                                    <span className="hidden lg:inline">{tGen('auto_rotate_on')}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <RotateCw className="w-5 h-5 lg:w-4 lg:h-4" />
+                                    <span className="hidden lg:inline">{tGen('auto_rotate_off')}</span>
+                                </>
+                            )}
                         </button>
                         <div className="hidden lg:block lg:flex-1" />
                         <button
                             onClick={takeSnapshot}
                             className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
                         >
-                            {(() => {
-                                const { icon, text } = splitLabel(tGen('screenshot'))
-                                return (
-                                    <>
-                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
-                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
-                                    </>
-                                )
-                            })()}
+                            <>
+                                <Camera className="w-5 h-5 lg:w-4 lg:h-4" />
+                                <span className="hidden lg:inline">{tGen('screenshot')}</span>
+                            </>
                         </button>
                         <button
                             onClick={handleDownload}
                             disabled={!currentTexture}
                             className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 flex-shrink-0"
                         >
-                            {(() => {
-                                const { icon, text } = splitLabel(tGen('download_png'))
-                                return (
-                                    <>
-                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
-                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
-                                    </>
-                                )
-                            })()}
+                            <>
+                                <Download className="w-5 h-5 lg:w-4 lg:h-4" />
+                                <span className="hidden lg:inline">{tGen('download_png')}</span>
+                            </>
                         </button>
                         <button
                             onClick={handlePublish}
@@ -410,18 +413,22 @@ export default function AIGeneratorMain({
                         >
                             {(isPublishing || isSaving) ? (
                                 <>
-                                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
                                     <span className="hidden lg:inline">{isSaving ? '正在保存...' : '正在发布...'}</span>
                                 </>
-                            ) : (() => {
-                                const { icon, text } = splitLabel(activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? tGen('already_published') : tGen('publish'))
-                                return (
+                            ) : (
+                                activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? (
                                     <>
-                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
-                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                        <Check className="w-5 h-5 lg:w-4 lg:h-4" />
+                                        <span className="hidden lg:inline">{tGen('already_published')}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Globe className="w-5 h-5 lg:w-4 lg:h-4" />
+                                        <span className="hidden lg:inline">{tGen('publish')}</span>
                                     </>
                                 )
-                            })()}
+                            )}
                         </button>
                     </div>
                 </div>
@@ -473,14 +480,17 @@ export default function AIGeneratorMain({
                                                 <option key={m.slug} value={m.slug}>{m.name}</option>
                                             ))}
                                         </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 w-4 h-4" />
                                     </div>
 
                                     <div className="flex-[3] flex gap-2 h-14 bg-white border border-gray-200 rounded-xl overflow-hidden p-1">
                                         <div className="flex-1 bg-gray-50 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs px-2 whitespace-nowrap">
                                             {tGen('balance', { count: balance })}
                                         </div>
-                                        <button className="bg-blue-600 text-white px-4 rounded-lg font-bold hover:bg-blue-700 transition-all text-sm whitespace-nowrap">
+                                        <button
+                                            onClick={handleBuyCredits}
+                                            className="bg-blue-600 text-white px-4 rounded-lg font-bold hover:bg-blue-700 transition-all text-sm whitespace-nowrap"
+                                        >
                                             {tGen('buy_short')}
                                         </button>
                                     </div>
@@ -518,9 +528,9 @@ export default function AIGeneratorMain({
                                                     />
                                                     <button
                                                         onClick={() => removeImage(index)}
-                                                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] opacity-100 shadow-sm"
+                                                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors"
                                                     >
-                                                        ✕
+                                                        <X className="w-3 h-3" />
                                                     </button>
                                                 </div>
                                             ))}
@@ -530,8 +540,8 @@ export default function AIGeneratorMain({
                                                     onClick={() => fileInputRef.current?.click()}
                                                     className="w-12 h-12 border-2 border-dashed border-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-all bg-gray-50/50"
                                                 >
-                                                    <span className="text-lg leading-none">+</span>
-                                                    <span className="text-[8px] font-bold mt-0.5 whitespace-nowrap">{tGen('upload_reference')}</span>
+                                                    <Plus className="w-6 h-6 text-gray-400 group-hover:text-blue-500" />
+                                                    <span className="text-[10px] font-bold mt-1 whitespace-nowrap text-gray-400 group-hover:text-blue-500">{tGen('upload_reference')}</span>
                                                 </button>
                                             )}
                                         </div>
@@ -552,10 +562,15 @@ export default function AIGeneratorMain({
                                     >
                                         {isGenerating ? (
                                             <>
-                                                <div className="w-5 h-5 border-2 border-zinc-400 border-t-white rounded-full animate-spin"></div>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
                                                 {tGen('generating')}
                                             </>
-                                        ) : tGen('generate_btn')}
+                                        ) : (
+                                            <>
+                                                <Sparkles className="w-5 h-5" />
+                                                {tGen('generate_btn')}
+                                            </>
+                                        )}
                                     </button>
                                 </div>
 
@@ -582,7 +597,7 @@ export default function AIGeneratorMain({
                                             ))
                                         ) : history.length === 0 ? (
                                             <div className="h-[200px] flex flex-col items-center justify-center text-gray-400 text-sm">
-                                                <span className="text-4xl mb-4">🎨</span>
+                                                <Palette className="w-12 h-12 mb-4 text-gray-300" />
                                                 {tGen('no_history')}
                                             </div>
                                         ) : (
@@ -629,7 +644,7 @@ export default function AIGeneratorMain({
                                             <option key={m.slug} value={m.slug}>{m.name}</option>
                                         ))}
                                     </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 w-4 h-4" />
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto pr-1">
@@ -645,6 +660,12 @@ export default function AIGeneratorMain({
                     </div>
                 </div>
             </div>
+
+            <PricingModal
+                isOpen={showPricing}
+                onClose={() => setShowPricing(false)}
+                onSelectTier={handleSelectTier}
+            />
         </div>
     );
 }
@@ -692,7 +713,9 @@ function HistoryItem({
                 </div>
                 <div className="flex justify-between mt-2">
                     <span className="text-[10px] text-gray-400 uppercase">{item.model_slug}</span>
-                    <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">Apply →</span>
+                    <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                        Apply <ArrowRight className="w-3 h-3" />
+                    </span>
                 </div>
             </div>
         </div>
