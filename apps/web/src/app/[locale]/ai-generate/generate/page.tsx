@@ -4,11 +4,11 @@ import AIGeneratorMain from './AIGeneratorMain';
 
 // Available models
 const MODELS = [
-    { slug: 'cybertruck', name: 'Cybertruck', modelUrl: '/models/Cybertruck/cybertruck.glb' },
-    { slug: 'model-3', name: 'Model 3', modelUrl: '/models/model-3/model_3.glb' },
-    { slug: 'model-3-2024-plus', name: 'Model 3 2024+', modelUrl: '/models/model-3-2024-plus/model_3_2024plus.glb' },
-    { slug: 'model-y-pre-2025', name: 'Model Y', modelUrl: '/models/model-y-pre-2025/model_v2.glb' },
-    { slug: 'model-y-2025-plus', name: 'Model Y 2025+', modelUrl: '/models/model-y-2025-plus/model_y_2025plus.glb' },
+    { slug: 'cybertruck', name: 'Cybertruck', modelUrl: 'https://cdn.tewan.club/models/wraps/cybertruck/model_v1.glb' },
+    { slug: 'model-3', name: 'Model 3', modelUrl: 'https://cdn.tewan.club/models/wraps/model-3/model_v1.glb' },
+    { slug: 'model-3-2024-plus', name: 'Model 3 2024+', modelUrl: 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v1.glb' },
+    { slug: 'model-y-pre-2025', name: 'Model Y', modelUrl: 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb' },
+    { slug: 'model-y-2025-plus', name: 'Model Y 2025+', modelUrl: 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v3.glb' },
 ]
 
 export default async function GeneratePage({

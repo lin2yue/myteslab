@@ -216,9 +216,21 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         viewer.setAttribute('shadow-intensity', config.shadowIntensity.toString())
         viewer.setAttribute('shadow-softness', config.shadowSoftness.toString())
         viewer.setAttribute('exposure', config.exposure.toString())
+
+        // Restrict vertical angle to prevent looking from too far below
+        // Theta (vertical) limits: 0deg (top) to 180deg (bottom). 
+        // 90deg is horizontal (ground level).
+        viewer.setAttribute('min-camera-orbit', 'auto 0deg auto')
+        viewer.setAttribute('max-camera-orbit', 'auto 90deg auto')
+
         viewer.style.width = '100%'
         viewer.style.height = '100%'
         if (backgroundColor) viewer.style.backgroundColor = backgroundColor
+
+        // Ensure auto-rotate is applied if enabled in state
+        if (propAutoRotate) {
+            viewer.setAttribute('auto-rotate', 'true')
+        }
 
         const onLoad = async () => {
             setLoading(false)

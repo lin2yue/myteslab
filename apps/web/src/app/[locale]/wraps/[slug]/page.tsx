@@ -114,10 +114,10 @@ export default async function WrapDetailPage({
                     </svg>
                     {t('back_to_home')}
                 </Link>
-                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10 items-start">
                     {/* 左侧: 3D 预览 */}
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                        <div className="relative w-full aspect-video lg:aspect-auto lg:h-[calc(100vh-280px)] min-h-[400px] max-h-[800px] bg-gray-50">
+                        <div className="relative w-full aspect-[4/3] lg:aspect-video bg-gray-50">
                             <ModelViewerClient
                                 modelUrl={proxiedModelUrl}
                                 textureUrl={textureUrl}
@@ -128,16 +128,17 @@ export default async function WrapDetailPage({
                     </div>
 
                     {/* 右侧: 详情信息栏 */}
-                    <div className="flex flex-col gap-6">
-                        {/* 核心作品卡片 */}
-                        <article className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col gap-8 transition-all hover:shadow-md">
-                            <div>
-                                <div className="flex items-center gap-2 mb-3">
+                    <div className="flex flex-col gap-4">
+                        {/* 核心信息与下载卡片 */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-6">
+                            {/* 标题，标签与作者 */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
                                     <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${wrap.category === 'official'
-                                            ? 'bg-blue-50 text-blue-600 border-blue-100'
-                                            : wrap.category === 'community'
-                                                ? 'bg-purple-50 text-purple-600 border-purple-100'
-                                                : 'bg-green-50 text-green-600 border-green-100'
+                                        ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                        : wrap.category === 'community'
+                                            ? 'bg-purple-50 text-purple-600 border-purple-100'
+                                            : 'bg-green-50 text-green-600 border-green-100'
                                         }`}>
                                         {wrap.category === 'official' ? 'Official' : wrap.category === 'community' ? 'AI Generated' : 'DIY Custom'}
                                     </span>
@@ -148,34 +149,50 @@ export default async function WrapDetailPage({
                                         {wrap.download_count || 0}
                                     </span>
                                 </div>
-                                <h1 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">
+
+                                <h1 className="text-xl lg:text-2xl font-black text-gray-900 tracking-tight">
                                     {name}
                                 </h1>
-                                {description && (
-                                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                                        {description}
-                                    </p>
-                                )}
-                            </div>
 
-                            {/* 作者信息与下载 */}
-                            <div className="flex flex-col gap-6 pt-6 border-t border-gray-50">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden ring-4 ring-gray-50 shrink-0 shadow-inner">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-gray-50 shrink-0">
                                         {wrap.author_avatar_url ? (
                                             <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-lg font-bold">
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs font-bold">
                                                 {(wrap.author_name || 'U').charAt(0).toUpperCase()}
                                             </div>
                                         )}
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">{t('author') || 'DESIGNER'}</p>
-                                        <p className="font-bold text-gray-900 truncate text-base">@{wrap.author_name || 'Anonymous'}</p>
-                                    </div>
+                                    <p className="font-bold text-gray-500 text-sm">@{wrap.author_name || 'Anonymous'}</p>
                                 </div>
+                            </div>
 
+                            {/* 贴图预览 (完整展示，不裁切) */}
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 p-2">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Texture Preview</p>
+                                <div className="w-full bg-white rounded-lg overflow-hidden relative group shadow-inner">
+                                    <img
+                                        src={getOptimizedImageUrl(wrap.texture_url, { width: 600, quality: 80 })}
+                                        alt="Texture Preview"
+                                        className="w-full h-auto max-h-[180px] object-contain mx-auto"
+                                    />
+                                    {/* 放大遮罩 */}
+                                    <a
+                                        href={getOptimizedImageUrl(wrap.texture_url, { width: 1600 })}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[1px]"
+                                    >
+                                        <span className="text-white text-[10px] font-bold tracking-widest uppercase bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+                                            View Original
+                                        </span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* 下载按钮 */}
+                            <div>
                                 <DownloadButton
                                     wrapId={wrap.id}
                                     wrapName={name}
@@ -183,42 +200,33 @@ export default async function WrapDetailPage({
                                     locale={locale}
                                 />
                             </div>
-                        </article>
 
-                        {/* AI 提示词卡片 - 仅 AI 生成时显示 */}
-                        {wrap.category === 'community' && wrap.prompt && (
-                            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                                <div className="flex items-center justify-between mb-4">
-                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
-                                        AI Generation Prompt
+                            {/* 描述 */}
+                            {description && (
+                                <div className="pt-4 border-t border-gray-50">
+                                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                        {description}
                                     </p>
-                                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">v1.2</span>
                                 </div>
-                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                                    <p className="text-sm font-medium text-gray-600 italic leading-relaxed font-mono">
+                            )}
+                        </div>
+
+                        {/* AI 提示词卡片 */}
+                        {wrap.category === 'community' && wrap.prompt && (
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                        AI Prompt
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-200/50">
+                                    <p className="text-xs font-medium text-gray-600 italic leading-relaxed font-mono">
                                         "{wrap.prompt}"
                                     </p>
                                 </div>
                             </div>
                         )}
-
-                        {/* 原始贴图预览 */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all hover:shadow-md">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Original Texture Design</p>
-                            <div className="aspect-[2/1] bg-gray-50 rounded-xl overflow-hidden border border-gray-100 relative group cursor-zoom-in shadow-inner">
-                                <img
-                                    src={getOptimizedImageUrl(wrap.texture_url, { width: 600, quality: 80 })}
-                                    alt="Texture Preview"
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                                    <span className="text-white text-[10px] font-bold tracking-widest uppercase bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-xl">
-                                        Texture View Only
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </main>
