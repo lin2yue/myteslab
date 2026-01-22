@@ -124,5 +124,61 @@
         "rotate": "Rotate",
         "reset": "Reset",
         "save_diy": "Save Sticker"
+    },
+    "Footer": {
+        "tagline": "The ultimate studio for custom Tesla wrap designs",
+        "copyright": "© {year} MyTesLab. All rights reserved.",
+        "disclaimer": "We are an independent third-party creative platform and are not affiliated with, associated with, or endorsed by Tesla, Inc.",
+        "links": {
+            "explore": "Explore",
+            "ai_generator": "AI Design",
+            "terms": "Terms of Service",
+            "privacy": "Privacy Policy",
+            "refund": "Refund Policy"
+        }
+    },
+    "Legal": {
+        "tos": {
+            "title": "Terms of Service",
+            "s1_title": "1. Acceptance of Terms",
+            "s1_content": "By accessing or using MyTeslaLab (the \"Platform\"), you agree to be bound by these Terms of Service. This Platform is operated by MyTeslaLab to provide AI-driven digital creative tools for Tesla owners.",
+            "s2_title": "2. Description of Service",
+            "s2_content": "The Platform provides AIGC (Generative AI) technology for users to generate, upload, preview, and download digital sticker designs. All products are digital assets; no physical goods are delivered.",
+            "s3_title": "3. Intellectual Property and User Content",
+            "s3_ownership_title": "Ownership:",
+            "s3_ownership_content": "You retain ownership of original materials uploaded and AI works generated via the Platform.",
+            "s3_uploads_title": "User Uploads:",
+            "s3_uploads_content": "You warrant that you own legal rights to all uploaded content. Uploading content that infringes on third-party copyrights, trademarks, or privacy is strictly prohibited.",
+            "s3_sharing_title": "Public Sharing Grant:",
+            "s3_sharing_content": "By selecting to \"Publicly Publish\" your work, you grant the Platform and all other users worldwide a perpetual, royalty-free, irrevocable, and non-exclusive license to download, display, modify, and use such content.",
+            "s3_license_title": "License to Platform:",
+            "s3_license_content": "You grant us the necessary rights to store, host, and display your content to provide our services.",
+            "s4_title": "4. Copyright Policy and Takedown Procedure (DMCA)",
+            "s4_content": "We respect intellectual property. If a rights holder finds infringing content on the Platform, please email support@myteslab.com with: 1) Proof of rights and contact info; 2) Specific URL(s) of the infringing content; 3) A statement made in good faith. Upon a valid notice, we will follow a \"Notice-and-Takedown\" procedure. Repeat infringers will have their accounts permanently terminated.",
+            "s5_title": "5. Official Disclaimer",
+            "s5_content": "MyTeslaLab is an independent third-party platform and is not affiliated with, associated with, endorsed by, or in any way officially connected with Tesla, Inc. References to \"Tesla\" and vehicle models are solely for descriptive purposes.",
+            "s6_title": "6. Payment Processing",
+            "s6_content": "Payments on this platform are processed by Paddle (Paddle.com Market Ltd), acting as our Merchant of Record. Paddle is responsible for transaction security, tax compliance, and billing."
+        },
+        "privacy": {
+            "title": "Privacy Policy",
+            "s1_title": "1. Data Collection",
+            "s1_content": "We collect your email for account management and uploaded images for AI model inference.",
+            "s2_title": "2. Payment Security",
+            "s2_content": "Your payment information (e.g., credit card numbers) is handled directly by Paddle. We do not store any sensitive financial data.",
+            "s3_title": "3. Data Sharing",
+            "s3_content": "We do not sell your personal data to third parties, except as required by law or necessary for service provision (e.g., payment processing).",
+            "s4_title": "4. User Rights",
+            "s4_content": "You may contact us at any time to request the deletion of your account and associated uploaded data."
+        },
+        "refund": {
+            "title": "Refund Policy",
+            "s1_title": "1. Nature of Digital Goods",
+            "s1_content": "Due to the instantaneous and irreversible nature of AI generation credits and digital downloads, all sales are generally final and non-refundable once credits are consumed or assets are delivered.",
+            "s2_title": "2. Technical Issues",
+            "s2_content": "If a technical failure occurs (e.g., credit deduction without generation), please contact support@myteslab.com within 72 hours. We will restate credits after verification.",
+            "s3_title": "3. Final Decision",
+            "s3_content": "The Platform reserves the right of final interpretation regarding any refund requests or policy abuse."
+        }
     }
 }
