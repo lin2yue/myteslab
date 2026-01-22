@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getMaskUrl } from '@/lib/ai/mask-config';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from '@/i18n/routing';
+import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import ImageResolution from './ImageResolution';
 
@@ -19,8 +20,13 @@ export default async function AllWrapsDebugPage({
     const currentOrigin = `${protocol}://${host}`;
 
     const supabase = await createClient();
+    const isLocal = process.env.NODE_ENV === 'development' || host?.includes('localhost') || host?.includes('127.0.0.1');
 
-    // 1. Check if user is authenticated (and ideally if they are an admin, but for now we'll just check login)
+    if (!isLocal) {
+        notFound();
+    }
+
+    // 1. Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         return redirect({ href: '/login', locale });
