@@ -14,6 +14,7 @@ interface ModelViewerProps {
     autoRotate?: boolean
     environment?: string
     backgroundColor?: string
+    ignoreConfigRotation?: boolean
 }
 
 export interface ModelViewerRef {
@@ -28,7 +29,8 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     id,
     autoRotate: propAutoRotate,
     environment = 'neutral',
-    backgroundColor
+    backgroundColor,
+    ignoreConfigRotation = false
 }, ref) => {
     const t = useTranslations('Common')
     const containerRef = useRef<HTMLDivElement>(null)
@@ -131,13 +133,22 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             const threeTexture = (texture as any).source?.texture || (texture as any).texture
             if (threeTexture) {
                 threeTexture.center.set(0.5, 0.5)
-                if (config.rotation !== undefined) {
-                    threeTexture.rotation = (config.rotation * Math.PI) / 180
+
+                // Only apply rotation/mirror logic if NOT ignored (e.g., in DIY mode)
+                if (!ignoreConfigRotation) {
+                    if (config.rotation !== undefined) {
+                        threeTexture.rotation = (config.rotation * Math.PI) / 180
+                    }
+                    if (config.scale !== undefined) {
+                        const scaleX = config.mirror ? -config.scale : config.scale
+                        threeTexture.repeat.set(scaleX, config.scale)
+                    }
+                } else {
+                    // Reset to defaults for DIY
+                    threeTexture.rotation = 0
+                    threeTexture.repeat.set(1, 1)
                 }
-                if (config.scale !== undefined) {
-                    const scaleX = config.mirror ? -config.scale : config.scale
-                    threeTexture.repeat.set(scaleX, config.scale)
-                }
+
                 threeTexture.wrapS = 1000 // RepeatWrapping
                 threeTexture.wrapT = 1000 // RepeatWrapping
                 threeTexture.flipY = false

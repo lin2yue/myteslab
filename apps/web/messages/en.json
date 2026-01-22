@@ -94,6 +94,15 @@
         "already_published": "✅ Already Public",
         "nav_back": "Back to Home",
         "insufficient_credits": "Insufficient credits, please buy a package",
-        "generate_error": "Generation failed, please try again"
+        "generate_error": "Generation failed, please try again",
+        "remove_image": "Remove",
+        "mode_ai": "AI Generation",
+        "mode_diy": "DIY Sticker",
+        "upload_sticker": "Upload Sticker",
+        "sticker_tip": "Upload PNG/JPG to place on the car body",
+        "scale": "Scale",
+        "rotate": "Rotate",
+        "reset": "Reset",
+        "save_diy": "Save Sticker"
     }
 }

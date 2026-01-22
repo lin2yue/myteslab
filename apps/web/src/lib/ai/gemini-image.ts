@@ -52,6 +52,15 @@ ${isPattern
 • NEVER place content in roof center (black area) - it's a void`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REFERENCE IMAGES (IF PROVIDED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+If the user has provided reference images:
+1. ANALYZE: Identify key visual elements (color palette, artistic style, motifs, lighting, textures).
+2. INTEGRATE: Synthesize these elements with the user's text prompt.
+3. PRIORITY: The reference images should guide the AESTHETIC and STYLE.
+4. DO NOT COPY: Create an original design that feels inspired by the references, not a simple copy.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 QUALITY REQUIREMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Bold, high-contrast colors (suitable for vehicle wraps)

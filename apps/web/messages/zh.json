@@ -94,6 +94,18 @@
         "already_published": "✅ 已在社区公开",
         "nav_back": "返回首页",
         "insufficient_credits": "积分不足，请先购买生成包",
-        "generate_error": "生成失败，请稍后重试"
+        "generate_error": "生成失败，请稍后重试",
+        "remove_image": "删除",
+        "reference_images": "参考图 ({count})",
+        "reference_tip": "支持 1-5 张",
+        "upload_reference": "添加",
+        "mode_ai": "AI 创作",
+        "mode_diy": "DIY 车贴",
+        "upload_sticker": "上传贴纸图片",
+        "sticker_tip": "上传 PNG/JPG 图片，调整位置与大小以匹配车身",
+        "scale": "缩放",
+        "rotate": "旋转",
+        "reset": "重置",
+        "save_diy": "保存贴纸"
     }
 }
