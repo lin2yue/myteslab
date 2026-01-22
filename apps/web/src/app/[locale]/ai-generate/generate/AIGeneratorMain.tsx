@@ -308,15 +308,18 @@ export default function AIGeneratorMain({
             const link = document.createElement('a')
             link.download = `myteslab-design-${selectedModel}.png`
             link.href = url
+            link.click()
         }
     }
 
-    const splitLabel = (label: string) => {
-        const parts = label.split(' ')
+    const splitLabel = (label: any) => {
+        if (typeof label !== 'string') return { icon: '', text: '' }
+        const trimmed = label.trim()
+        const parts = trimmed.split(/\s+/)
         if (parts.length > 1) {
             return { icon: parts[0], text: parts.slice(1).join(' ') }
         }
-        return { icon: '', text: label }
+        return { icon: '', text: trimmed }
     }
 
     return (
@@ -348,7 +351,12 @@ export default function AIGeneratorMain({
                         >
                             {(() => {
                                 const { icon, text } = splitLabel(isNight ? tGen('day_mode') : tGen('night_mode'))
-                                return <><span className="text-lg lg:text-base">{icon}</span><span className="hidden lg:inline">{text}</span></>
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
                             })()}
                         </button>
                         <button
@@ -357,7 +365,12 @@ export default function AIGeneratorMain({
                         >
                             {(() => {
                                 const { icon, text } = splitLabel(autoRotate ? tGen('auto_rotate_on') : tGen('auto_rotate_off'))
-                                return <><span className="text-lg lg:text-base">{icon}</span><span className="hidden lg:inline">{text}</span></>
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
                             })()}
                         </button>
                         <div className="hidden lg:block lg:flex-1" />
@@ -367,7 +380,12 @@ export default function AIGeneratorMain({
                         >
                             {(() => {
                                 const { icon, text } = splitLabel(tGen('screenshot'))
-                                return <><span className="text-lg lg:text-base">{icon}</span><span className="hidden lg:inline">{text}</span></>
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
                             })()}
                         </button>
                         <button
@@ -377,7 +395,12 @@ export default function AIGeneratorMain({
                         >
                             {(() => {
                                 const { icon, text } = splitLabel(tGen('download_png'))
-                                return <><span className="text-lg lg:text-base">{icon}</span><span className="hidden lg:inline">{text}</span></>
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
                             })()}
                         </button>
                         <button
@@ -392,7 +415,12 @@ export default function AIGeneratorMain({
                                 </>
                             ) : (() => {
                                 const { icon, text } = splitLabel(activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? tGen('already_published') : tGen('publish'))
-                                return <><span className="text-lg lg:text-base">{icon}</span><span className="hidden lg:inline">{text}</span></>
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
                             })()}
                         </button>
                     </div>
@@ -572,10 +600,10 @@ export default function AIGeneratorMain({
                                                         activeWrapId={activeWrapId}
                                                         getCdnUrl={getCdnUrl}
                                                         onClick={() => {
-                                                            const cdnUrl = getCdnUrl(item.texture_url);
-                                                            let displayUrl = cdnUrl;
-                                                            if (cdnUrl.startsWith('http') && !cdnUrl.includes(window.location.origin)) {
-                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(cdnUrl)}`;
+                                                            const itemCdnUrl = getCdnUrl(item.texture_url);
+                                                            let displayUrl = itemCdnUrl;
+                                                            if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`;
                                                             }
                                                             setCurrentTexture(displayUrl);
                                                             setSelectedModel(item.model_slug);
@@ -632,7 +660,8 @@ function HistoryItem({
     onClick: () => void;
     getCdnUrl: (url: string) => string;
 }) {
-    const [imgSrc, setImgSrc] = useState(getCdnUrl(item.texture_url));
+    const textureUrl = item.texture_url || '';
+    const [imgSrc, setImgSrc] = useState(getCdnUrl(textureUrl) || 'https://placehold.co/100x100?text=No+Image');
 
     return (
         <div
