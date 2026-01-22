@@ -13,54 +13,41 @@ export default async function ProfilePage({
 }) {
     const { locale } = await params;
     const supabase = await createClient();
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
         return redirect({ href: '/login', locale });
     }
 
-    // Fetch Profile
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    // 并行获取所有数据，减少串行等待时间
+    const [profileRes, creditsRes, wrapsRes, downloadsRes] = await Promise.all([
+        supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
+        supabase.from('user_credits').select('balance, total_earned').eq('user_id', user.id).single(),
+        supabase.from('wraps').select('id, name, prompt, texture_url, preview_url, is_public, created_at').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
+        supabase.from('user_downloads').select('id, downloaded_at, wraps(id, name, preview_url, texture_url)').eq('user_id', user.id).order('downloaded_at', { ascending: false }).limit(20)
+    ]);
 
-    // Fetch Credits
-    const { data: credits } = await supabase
-        .from('user_credits')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+    const profile = profileRes.data;
+    const credits = creditsRes.data;
+    const generatedWraps = wrapsRes.data;
+    const wrapsError = wrapsRes.error;
 
-    // Fetch Generated Wraps
-    const { data: generatedWraps, error: wrapsError } = await supabase
-        .from('wraps')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('deleted_at', null) // 如果还是查不到，请运行 SQL 脚本加列
-        .order('created_at', { ascending: false });
+    // 适配 Supabase 关联查询返回的数组格式为对象
+    const downloads = downloadsRes.data?.map(item => ({
+        ...item,
+        wraps: Array.isArray(item.wraps) ? item.wraps[0] : item.wraps
+    })) || [];
 
     if (wrapsError) {
         console.error('Debug: Querying wraps failed:', wrapsError.message);
     }
-
-    // Fetch Downloads (Join with wraps table)
-    const { data: downloads } = await supabase
-        .from('user_downloads')
-        .select('*, wraps(*)')
-        .eq('user_id', user.id)
-        .order('downloaded_at', { ascending: false });
 
     const t = await getTranslations('Profile');
     const tCommon = await getTranslations('Common');
 
     return (
         <div className="flex flex-col min-h-screen">
-            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex-1">
+            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
                 <div className="flex items-center gap-4 mb-8">
                     <h1 className="text-3xl font-black text-gray-900">{t('title')}</h1>
                 </div>
@@ -83,23 +70,23 @@ export default async function ProfilePage({
                         </div>
                     </div>
 
-                    <div className="bg-white overflow-hidden shadow rounded-lg p-6">
+                    <div className="bg-white overflow-hidden shadow rounded-lg p-6 flex flex-col">
                         <h2 className="text-lg font-medium text-gray-900 mb-4">{t('credits')}</h2>
-                        <div className="flex flex-col h-full justify-center">
-                            <div className="flex items-baseline">
-                                <span className="text-4xl font-extrabold text-blue-600 mr-2">
-                                    {credits?.balance || 0}
-                                </span>
-                                <span className="text-gray-500">{t('available_credits')}</span>
+                        <div className="flex-1 flex flex-col justify-center">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-baseline">
+                                    <span className="text-4xl font-extrabold text-blue-600 mr-2">
+                                        {credits?.balance || 0}
+                                    </span>
+                                    <span className="text-gray-500">{t('available_credits')}</span>
+                                </div>
+                                <button className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                    {t('buy_more')}
+                                </button>
                             </div>
                             <p className="text-sm text-gray-500 mt-2">
                                 {t('total_earned')}: {credits?.total_earned || 0}
                             </p>
-                            <div className="mt-4">
-                                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                    {t('buy_more')}
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>

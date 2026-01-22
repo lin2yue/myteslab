@@ -100,7 +100,7 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
 
     return (
         <div className="flex flex-col gap-12">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
                 {wraps.map((wrap) => (
                     <WrapCard key={wrap.id} wrap={wrap} />
                 ))}
@@ -115,7 +115,7 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
                     <div className="flex items-center gap-3 text-gray-400">
                         <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
                         <span className="text-sm font-medium">
-                            {locale === 'zh' ? '加载中...' : 'Loading...'}
+                            Loading...
                         </span>
                     </div>
                 )}

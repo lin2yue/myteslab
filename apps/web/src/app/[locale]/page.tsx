@@ -6,7 +6,7 @@ import AuthButton from '@/components/auth/AuthButton'
 import { getWraps, getModels } from '@/lib/api'
 
 import { Link } from '@/i18n/routing'
-export const revalidate = 0 // 禁用静态缓存，确保首页数据即时刷新
+export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提升首页响应速度
 
 export default async function HomePage({
   searchParams,
@@ -30,7 +30,7 @@ export default async function HomePage({
   return (
     <div className="flex flex-col">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
         <FilterBarWrapper models={models} sortBy={sortBy}>
           <WrapList initialWraps={wraps} model={model} locale={locale} sortBy={sortBy} />
         </FilterBarWrapper>
@@ -38,7 +38,7 @@ export default async function HomePage({
 
       {/* Footer */}
       <footer className="mt-16 py-8 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full text-center text-sm text-gray-500">
           <p>Tesla Studio - Powered by Next.js + Supabase</p>
         </div>
       </footer>

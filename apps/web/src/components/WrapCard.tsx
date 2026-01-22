@@ -40,7 +40,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
                 <div className="aspect-[4/3] relative bg-gray-50 overflow-hidden">
                     {wrap.preview_image_url ? (
                         <Image
-                            src={getOptimizedImageUrl(wrap.preview_image_url, { width: 800, quality: 80 })}
+                            src={getOptimizedImageUrl(wrap.preview_image_url, { width: 400, quality: 75 })}
                             alt={name}
                             fill
                             className="object-cover scale-[1.01] group-hover:scale-110 transition-transform duration-500 ease-out"

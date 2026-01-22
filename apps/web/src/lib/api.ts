@@ -81,7 +81,11 @@ async function fetchWrapsInternal(
     const to = from + pageSize - 1
 
     try {
-        let query = publicSupabase.from('wraps').select('*').eq('is_public', true)
+        // 使用 Supabase Join 一次性查出作品及作者资料
+        let query = publicSupabase
+            .from('wraps')
+            .select('*, profiles(id, display_name, avatar_url)')
+            .eq('is_public', true)
 
         if (modelSlug) query = query.eq('model_slug', modelSlug)
 
@@ -94,19 +98,7 @@ async function fetchWrapsInternal(
         const { data: rawWraps, error } = await query.range(from, to)
         if (error || !rawWraps) return []
 
-        // 统一合并作者资料：无论是官方还是用户，都走这一套逻辑
-        const userIds = Array.from(new Set(rawWraps.map(w => w.user_id).filter(id => !!id)))
-        let profileMap = new Map()
-
-        if (userIds.length > 0) {
-            const { data: profiles } = await publicSupabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
-            if (profiles) profileMap = new Map(profiles.map(p => [p.id, p]))
-        }
-
-        return rawWraps.map(w => normalizeWrap({
-            ...w,
-            profiles: profileMap.get(w.user_id)
-        }))
+        return rawWraps.map(w => normalizeWrap(w))
 
     } catch (err) {
         console.error('fetchWrapsInternal error:', err)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions';
 import Image from 'next/image';
+import { getOptimizedImageUrl } from '@/lib/images';
 
 interface Wrap {
     id: string;
@@ -72,7 +73,7 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
     };
 
     return (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-hidden max-w-[1600px] mx-auto">
             {/* Tabs */}
             <div className="border-b border-gray-200">
                 <nav className="-mb-px flex" aria-label="Tabs">
@@ -102,17 +103,17 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                 {activeTab === 'creations' && (
                     <div>
                         {wraps && wraps.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                                 {wraps.map((wrap) => (
                                     <div key={wrap.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="relative aspect-video bg-gray-100">
+                                        <div className="relative aspect-square bg-gray-50 group">
                                             {(wrap.preview_url || wrap.texture_url) ? (
                                                 <Image
-                                                    src={wrap.preview_url || wrap.texture_url}
+                                                    src={getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 600, height: 600, resize: 'fill' })}
                                                     alt={wrap.name || wrap.prompt || 'Generated Wrap'}
                                                     fill
                                                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                                    className="object-cover"
+                                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
@@ -171,7 +172,13 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                                         <div className="flex items-center">
                                             <div className="h-12 w-12 flex-shrink-0">
                                                 {item.wraps?.preview_url ? (
-                                                    <Image src={item.wraps.preview_url} alt={item.wraps.name} width={48} height={48} className="rounded object-cover" />
+                                                    <Image
+                                                        src={getOptimizedImageUrl(item.wraps.preview_url, { width: 100, height: 100, resize: 'fill' })}
+                                                        alt={item.wraps.name}
+                                                        width={48}
+                                                        height={48}
+                                                        className="rounded-lg object-cover shadow-sm"
+                                                    />
                                                 ) : (
                                                     <div className="h-12 w-12 rounded bg-gray-200 flex items-center justify-center">
                                                         <span className="text-gray-400 text-xs">No Img</span>

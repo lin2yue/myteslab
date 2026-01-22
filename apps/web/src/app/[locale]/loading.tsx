@@ -1,30 +1,39 @@
-import { useTranslations } from 'next-intl'
+'use client'
 
 export default function Loading() {
-    const t = useTranslations('Index')
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-            <div className="text-center">
-                {/* Tesla-style loading animation */}
-                <div className="relative w-14 h-14 mx-auto mb-6">
-                    {/* Outer ring */}
-                    <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-                    {/* Spinning arc */}
-                    <div className="absolute inset-0 border-4 border-transparent border-t-gray-400 rounded-full animate-spin"></div>
-                    {/* Inner pulse */}
-                    <div className="absolute inset-2 bg-gray-300/10 rounded-full animate-pulse"></div>
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full min-h-[60vh] flex flex-col items-center justify-center">
+            {/* 顶部进度条感官优化 */}
+            <div className="fixed top-0 left-0 right-0 h-1 z-50 overflow-hidden">
+                <div className="h-full bg-blue-600 animate-progress origin-left"></div>
+            </div>
+
+            {/* 居中加载提示 */}
+            <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-gray-100 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></div>
+                        </div>
+                    </div>
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {t('loading')}
-                </h3>
-                <div className="flex items-center justify-center gap-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="space-y-2">
+                    <h2 className="text-xl font-bold text-gray-900 tracking-widest">LOADING...</h2>
                 </div>
             </div>
+
+            <style jsx>{`
+                @keyframes progress {
+                    0% { transform: scaleX(0); }
+                    50% { transform: scaleX(0.7); }
+                    100% { transform: scaleX(1); }
+                }
+                .animate-progress {
+                    animation: progress 2s ease-in-out infinite;
+                }
+            `}</style>
         </div>
-    )
+    );
 }

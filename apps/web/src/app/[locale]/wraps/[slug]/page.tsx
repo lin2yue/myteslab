@@ -104,7 +104,7 @@ export default async function WrapDetailPage({
     return (
         <div className="flex flex-col min-h-screen">
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 py-8 lg:py-12 flex-1">
+            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
                 <Link
                     href="/"
                     className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors mb-6 text-sm font-medium"
@@ -114,10 +114,10 @@ export default async function WrapDetailPage({
                     </svg>
                     {t('back_to_home')}
                 </Link>
-                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10">
                     {/* 左侧: 3D 预览 */}
-                    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div className="relative w-full aspect-square sm:aspect-[4/3] bg-gray-100">
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                        <div className="relative w-full aspect-video lg:aspect-auto lg:h-[calc(100vh-280px)] min-h-[400px] max-h-[800px] bg-gray-50">
                             <ModelViewerClient
                                 modelUrl={proxiedModelUrl}
                                 textureUrl={textureUrl}
@@ -127,44 +127,98 @@ export default async function WrapDetailPage({
                         </div>
                     </div>
 
-                    {/* 右侧: 贴图信息 */}
-                    <div className="space-y-6">
-                        {/* 基本信息 */}
-                        <article className="bg-white rounded-lg shadow-lg p-6">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                                {name}
-                            </h1>
+                    {/* 右侧: 详情信息栏 */}
+                    <div className="flex flex-col gap-6">
+                        {/* 核心作品卡片 */}
+                        <article className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col gap-8 transition-all hover:shadow-md">
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${wrap.category === 'official'
+                                            ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                            : wrap.category === 'community'
+                                                ? 'bg-purple-50 text-purple-600 border-purple-100'
+                                                : 'bg-green-50 text-green-600 border-green-100'
+                                        }`}>
+                                        {wrap.category === 'official' ? 'Official' : wrap.category === 'community' ? 'AI Generated' : 'DIY Custom'}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        {wrap.download_count || 0}
+                                    </span>
+                                </div>
+                                <h1 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">
+                                    {name}
+                                </h1>
+                                {description && (
+                                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                        {description}
+                                    </p>
+                                )}
+                            </div>
 
-                            {description && (
-                                <p className="text-gray-600 mb-4">
-                                    {description}
-                                </p>
-                            )}
+                            {/* 作者信息与下载 */}
+                            <div className="flex flex-col gap-6 pt-6 border-t border-gray-50">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden ring-4 ring-gray-50 shrink-0 shadow-inner">
+                                        {wrap.author_avatar_url ? (
+                                            <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-lg font-bold">
+                                                {(wrap.author_name || 'U').charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">{t('author') || 'DESIGNER'}</p>
+                                        <p className="font-bold text-gray-900 truncate text-base">@{wrap.author_name || 'Anonymous'}</p>
+                                    </div>
+                                </div>
 
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <span className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                    </svg>
-                                    {wrap.category}
-                                </span>
-
-                                <span className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                    {wrap.download_count || 0} {locale === 'zh' ? '次下载' : 'downloads'}
-                                </span>
+                                <DownloadButton
+                                    wrapId={wrap.id}
+                                    wrapName={name}
+                                    wrapSlug={wrap.slug || wrap.id}
+                                    locale={locale}
+                                />
                             </div>
                         </article>
 
-                        {/* 下载按钮 */}
-                        <DownloadButton
-                            wrapId={wrap.id}
-                            wrapName={name}
-                            wrapSlug={wrap.slug || wrap.id}
-                            locale={locale}
-                        />
+                        {/* AI 提示词卡片 - 仅 AI 生成时显示 */}
+                        {wrap.category === 'community' && wrap.prompt && (
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                                        AI Generation Prompt
+                                    </p>
+                                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">v1.2</span>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                    <p className="text-sm font-medium text-gray-600 italic leading-relaxed font-mono">
+                                        "{wrap.prompt}"
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 原始贴图预览 */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all hover:shadow-md">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Original Texture Design</p>
+                            <div className="aspect-[2/1] bg-gray-50 rounded-xl overflow-hidden border border-gray-100 relative group cursor-zoom-in shadow-inner">
+                                <img
+                                    src={getOptimizedImageUrl(wrap.texture_url, { width: 600, quality: 80 })}
+                                    alt="Texture Preview"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[2px]">
+                                    <span className="text-white text-[10px] font-bold tracking-widest uppercase bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-xl">
+                                        Texture View Only
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
