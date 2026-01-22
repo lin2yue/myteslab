@@ -15,17 +15,21 @@ CREATE TABLE IF NOT EXISTS models (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. 贴图方案表 (官方/预设方案)
+-- 2. 贴图方案表 (统一作品表：包含官方与用户生成)
 CREATE TABLE IF NOT EXISTS wraps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  slug VARCHAR(100) UNIQUE NOT NULL,
-  name VARCHAR(200) NOT NULL,
-  description TEXT,
-  texture_url TEXT NOT NULL,
-  preview_url TEXT NOT NULL,
-  category VARCHAR(50) DEFAULT 'official',
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- 用户关联 (官方作品为空)
+  slug VARCHAR(100) UNIQUE,               -- 官方作品标识 (用户生成作品可为空)
+  name VARCHAR(200) NOT NULL,             -- 作品名称
+  description TEXT,                       -- 作品描述
+  prompt TEXT,                            -- AI 生成提示词
+  model_slug TEXT,                        -- 车型标识
+  texture_url TEXT NOT NULL,              -- 贴图地址
+  preview_url TEXT NOT NULL,              -- 预览图地址
+  category VARCHAR(50) DEFAULT 'official',-- 分类: official, community
   download_count INTEGER DEFAULT 0,
-  is_public BOOLEAN DEFAULT TRUE,
+  is_public BOOLEAN DEFAULT TRUE,         -- 是否公开
+  deleted_at TIMESTAMP WITH TIME ZONE,    -- 软删除标记
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -101,6 +105,9 @@ CREATE TABLE IF NOT EXISTS user_downloads (
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_wraps_category ON wraps(category);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public ON wraps(is_public);
+CREATE INDEX IF NOT EXISTS idx_wraps_user_id ON wraps(user_id);
+CREATE INDEX IF NOT EXISTS idx_wraps_model_slug ON wraps(model_slug);
+CREATE INDEX IF NOT EXISTS idx_wraps_deleted_at ON wraps(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_generated_wraps_user_id ON generated_wraps(user_id);
 CREATE INDEX IF NOT EXISTS idx_generated_wraps_model_slug ON generated_wraps(model_slug);
 CREATE INDEX IF NOT EXISTS idx_generated_wraps_is_public ON generated_wraps(is_public);
@@ -199,7 +206,13 @@ ALTER TABLE models ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wraps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE model_wraps ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public Read" ON models FOR SELECT USING (true);
-CREATE POLICY "Public Read" ON wraps FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON wraps FOR SELECT USING (
+  (is_public = true AND (deleted_at IS NULL OR category = 'official')) 
+  OR auth.uid() = user_id
+);
+CREATE POLICY "Insert Own" ON wraps FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Update Own" ON wraps FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Delete Own" ON wraps FOR DELETE USING (auth.uid() = user_id);
 CREATE POLICY "Public Read" ON model_wraps FOR SELECT USING (true);
 
 -- 用户数据

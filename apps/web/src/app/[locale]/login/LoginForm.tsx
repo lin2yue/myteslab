@@ -53,11 +53,22 @@ export default function LoginForm() {
                 </h2>
             </div>
 
-            {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-                    {error}
-                </div>
-            )}
+            {error && (() => {
+                let displayError = error;
+                if (error === 'Invalid login credentials') {
+                    displayError = t('error_invalid_credentials');
+                } else if (error === 'Email not confirmed') {
+                    displayError = t('error_email_not_confirmed');
+                } else if (error === 'Could not authenticate user') {
+                    displayError = t('error_default');
+                }
+
+                return (
+                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                        {displayError}
+                    </div>
+                );
+            })()}
 
             {success === 'check_email' && (
                 <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-md text-sm">

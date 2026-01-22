@@ -43,7 +43,10 @@
         "or": "Or",
         "trial_start": "start your 14-day free trial",
         "loading": "Processing...",
-        "check_email": "Registration successful! Please check your email to confirm your account."
+        "check_email": "Registration successful! Please check your email to confirm your account.",
+        "error_invalid_credentials": "Invalid email or password",
+        "error_email_not_confirmed": "Email not confirmed. Please check your inbox and click the confirmation link before signing in.",
+        "error_default": "Authentication failed, please try again"
     },
     "Profile": {
         "title": "My Profile",

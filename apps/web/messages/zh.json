@@ -43,7 +43,10 @@
         "or": "或者",
         "trial_start": "开始14天免费试用",
         "loading": "处理中...",
-        "check_email": "注册成功！请检查您的邮箱以确认账户。"
+        "check_email": "注册成功！请检查您的邮箱以确认账户。",
+        "error_invalid_credentials": "邮箱或密码错误",
+        "error_email_not_confirmed": "邮箱尚未确认，请检查您的收件箱并点击确认邮件中的链接后再重试登录。",
+        "error_default": "登录失败，请稍后重试"
     },
     "Profile": {
         "title": "个人中心",
