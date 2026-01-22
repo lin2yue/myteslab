@@ -2,15 +2,6 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from '@/i18n/routing';
 import AIGeneratorMain from './AIGeneratorMain';
 
-// Available models
-const MODELS = [
-    { slug: 'cybertruck', name: 'Cybertruck', modelUrl: 'https://cdn.tewan.club/models/wraps/cybertruck/model_v1.glb' },
-    { slug: 'model-3', name: 'Model 3', modelUrl: 'https://cdn.tewan.club/models/wraps/model-3/model_v1.glb' },
-    { slug: 'model-3-2024-plus', name: 'Model 3 2024+', modelUrl: 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v1.glb' },
-    { slug: 'model-y-pre-2025', name: 'Model Y', modelUrl: 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb' },
-    { slug: 'model-y-2025-plus', name: 'Model Y 2025+', modelUrl: 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v3.glb' },
-]
-
 export default async function GeneratePage({
     params
 }: {
@@ -20,8 +11,9 @@ export default async function GeneratePage({
     const supabase = await createClient();
 
     const {
-        data: { user },
-    } = await supabase.auth.getUser();
+        data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
 
     if (!user) {
         return redirect({ href: '/login', locale });
@@ -34,10 +26,24 @@ export default async function GeneratePage({
         .eq('user_id', user.id)
         .single();
 
+    // Fetch available models from DB
+    const { data: modelsData } = await supabase
+        .from('wrap_models')
+        .select('slug, name, model_3d_url')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+    // Fallback or transform
+    const models = (modelsData || []).map(m => ({
+        slug: m.slug,
+        name: m.name,
+        modelUrl: m.model_3d_url || undefined
+    }));
+
     return (
         <AIGeneratorMain
             initialCredits={credits?.balance || 0}
-            models={MODELS}
+            models={models}
             locale={locale}
         />
     );

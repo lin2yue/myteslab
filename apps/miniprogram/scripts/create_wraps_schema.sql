@@ -4,6 +4,7 @@ create table if not exists public.wrap_models (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null,
+  model_3d_url text,
   manufacturer text not null default 'Tesla',
   is_active boolean not null default true,
   sort_order integer not null default 0,

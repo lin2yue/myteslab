@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
 
         try {
             const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
+            // @ts-ignore
             const sharp = (await import('sharp')).default;
 
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
