@@ -41,6 +41,7 @@
         - [x] Database Schema (Profiles, Credits, Assets).
         - [x] Supabase Auth Integration (Email & Google).
         - [x] User Profile & Localization.
+        - [x] Account Deletion (Self-service & Admin API).
     - [x] **AI Generation**:
         - [x] Backend: Credit deduction RPC & Task tracking.
         - [x] API: Integration with Gemini for wrap generation.

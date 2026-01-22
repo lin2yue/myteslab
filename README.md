@@ -227,12 +227,13 @@ A:
 2. 在 Supabase 的 `wrap_models` 表中添加记录
 3. 更新 `viewer-config.json` 添加车型专属参数
 
-### Q: 如何添加新的贴图？
+### Q: 如何删除用户账户？
 A:
-1. 生成预览图（使用 dev-studio）
-2. 上传纹理和预览图到 OSS
-3. 在 Supabase 的 `wraps` 表中添加记录
-4. 在 `wrap_model_map` 中关联车型
+1. 确保在 `apps/web/.env.local` 中配置了 `SUPABASE_SERVICE_ROLE_KEY`。
+2. 运行脚本并指定邮箱：
+   ```bash
+   npx tsx apps/web/scripts/delete-user.ts example@qq.com
+   ```
 
 ---
 

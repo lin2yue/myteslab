@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions';
+import { deleteUserAccount } from '@/lib/auth-actions';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/images';
 
@@ -67,6 +68,20 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
         } catch (e) {
             console.error(e);
             alert(t('update_failed'));
+        } finally {
+            setLoadingId(null);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!confirm(t('delete_account_confirm'))) return;
+        setLoadingId('delete_account');
+        try {
+            await deleteUserAccount();
+            // Redirect happens in action
+        } catch (e) {
+            console.error(e);
+            alert(t('delete_failed'));
         } finally {
             setLoadingId(null);
         }
@@ -203,6 +218,24 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                         )}
                     </div>
                 )}
+            </div>
+
+            {/* Danger Zone */}
+            <div className="border-t border-gray-100 p-6 bg-red-50/30">
+                <h3 className="text-sm font-bold text-red-600 mb-4">{t('danger_zone')}</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="text-sm text-gray-900 font-medium">{t('delete_account')}</p>
+                        <p className="text-xs text-gray-500 mt-1">{t('delete_account_desc')}</p>
+                    </div>
+                    <button
+                        onClick={handleDeleteAccount}
+                        disabled={loadingId === 'delete_account'}
+                        className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-md text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                        {loadingId === 'delete_account' ? t('deleting_account') : t('delete_account')}
+                    </button>
+                </div>
             </div>
         </div>
     );
