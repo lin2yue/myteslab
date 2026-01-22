@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { login, signup, checkUserExists, resetPassword, resendVerification } from './actions';
 import { createClient } from '@/utils/supabase/client';
@@ -19,6 +19,7 @@ export default function LoginForm() {
     const t = useTranslations('Login');
     const locale = useLocale();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // States
     const [view, setView] = useState<ViewState>('EMAIL');
@@ -93,7 +94,20 @@ export default function LoginForm() {
         startTransition(async () => {
             const result = await login(formData);
             if (result && !result.success) {
-                setError(result.error || t('error_invalid_credentials'));
+                // Check if email is not confirmed
+                if (result.error === 'Email not confirmed') {
+                    // Auto-switch to VERIFY view
+                    setPassword(''); // Clear password
+                    setView('VERIFY');
+                    setResendTimer(60);
+                    setError(null); // Clear error since we're showing the verify view
+                } else {
+                    setError(result.error || t('error_invalid_credentials'));
+                }
+            } else if (result?.success) {
+                // 登录成功,使用客户端路由跳转
+                router.push(`/${locale}`);
+                router.refresh(); // 刷新服务端数据
             }
         });
     };
@@ -178,12 +192,9 @@ export default function LoginForm() {
             {/* EMAIL VIEW */}
             {view === 'EMAIL' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">
+                    <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
                         {t('title')}
                     </h2>
-                    <p className="text-gray-500 text-center mb-8 text-sm">
-                        {t('or')} {searchParams.get('next') ? 'continue to your destination' : 'explore the studio'}
-                    </p>
 
                     <form onSubmit={onContinue} className="space-y-4">
                         <div className="relative group">

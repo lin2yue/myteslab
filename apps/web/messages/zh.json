@@ -40,6 +40,7 @@
         "password_placeholder": "请输入密码",
         "sign_in": "登录",
         "sign_up": "注册",
+        "sign_in_or_sign_up": "注册 / 登录",
         "continue": "继续",
         "welcome_back": "欢迎回来",
         "create_account": "创建账户",

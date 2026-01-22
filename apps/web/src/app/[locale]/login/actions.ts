@@ -69,8 +69,8 @@ export async function login(formData: FormData) {
     }
 
     revalidatePath('/', 'layout');
-    // Using redirect here is fine for successful login
-    redirect({ href: '/', locale });
+    // 返回成功状态,让客户端处理重定向
+    return { success: true };
 }
 
 export async function signup(formData: FormData) {

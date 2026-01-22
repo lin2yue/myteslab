@@ -40,6 +40,7 @@
         "password_placeholder": "Password",
         "sign_in": "Sign in",
         "sign_up": "Sign up",
+        "sign_in_or_sign_up": "Sign in / Sign up",
         "continue": "Continue",
         "welcome_back": "Welcome back",
         "create_account": "Create account",
