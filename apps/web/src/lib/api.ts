@@ -39,9 +39,9 @@ function normalizeWrap(w: any): Wrap {
         ...w,
         name: w.name || w.prompt || 'Untitled Wrap',
         slug: w.slug || w.id,
-        wrap_image_url: ensureCdn(w.texture_url),
-        preview_image_url: ensureCdn(w.preview_url),
-        image_url: ensureCdn(w.texture_url),
+        wrap_image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
+        preview_image_url: w.preview_url ? ensureCdn(w.preview_url) : undefined,
+        image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
         model_slug: w.model_slug,
         category: w.category || 'community',
         is_active: true,
@@ -65,7 +65,7 @@ export async function getWraps(
     try {
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
-            ['wraps-v4', modelSlug || 'all', String(page), sortBy],
+            ['wraps-v6', modelSlug || 'all', String(page), sortBy],
             { revalidate: 60 }
         )()
     } catch (error) {
@@ -85,9 +85,24 @@ async function fetchWrapsInternal(
 
     try {
         // 使用 Supabase Join 一次性查出作品及作者资料
+        // 列表页排除巨大的 texture_url 和 reference_images 以符合 Next.js 2MB 缓存限制
         let query = publicSupabase
             .from('wraps')
-            .select('*, profiles(id, display_name, avatar_url)')
+            .select(`
+                id, 
+                slug, 
+                name, 
+                prompt, 
+                category, 
+                preview_url, 
+                model_slug, 
+                user_id, 
+                download_count, 
+                is_public, 
+                is_active, 
+                created_at, 
+                profiles(id, display_name, avatar_url)
+            `)
             .eq('is_public', true)
 
         if (modelSlug) query = query.eq('model_slug', modelSlug)
@@ -101,7 +116,13 @@ async function fetchWrapsInternal(
         const { data: rawWraps, error } = await query.range(from, to)
         if (error || !rawWraps) return []
 
-        return rawWraps.map(w => normalizeWrap(w))
+        const normalized = rawWraps.map(w => normalizeWrap(w))
+        // 移除过多的调试日志输出，仅记录关键信息
+        const totalSize = Buffer.byteLength(JSON.stringify(normalized))
+        if (totalSize > 1024 * 1024) {
+            console.warn(`[WARN] fetchWrapsInternal result is still large: ${totalSize} bytes`)
+        }
+        return normalized
 
     } catch (err) {
         console.error('fetchWrapsInternal error:', err)
@@ -159,12 +180,14 @@ export async function getModels(): Promise<Model[]> {
         return await unstable_cache(
             async () => {
                 const { data, error } = await publicSupabase.from('wrap_models').select('*').eq('is_active', true).order('sort_order', { ascending: true })
-                return error ? [] : (data || [])
+                const models = error ? [] : (data || [])
+                return models
             },
-            ['models-v4'],
+            ['models-v6'],
             { revalidate: 3600 }
         )()
     } catch (error) {
+        console.error('getModels error:', error)
         return []
     }
 }
