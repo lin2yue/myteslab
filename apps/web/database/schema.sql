@@ -132,7 +132,7 @@ RETURNS trigger AS $$
 BEGIN
   -- 创建资料
   INSERT INTO public.profiles (id, email, display_name)
-  VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'User'));
+  VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)));
   
   -- 赋予 3 初始积分
   INSERT INTO public.user_credits (user_id, balance, total_earned)
@@ -230,7 +230,7 @@ CREATE POLICY "Public Read" ON wrap_model_map FOR SELECT USING (true);
 
 -- 用户数据
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Own Profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Public Read Profiles" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Own Update" ON profiles FOR UPDATE USING (auth.uid() = id);
 
 ALTER TABLE user_credits ENABLE ROW LEVEL SECURITY;

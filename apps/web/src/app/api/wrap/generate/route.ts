@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         // 这个函数会检查余额 -> 扣费 -> 创建任务记录，全部在数据库事务中完成
         const { data: deductResult, error: rpcError } = await supabase.rpc('deduct_credits_for_generation', {
             p_prompt: prompt,
-            p_amount: 1 // 每次消耗 1 积分
+            p_amount: 5 // 每次消耗 5 积分
         });
 
         if (rpcError || !deductResult?.[0]?.success) {
@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
 
         try {
             const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
+            // @ts-ignore
             const sharp = (await import('sharp')).default;
 
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');

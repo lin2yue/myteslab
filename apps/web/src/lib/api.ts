@@ -45,7 +45,7 @@ function normalizeWrap(w: any): Wrap {
         model_slug: w.model_slug,
         category: w.category || 'community',
         is_active: true,
-        author_name: profile?.display_name || 'Anonymous',
+        author_name: profile?.display_name || (w.category === 'official' ? 'MyTesLab' : 'Anonymous'),
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
         download_count: w.download_count || 0,
@@ -158,8 +158,15 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
         // 详情页也统一拉取 Profile
         let profiles = null
         if (wrapData.user_id) {
-            const { data } = await supabaseClient.from('profiles').select('display_name, avatar_url').eq('id', wrapData.user_id).single()
+            const { data, error: profileError } = await supabaseClient.from('profiles').select('display_name, avatar_url').eq('id', wrapData.user_id).single()
+            if (profileError) {
+                console.error('[Debug] Failed to fetch profile for user:', wrapData.user_id, profileError)
+            } else {
+                console.log('[Debug] Fetched profile:', data)
+            }
             profiles = data
+        } else {
+            console.log('[Debug] Wrap has no user_id:', wrapData.id)
         }
 
         // 补齐模型预览链接

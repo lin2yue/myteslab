@@ -112,12 +112,7 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
                 className={`py-12 flex justify-center transition-opacity duration-300 ${hasMore ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 {loading && (
-                    <div className="flex items-center gap-3 text-gray-400">
-                        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
-                        <span className="text-sm font-medium">
-                            Loading...
-                        </span>
-                    </div>
+                    <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
                 )}
                 {!loading && hasMore && (
                     <div className="h-10" /> // 占位符以便触发观察

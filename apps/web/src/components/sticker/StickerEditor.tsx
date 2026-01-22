@@ -126,8 +126,8 @@ export default function StickerEditor({
                                     alt="Uploaded"
                                 />
                                 {(isProcessing || isSaving) && (
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm">
-                                        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 bg-black/10 flex items-center justify-center backdrop-blur-[1px]">
+                                        <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
                                     </div>
                                 )}
                             </div>

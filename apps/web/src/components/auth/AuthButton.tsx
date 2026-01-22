@@ -4,10 +4,12 @@ import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { Link } from '@/i18n/routing';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 export default function AuthButton() {
+    const t = useTranslations('Login');
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export default function AuthButton() {
                 className="flex items-center gap-2 focus:outline-none"
             >
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-gray-200">
-                                        <Image
+                    <Image
                         src={avatarUrl || defaultAvatar}
                         alt="User Avatar"
                         width={32}
@@ -116,7 +118,7 @@ export default function AuthButton() {
             href="/login"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 transition-colors"
         >
-            Sign In
+            {t('sign_in_or_sign_up')}
         </Link>
     );
 }

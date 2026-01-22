@@ -59,3 +59,4 @@
 1. **Check this file** for high-level context.
 2. **Update this file** if you complete a major milestone (e.g., "Language Switcher Added").
 3. **Respect constraints:** Do not add `packages/` unless approved. Do not add heavy libraries without check.
+4. **Communication:** Always use **Chinese** (中文) when communicating with the user, unless technical terminology requires English.
