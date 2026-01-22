@@ -312,14 +312,24 @@ export default function AIGeneratorMain({
         }
     }
 
+    const splitLabel = (label: any) => {
+        if (typeof label !== 'string') return { icon: '', text: '' }
+        const trimmed = label.trim()
+        const parts = trimmed.split(/\s+/)
+        if (parts.length > 1) {
+            return { icon: parts[0], text: parts.slice(1).join(' ') }
+        }
+        return { icon: '', text: trimmed }
+    }
+
     return (
-        <div className="flex flex-col h-[calc(100vh-64px)] bg-[#F4F4F4] overflow-hidden">
+        <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-[#F4F4F4] overflow-y-auto lg:overflow-hidden">
             {/* Main Content Area */}
-            <div className="flex flex-1 overflow-hidden w-full max-w-[1600px] mx-auto">
+            <div className="flex flex-col lg:flex-row flex-1 overflow-visible lg:overflow-hidden w-full max-w-[1600px] mx-auto">
 
                 {/* Left Side: 3D Preview (65%) */}
-                <div className="flex-[6.5] flex flex-col p-6 gap-6 overflow-hidden">
-                    <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
+                <div className="flex-none lg:flex-[6.5] flex flex-col p-4 lg:p-6 gap-4 lg:gap-6 overflow-hidden">
+                    <div className="h-[50vh] lg:flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
@@ -334,50 +344,90 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-row overflow-x-auto flex-nowrap lg:flex-wrap gap-2 lg:gap-3 pb-2 lg:pb-0">
                         <button
                             onClick={() => setIsNight(!isNight)}
-                            className="px-6 py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                            className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
                         >
-                            {isNight ? tGen('day_mode') : tGen('night_mode')}
+                            {(() => {
+                                const { icon, text } = splitLabel(isNight ? tGen('day_mode') : tGen('night_mode'))
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
+                            })()}
                         </button>
                         <button
                             onClick={() => setAutoRotate(!autoRotate)}
-                            className={`px-6 py-3 rounded-xl shadow-sm border font-medium transition-colors flex items-center gap-2 ${autoRotate ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-700'}`}
+                            className={`px-3 py-2 lg:px-6 lg:py-3 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-2 flex-shrink-0 ${autoRotate ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-700'}`}
                         >
-                            {autoRotate ? tGen('auto_rotate_on') : tGen('auto_rotate_off')}
+                            {(() => {
+                                const { icon, text } = splitLabel(autoRotate ? tGen('auto_rotate_on') : tGen('auto_rotate_off'))
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
+                            })()}
                         </button>
-                        <div className="flex-1" />
+                        <div className="hidden lg:block lg:flex-1" />
                         <button
                             onClick={takeSnapshot}
-                            className="px-6 py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                            className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
                         >
-                            {tGen('screenshot')}
+                            {(() => {
+                                const { icon, text } = splitLabel(tGen('screenshot'))
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
+                            })()}
                         </button>
                         <button
                             onClick={handleDownload}
                             disabled={!currentTexture}
-                            className="px-6 py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 flex-shrink-0"
                         >
-                            {tGen('download_png')}
+                            {(() => {
+                                const { icon, text } = splitLabel(tGen('download_png'))
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
+                            })()}
                         </button>
                         <button
                             onClick={handlePublish}
                             disabled={isPublishing || isSaving || (activeMode === 'ai' && !activeWrapId) || (activeMode === 'diy' && !currentTexture) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
-                            className={`px-6 py-3 rounded-xl shadow-sm border font-medium transition-colors flex items-center gap-2 ${isPublishing || isSaving ? 'bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 disabled:opacity-50')}`}
+                            className={`px-3 py-2 lg:px-6 lg:py-3 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-2 flex-shrink-0 ${isPublishing || isSaving ? 'bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 disabled:opacity-50')}`}
                         >
                             {(isPublishing || isSaving) ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                    {isSaving ? '正在保存...' : '正在发布...'}
+                                    <span className="hidden lg:inline">{isSaving ? '正在保存...' : '正在发布...'}</span>
                                 </>
-                            ) : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? tGen('already_published') : tGen('publish'))}
+                            ) : (() => {
+                                const { icon, text } = splitLabel(activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? tGen('already_published') : tGen('publish'))
+                                return (
+                                    <>
+                                        {icon && <span className="text-lg lg:text-base">{icon}</span>}
+                                        <span className={icon ? "hidden lg:inline" : ""}>{text}</span>
+                                    </>
+                                )
+                            })()}
                         </button>
                     </div>
                 </div>
 
                 {/* Right Side: Controls (30%) */}
-                <div className="flex-[3.5] flex flex-col p-6 pl-0 gap-6 overflow-hidden">
+                <div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 lg:pl-0 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden">
 
                     {/* Mode Switcher Tabs */}
                     <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200">
@@ -407,65 +457,8 @@ export default function AIGeneratorMain({
                     <div className="flex-1 overflow-hidden min-h-0">
                         {activeMode === 'ai' ? (
                             <div className="flex flex-col h-full gap-4">
-                                {/* History List */}
-                                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                                    <div className="p-4 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center">
-                                        {tGen('history')}
-                                        <button onClick={fetchHistory} className="text-xs text-blue-500 font-normal">{tGen('refresh')}</button>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
-                                        {isFetchingHistory && history.length === 0 ? (
-                                            [1, 2, 3].map(i => (
-                                                <div key={i} className="flex gap-3 p-3 rounded-xl border border-gray-100 animate-pulse">
-                                                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0" />
-                                                    <div className="flex-1 space-y-2 py-1">
-                                                        <div className="h-2 bg-gray-100 rounded w-3/4" />
-                                                        <div className="h-2 bg-gray-100 rounded w-1/2" />
-                                                        <div className="flex justify-between pt-2">
-                                                            <div className="h-2 bg-gray-50 rounded w-1/4" />
-                                                            <div className="h-2 bg-gray-50 rounded w-1/4" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : history.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm">
-                                                <span className="text-4xl mb-4">🎨</span>
-                                                {tGen('no_history')}
-                                            </div>
-                                        ) : (
-                                            <>
-                                                {isFetchingHistory && (
-                                                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-100 overflow-hidden z-10">
-                                                        <div className="w-1/2 h-full bg-blue-500 animate-[loading_1s_infinite_linear]"
-                                                            style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(to right, transparent, #3b82f6, transparent)' }} />
-                                                    </div>
-                                                )}
-                                                {history.map((item) => (
-                                                    <HistoryItem
-                                                        key={item.id}
-                                                        item={item}
-                                                        activeWrapId={activeWrapId}
-                                                        getCdnUrl={getCdnUrl}
-                                                        onClick={() => {
-                                                            const cdnUrl = getCdnUrl(item.texture_url);
-                                                            let displayUrl = cdnUrl;
-                                                            if (cdnUrl.startsWith('http') && !cdnUrl.includes(window.location.origin)) {
-                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(cdnUrl)}`;
-                                                            }
-                                                            setCurrentTexture(displayUrl);
-                                                            setSelectedModel(item.model_slug);
-                                                            setActiveWrapId(item.id);
-                                                        }}
-                                                    />
-                                                ))}
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-
                                 {/* Model, Credits & Buy Area in One Row - Specific for AI */}
-                                <div className="flex gap-3 items-center">
+                                <div className="flex gap-3 items-center order-1 lg:order-2">
                                     <div className="flex-[2] relative">
                                         <select
                                             value={selectedModel}
@@ -494,7 +487,7 @@ export default function AIGeneratorMain({
                                 </div>
 
                                 {/* Input Area */}
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col gap-4">
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col gap-4 order-2 lg:order-3">
                                     <textarea
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
@@ -565,6 +558,63 @@ export default function AIGeneratorMain({
                                         ) : tGen('generate_btn')}
                                     </button>
                                 </div>
+
+                                {/* History List */}
+                                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden order-3 lg:order-1 min-h-[400px] lg:min-h-0">
+                                    <div className="p-4 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center">
+                                        {tGen('history')}
+                                        <button onClick={fetchHistory} className="text-xs text-blue-500 font-normal">{tGen('refresh')}</button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
+                                        {isFetchingHistory && history.length === 0 ? (
+                                            [1, 2, 3].map(i => (
+                                                <div key={i} className="flex gap-3 p-3 rounded-xl border border-gray-100 animate-pulse">
+                                                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0" />
+                                                    <div className="flex-1 space-y-2 py-1">
+                                                        <div className="h-2 bg-gray-100 rounded w-3/4" />
+                                                        <div className="h-2 bg-gray-100 rounded w-1/2" />
+                                                        <div className="flex justify-between pt-2">
+                                                            <div className="h-2 bg-gray-50 rounded w-1/4" />
+                                                            <div className="h-2 bg-gray-50 rounded w-1/4" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : history.length === 0 ? (
+                                            <div className="h-[200px] flex flex-col items-center justify-center text-gray-400 text-sm">
+                                                <span className="text-4xl mb-4">🎨</span>
+                                                {tGen('no_history')}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {isFetchingHistory && (
+                                                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-100 overflow-hidden z-10">
+                                                        <div className="w-1/2 h-full bg-blue-500 animate-[loading_1s_infinite_linear]"
+                                                            style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(to right, transparent, #3b82f6, transparent)' }} />
+                                                    </div>
+                                                )}
+                                                {history.map((item) => (
+                                                    <HistoryItem
+                                                        key={item.id}
+                                                        item={item}
+                                                        activeWrapId={activeWrapId}
+                                                        getCdnUrl={getCdnUrl}
+                                                        onClick={() => {
+                                                            const itemCdnUrl = getCdnUrl(item.texture_url);
+                                                            let displayUrl = itemCdnUrl;
+                                                            if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`;
+                                                            }
+                                                            setCurrentTexture(displayUrl);
+                                                            setSelectedModel(item.model_slug);
+                                                            setActiveWrapId(item.id);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="h-full flex flex-col gap-4 overflow-hidden">
@@ -610,7 +660,8 @@ function HistoryItem({
     onClick: () => void;
     getCdnUrl: (url: string) => string;
 }) {
-    const [imgSrc, setImgSrc] = useState(getCdnUrl(item.texture_url));
+    const textureUrl = item.texture_url || '';
+    const [imgSrc, setImgSrc] = useState(getCdnUrl(textureUrl) || 'https://placehold.co/100x100?text=No+Image');
 
     return (
         <div
