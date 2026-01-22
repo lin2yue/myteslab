@@ -50,6 +50,16 @@ export default function AIGeneratorMain({
         }
         return url
     }
+
+    const getProxyUrl = useCallback((url: string) => {
+        if (!url) return '';
+        const effectiveUrl = getCdnUrl(url);
+        if (effectiveUrl.startsWith('http') && typeof window !== 'undefined' && !effectiveUrl.includes(window.location.origin)) {
+            return `/api/proxy?url=${encodeURIComponent(effectiveUrl)}`;
+        }
+        return effectiveUrl;
+    }, [cdnUrl])
+
     const supabase = useMemo(() => createClient(), [])
 
     const [balance, setBalance] = useState(initialCredits)
@@ -342,7 +352,7 @@ export default function AIGeneratorMain({
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
-                            modelUrl={models.find(m => m.slug === selectedModel)?.modelUrl || ''}
+                            modelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.modelUrl || '')}
                             textureUrl={currentTexture || undefined}
                             modelSlug={selectedModel}
                             backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
