@@ -41,9 +41,9 @@ async function deleteUserByEmail(email: string) {
     let userId = user?.id;
 
     if (user) {
-        console.log(`Found user in Auth. ID: ${userId}`);
+        console.log(`Found user in Auth. ID: ${user.id}`);
         // 2. Delete the user from Supabase Auth
-        const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+        const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
         if (deleteError) {
             console.error("Error deleting user from Auth:", deleteError.message);
         } else {
