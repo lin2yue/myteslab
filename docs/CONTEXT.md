@@ -34,7 +34,11 @@
     - [x] Add language switcher UI (Frontend).
     - [x] Add SEO meta tags (Frontend).
     - [x] Setup Google Analytics.
-    - [ ] Generate Sitemap.xml.
+    - [x] **SEO & Sitemap**:
+        - [x] Semantic Model Routes (`/models/[slug]`).
+        - [x] Metadata Optimization & High-intent Keywords.
+        - [x] Structured Data (JSON-LD).
+        - [x] Scalable Sitemap Index with Pagination (`route.ts`).
     - [ ] Setup Sentry for error tracking.
     - [ ] Setup Vercel Analytics.
     - [x] **User System**:

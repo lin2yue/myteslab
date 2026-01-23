@@ -27,9 +27,21 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
+    // Check if this is an OAuth callback with a code
+    const code = request.nextUrl.searchParams.get('code')
+    if (code) {
+        console.log('[updateSession] Detected OAuth code, exchanging for session')
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+            console.error('[updateSession] Failed to exchange code for session:', error)
+        } else {
+            console.log('[updateSession] Successfully exchanged code for session')
+        }
+    }
+
     // IMPORTANT: Avoid writing any logic between createServerClient and
     // supabase.auth.getUser(). A simple mistake can make it very hard to debug
-    // issues with pins or sessions.
+    // issues with users or sessions.
 
     const {
         data: { user },

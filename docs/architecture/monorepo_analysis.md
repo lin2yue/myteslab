@@ -178,6 +178,17 @@ tesla-studio-monorepo/
 
 ---
 
+### ✅ 建议 5: 多语言 SEO 架构 → **已实施**
+
+**决策内容**：使用 `route.ts` 替代 `sitemap.ts` 手动生成 Sitemap Index。
+
+**理由**：
+1. **Middleware 冲突解决**：Next.js 默认的 `sitemap.ts` 在 `next-intl` 中间件环境下极易被误重定向导致 404。
+2. **扩展性**：通过 `sitemap/[slug]/route.ts` 实现了工业级的物理分页（wraps-n.xml），支持海量 UGC 内容索引。
+3. **精准控制**：可精细控制 XML Headers、Pagination 逻辑及质量审计门禁。
+
+---
+
 ## 总结
 
 | 建议 | 采纳情况 | 优先级 | 理由 |

@@ -17,10 +17,11 @@ export default function AuthCallbackHandler() {
             if (next) {
                 console.log('[AuthCallbackHandler] Redirecting to:', next);
                 localStorage.removeItem('auth_redirect_next');
-                window.location.href = next;
+                // Use replace to force a full page reload and ensure auth state is updated
+                window.location.replace(next);
             } else {
                 console.log('[AuthCallbackHandler] No redirect URL, going to home');
-                router.push('/');
+                window.location.replace('/');
             }
         };
 

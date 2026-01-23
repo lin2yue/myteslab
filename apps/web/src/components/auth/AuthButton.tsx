@@ -114,11 +114,15 @@ export default function AuthButton() {
             )}
         </div>
     ) : (
-        <Link
-            href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '')}`}
+        <button
+            onClick={() => {
+                const currentUrl = window.location.pathname + window.location.search;
+                localStorage.setItem('auth_redirect_next', currentUrl);
+                window.location.href = `/login?next=${encodeURIComponent(currentUrl)}`;
+            }}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 transition-colors"
         >
             {t('sign_in_or_sign_up')}
-        </Link>
+        </button>
     );
 }
