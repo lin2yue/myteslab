@@ -2,8 +2,8 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/routing'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, usePathname } from '@/i18n/routing'
+import { useSearchParams, useParams } from 'next/navigation'
 import type { Model } from '@/lib/types'
 
 interface FilterBarProps {
@@ -18,7 +18,9 @@ export function FilterBar({ models, onLoadingChange, sortBy = 'latest' }: Filter
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    const actualModel = searchParams.get('model') || ''
+    const params = useParams()
+    const pathModel = params?.slug as string || ''
+    const actualModel = pathModel || searchParams.get('model') || ''
     const actualSort = (searchParams.get('sort') as 'latest' | 'popular') || 'latest'
 
     // Local state for instant UI update
@@ -38,12 +40,17 @@ export function FilterBar({ models, onLoadingChange, sortBy = 'latest' }: Filter
     }, [isPending, onLoadingChange])
 
     const updateUrl = (model: string, sort: string) => {
-        const params = new URLSearchParams()
-        if (model) params.set('model', model)
-        if (sort && sort !== 'latest') params.set('sort', sort)
+        const queryParams = new URLSearchParams()
+        if (sort && sort !== 'latest') queryParams.set('sort', sort)
 
-        const queryString = params.toString()
-        router.push(queryString ? `/?${queryString}` : '/')
+        const queryString = queryParams.toString()
+        const suffix = queryString ? `?${queryString}` : ''
+
+        if (model) {
+            router.push(`/models/${model}${suffix}`)
+        } else {
+            router.push(`/${suffix}`)
+        }
     }
 
     const handleModelChange = (value: string) => {

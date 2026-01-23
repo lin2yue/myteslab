@@ -37,5 +37,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
     )
 
-    return [...homePages, ...wrapPages]
+    // 静态页面
+    const staticPages = ['terms', 'privacy', 'refund']
+    const otherPages: MetadataRoute.Sitemap = staticPages.flatMap((page) =>
+        locales.map((locale) => ({
+            url: `${baseUrl}/${locale}/${page}`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly' as const,
+            priority: 0.5,
+            alternates: {
+                languages: {
+                    en: `${baseUrl}/en/${page}`,
+                    zh: `${baseUrl}/zh/${page}`,
+                },
+            },
+        }))
+    )
+
+    // 模型聚合页（所有语言版本）
+    const { getModels } = await import('@/lib/api')
+    const models = await getModels()
+    const modelPages: MetadataRoute.Sitemap = models.flatMap((model) =>
+        locales.map((locale) => ({
+            url: `${baseUrl}/${locale}/models/${model.slug}`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.9,
+            alternates: {
+                languages: {
+                    en: `${baseUrl}/en/models/${model.slug}`,
+                    zh: `${baseUrl}/zh/models/${model.slug}`,
+                },
+            },
+        }))
+    )
+
+    return [...homePages, ...wrapPages, ...modelPages, ...otherPages]
 }

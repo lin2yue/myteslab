@@ -4,8 +4,20 @@ import { getTranslations } from 'next-intl/server';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
     const { locale } = await params;
     const t = await getTranslations({ locale, namespace: 'Legal.refund' });
+    const description = locale === 'en'
+        ? 'Refund Policy for MyTesLab - Information about credit purchases and refund conditions.'
+        : 'MyTesLab 退款政策 - 关于积分购买和退款条件的说明。';
+
     return {
         title: `${t('title')} - MyTesLab`,
+        description,
+        alternates: {
+            canonical: `/${locale}/refund`,
+            languages: {
+                en: '/en/refund',
+                zh: '/zh/refund',
+            },
+        },
     };
 }
 

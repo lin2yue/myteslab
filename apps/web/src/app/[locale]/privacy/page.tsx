@@ -4,8 +4,20 @@ import { getTranslations } from 'next-intl/server';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
     const { locale } = await params;
     const t = await getTranslations({ locale, namespace: 'Legal.privacy' });
+    const description = locale === 'en'
+        ? 'Privacy Policy for MyTesLab - We value your privacy and explain how we handle your data.'
+        : 'MyTesLab 隐私政策 - 我们重视您的隐私，并说明我们如何处理您的数据。';
+
     return {
         title: `${t('title')} - MyTesLab`,
+        description,
+        alternates: {
+            canonical: `/${locale}/privacy`,
+            languages: {
+                en: '/en/privacy',
+                zh: '/zh/privacy',
+            },
+        },
     };
 }
 

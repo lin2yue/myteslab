@@ -4,8 +4,20 @@ import { getTranslations } from 'next-intl/server';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
     const { locale } = await params;
     const t = await getTranslations({ locale, namespace: 'Legal.tos' });
+    const description = locale === 'en'
+        ? 'Terms of Service for MyTesLab - Learn about our rules, ownership, and license for Tesla wrap designs.'
+        : 'MyTesLab 服务条款 - 了解我们的规则、所有权以及特斯拉贴图设计的许可协议。';
+
     return {
         title: `${t('title')} - MyTesLab`,
+        description,
+        alternates: {
+            canonical: `/${locale}/terms`,
+            languages: {
+                en: '/en/terms',
+                zh: '/zh/terms',
+            },
+        },
     };
 }
 
