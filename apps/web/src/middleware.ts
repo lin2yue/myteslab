@@ -42,6 +42,6 @@ export const config = {
          * - models (3D models)
          * - textures (static textures)
          */
-        '/((?!_next/static|_next/image|favicon.ico|models|textures|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|models|textures|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 };
