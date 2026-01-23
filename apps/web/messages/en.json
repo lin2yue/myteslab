@@ -212,5 +212,22 @@
         "generations": "AI Wrap Designs",
         "generations_desc": "Estimated (5 credits/gen)",
         "secure_payment_desc": "Secure payment processed by Paddle. One-time purchase, no subscription."
+    },
+    "Models": {
+        "model-3": {
+            "description": "Discover premium Model 3 wrap ideas. From matte black to custom patterns, find the perfect look for your Tesla Model 3."
+        },
+        "model-y": {
+            "description": "Explore custom Model Y wrap designs. Visualize colors and styles in 3D to transform your Tesla Model Y."
+        },
+        "cybertruck": {
+            "description": "The ultimate collection of Cybertruck wrap designs. Preview futuristic skins and stainless steel alternatives in real-time."
+        },
+        "model-s": {
+            "description": "Elegant and high-performance wrap designs for Tesla Model S. Enhance the luxury of your Model S with custom textures."
+        },
+        "model-x": {
+            "description": "Unique Model X wrap inspiration. Preview designs with falcon wing doors and choose the best style for your Tesla Model X."
+        }
     }
 }

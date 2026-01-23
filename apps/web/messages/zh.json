@@ -212,5 +212,22 @@
         "generations": "次 AI 贴纸设计",
         "generations_desc": "基于 5 积分/次 估算",
         "secure_payment_desc": "支付由 Paddle 安全处理。一次性付费，无自动续费。"
+    },
+    "Models": {
+        "model-3": {
+            "description": "探索高品质 Model 3 改色灵感。从哑光黑到定制图案，为您寻找特斯拉 Model 3 的完美造型。"
+        },
+        "model-y": {
+            "description": "发现定制 Model Y 改色设计。通过 3D 预览不同颜色与风格，彻底改变您的特斯拉 Model Y。"
+        },
+        "cybertruck": {
+            "description": "赛博皮卡 Cybertruck 改色设计终极合集。实时预览未来感十足的皮肤及不锈钢颜色替代方案。"
+        },
+        "model-s": {
+            "description": "为特斯拉 Model S 打造的高性能及优雅改色设计。通过定制纹理提升 Model S 的豪华质感。"
+        },
+        "model-x": {
+            "description": "独特的 Model X 改色灵感。结合鹰翼门预览设计效果，为您的特斯拉 Model X 选择最佳风格。"
+        }
     }
 }

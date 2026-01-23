@@ -5,7 +5,7 @@ import { Link } from '@/i18n/routing'
 import { ModelViewerClient } from '@/components/ModelViewerClient'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
-import { getWrap } from '@/lib/api'
+import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
 import { createClient } from '@/utils/supabase/server'
 
@@ -26,11 +26,20 @@ export async function generateMetadata({
     }
 
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
-    const description = locale === 'en'
-        ? wrap.description_en || wrap.description || `Check out ${name} - a premium Tesla wrap design available at MyTesLab.`
-        : wrap.description || `查看 ${name} - MyTesLab 提供的优质特斯拉车身贴图设计。`
 
-    const title = `${name} | MyTesLab`
+    // 获取模型名称以增强标题 SEO
+    const models = await getModels()
+    const model = models.find(m => m.slug === wrap.model_slug)
+    const modelName = model ? (locale === 'en' ? model.name_en || model.name : model.name) : ''
+
+    const title = modelName
+        ? (locale === 'en' ? `${name} for Tesla ${modelName} | MyTesLab` : `${name} - 特斯拉 ${modelName} 贴膜设计 | MyTesLab`)
+        : `${name} | MyTesLab`
+
+    const description = locale === 'en'
+        ? wrap.description_en || wrap.description || `Download and preview the ${name} wrap design for your Tesla ${modelName || ''}. Professional 3D visualization and high-quality textures.`
+        : wrap.description || `下载并预览适用于特斯拉 ${modelName || ''} 的 ${name} 贴图设计。专业 3D 可视化与高质量纹理文件。`
+
     const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200, quality: 85 })
     const absoluteImageUrl = imageUrl.startsWith('http')
         ? imageUrl
@@ -91,6 +100,16 @@ export default async function WrapDetailPage({
 
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
     const description = locale === 'en' ? wrap.description_en || wrap.description : wrap.description
+
+    // 获取模型名称以增强标题和结构化数据 SEO
+    const models = await getModels()
+    const model = models.find(m => m.slug === wrap.model_slug)
+    const modelName = model ? (locale === 'en' ? model.name_en || model.name : model.name) : ''
+
+    const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200, quality: 85 })
+    const absoluteImageUrl = imageUrl.startsWith('http')
+        ? imageUrl
+        : `https://myteslab.com${imageUrl}`
 
     // 获取模型 URL (通过代理解决 CORS)
     const modelUrl = wrap.model_3d_url || 'https://cdn.tewan.club/models/wraps/cybertruck/model.glb'
@@ -174,7 +193,7 @@ export default async function WrapDetailPage({
                                 <div className="w-full bg-white rounded-lg overflow-hidden relative group shadow-inner">
                                     <img
                                         src={getOptimizedImageUrl(wrap.texture_url, { width: 600, quality: 80 })}
-                                        alt="Texture Preview"
+                                        alt={`${name} Tesla ${modelName || ''} wrap texture pattern preview`}
                                         className="w-full h-auto max-h-[180px] object-contain mx-auto"
                                     />
                                     {/* 放大遮罩 */}
@@ -238,25 +257,32 @@ export default async function WrapDetailPage({
                     __html: JSON.stringify({
                         '@context': 'https://schema.org',
                         '@type': 'Product',
-                        name,
+                        name: `${name} - Tesla ${modelName || ''} Wrap Design`,
                         description: description || `Premium Tesla wrap design - ${name}`,
-                        image: wrap.preview_url || wrap.texture_url,
+                        image: absoluteImageUrl,
                         brand: {
                             '@type': 'Brand',
                             name: 'MyTesLab',
                         },
-                        category: wrap.category,
+                        category: wrap.category === 'official' ? 'Official Parts' : 'Custom Graphics',
+                        sku: wrap.id,
                         offers: {
                             '@type': 'Offer',
                             price: '0',
                             priceCurrency: 'USD',
                             availability: 'https://schema.org/InStock',
                             url: `https://myteslab.com/${locale}/wraps/${slug}`,
+                            seller: {
+                                '@type': 'Organization',
+                                name: 'MyTesLab',
+                            },
                         },
                         aggregateRating: wrap.download_count > 0 ? {
                             '@type': 'AggregateRating',
                             ratingValue: '5',
-                            reviewCount: wrap.download_count.toString(),
+                            reviewCount: Math.max(1, wrap.download_count).toString(),
+                            bestRating: '5',
+                            worstRating: '1',
                         } : undefined,
                     }),
                 }}
@@ -271,12 +297,18 @@ export default async function WrapDetailPage({
                             {
                                 '@type': 'ListItem',
                                 position: 1,
-                                name: 'Home',
+                                name: locale === 'en' ? 'Home' : '首页',
                                 item: `https://myteslab.com/${locale}`,
                             },
-                            {
+                            ...(wrap.model_slug ? [{
                                 '@type': 'ListItem',
                                 position: 2,
+                                name: modelName,
+                                item: `https://myteslab.com/${locale}/models/${wrap.model_slug}`,
+                            }] : []),
+                            {
+                                '@type': 'ListItem',
+                                position: wrap.model_slug ? 3 : 2,
                                 name: name,
                                 item: `https://myteslab.com/${locale}/wraps/${slug}`,
                             },

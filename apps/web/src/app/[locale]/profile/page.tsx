@@ -1,3 +1,4 @@
+import { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from '@/i18n/routing';
 import AuthButton from '@/components/auth/AuthButton';
@@ -5,6 +6,13 @@ import { Link } from '@/i18n/routing';
 import { getTranslations } from 'next-intl/server';
 import ProfileForm from './ProfileForm';
 import ProfileContent from './ProfileContent';
+
+export const metadata: Metadata = {
+    title: 'My Profile - MyTesLab',
+    robots: {
+        index: false,
+    },
+};
 
 export default async function ProfilePage({
     params
