@@ -1,81 +1,55 @@
-import { getWraps, getModels } from '@/lib/api'
+import { getWraps } from '@/lib/api'
+
+const baseUrl = 'https://myteslab.com'
+const WRAPS_PER_PAGE = 5000
 
 export async function GET() {
-    const baseUrl = 'https://myteslab.com'
-    const locales = ['en', 'zh']
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
-    // 1. Static Pages
-    const staticPages = ['', 'terms', 'privacy', 'refund']
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">`
-
-    // Add static pages
-    for (const page of staticPages) {
-        for (const locale of locales) {
-            const url = `${baseUrl}/${locale}${page ? `/${page}` : ''}`
-            xml += `
-  <url>
-    <loc>${url}</loc>
+    // 1. Static Sitemap
+    xml += `  <sitemap>
+    <loc>${baseUrl}/sitemap/static.xml</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${page === '' ? '1.0' : '0.5'}</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en${page ? `/${page}` : ''}"/>
-    <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh${page ? `/${page}` : ''}"/>
-  </url>`
-        }
-    }
+  </sitemap>\n`
 
-    // 2. Model Pages
-    try {
-        const models = await getModels()
-        for (const model of models) {
-            for (const locale of locales) {
-                const url = `${baseUrl}/${locale}/models/${model.slug}`
-                xml += `
-  <url>
-    <loc>${url}</loc>
+    // 2. Models Sitemap
+    xml += `  <sitemap>
+    <loc>${baseUrl}/sitemap/models.xml</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/models/${model.slug}"/>
-    <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh/models/${model.slug}"/>
-  </url>`
-            }
-        }
-    } catch (e) {
-        console.error('Sitemap model generation error:', e)
-    }
+  </sitemap>\n`
 
-    // 3. Wrap Pages
+    // 3. Wraps Sitemaps (Paginated)
     try {
         const wraps = await getWraps()
-        const qualifiedWraps = wraps.filter(w => w.category === 'official' || (w.is_public && w.download_count > 0))
-        for (const wrap of qualifiedWraps) {
-            for (const locale of locales) {
-                const url = `${baseUrl}/${locale}/wraps/${wrap.slug}`
-                const date = wrap.updated_at || wrap.created_at || new Date().toISOString()
-                const isoDate = new Date(date).toISOString()
-                xml += `
-  <url>
-    <loc>${url}</loc>
-    <lastmod>${isoDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/wraps/${wrap.slug}"/>
-    <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh/wraps/${wrap.slug}"/>
-  </url>`
-            }
+        // Quality Gate matching the sub-sitemap logic
+        const qualifiedWraps = wraps.filter(w =>
+            w.is_active !== false &&
+            (w.category === 'official' || (w.is_public && w.download_count > 0 && w.preview_url))
+        )
+
+        const totalPages = Math.ceil(qualifiedWraps.length / WRAPS_PER_PAGE) || 1
+
+        for (let i = 1; i <= totalPages; i++) {
+            xml += `  <sitemap>
+    <loc>${baseUrl}/sitemap/wraps-${i}.xml</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+  </sitemap>\n`
         }
     } catch (e) {
-        console.error('Sitemap wrap generation error:', e)
+        console.error('Sitemap index generation error:', e)
+        // Fallback to at least wraps-1.xml
+        xml += `  <sitemap>
+    <loc>${baseUrl}/sitemap/wraps-1.xml</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+  </sitemap>\n`
     }
 
-    xml += `
-</urlset>`
+    xml += '</sitemapindex>'
 
     return new Response(xml, {
         headers: {
-            'Content-Type': 'application/xml',
+            'Content-Type': 'application/xml; charset=utf-8',
             'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=59',
         },
     })
