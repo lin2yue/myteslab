@@ -73,7 +73,7 @@ export async function login(formData: FormData) {
     return { success: true };
 }
 
-export async function signup(formData: FormData) {
+export async function signup(formData: FormData, nextUrl?: string) {
     const locale = await getLocale();
     const supabase = await createClient();
 
@@ -84,7 +84,7 @@ export async function signup(formData: FormData) {
     const host = headersList.get('host');
     const protocol = host?.includes('localhost') ? 'http' : 'https';
     const origin = `${protocol}://${host}`;
-    const redirectTo = `${origin}/api/auth/callback?next=/${locale}`;
+    const redirectTo = `${origin}/api/auth/callback?next=${nextUrl || '/' + locale}`;
 
     const { error } = await supabase.auth.signUp({
         email,

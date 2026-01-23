@@ -12,6 +12,7 @@ import {
     Sparkles, ChevronDown, X, Plus, Palette, ArrowRight
 } from 'lucide-react'
 import PricingModal from '@/components/pricing/PricingModal'
+import { useRouter } from '@/i18n/routing'
 
 interface GenerationHistory {
     id: string
@@ -27,12 +28,13 @@ interface GenerationHistory {
 export default function AIGeneratorMain({
     initialCredits,
     models,
-    locale: _locale
+    locale: _locale,
+    isLoggedIn
 }: {
     initialCredits: number,
     models: Array<{ slug: string; name: string; modelUrl?: string }>,
-
-    locale: string
+    locale: string,
+    isLoggedIn: boolean
 }) {
     const t = useTranslations('Common')
     const tIndex = useTranslations('Index')
@@ -75,12 +77,19 @@ export default function AIGeneratorMain({
     const [referenceImages, setReferenceImages] = useState<string[]>([])
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showPricing, setShowPricing] = useState(false)
+    const router = useRouter()
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
     const [autoRotate, setAutoRotate] = useState(true)
     const viewerRef = useRef<ModelViewerRef>(null)
     const isFetchingRef = useRef(false)
+    const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
+
+    // Sync internal login state with prop
+    useEffect(() => {
+        setIsLoggedInInternal(isLoggedIn)
+    }, [isLoggedIn])
 
 
     // 获取历史记录
@@ -133,8 +142,16 @@ export default function AIGeneratorMain({
 
         // 监听登录状态变化
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (isMounted && session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            if (!isMounted) return
+            const hasUser = !!session?.user
+            setIsLoggedInInternal(hasUser)
+
+            if (hasUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
                 fetchHistory()
+            }
+            if (event === 'SIGNED_OUT') {
+                setHistory([])
+                setBalance(0)
             }
         })
 
@@ -146,6 +163,14 @@ export default function AIGeneratorMain({
 
     // 生成逻辑
     const handleGenerate = async () => {
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
         if (!prompt.trim() || isGenerating) return
         if (balance <= 0) {
             alert('积分不足，请先购买生成包')
@@ -218,6 +243,14 @@ export default function AIGeneratorMain({
     };
 
     const handleSaveDiy = async (dataUrl: string) => {
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return null
+        }
         setIsSaving(true);
         try {
             const res = await fetch('/api/wrap/save-image', {
@@ -243,6 +276,14 @@ export default function AIGeneratorMain({
     };
 
     const handlePublish = async () => {
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
         if (!viewerRef.current) return;
 
         // Automatically save if not yet saved in DIY mode
@@ -294,6 +335,14 @@ export default function AIGeneratorMain({
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
         const files = e.target.files
         if (!files) return
 
@@ -357,7 +406,7 @@ export default function AIGeneratorMain({
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
-                            modelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.modelUrl || '')}
+                            modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '')}
                             textureUrl={currentTexture || undefined}
                             modelSlug={selectedModel}
                             backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
@@ -491,7 +540,7 @@ export default function AIGeneratorMain({
                                             }}
                                             className="w-full h-14 pl-4 pr-10 bg-white border border-gray-200 rounded-xl appearance-none font-medium focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                         >
-                                            {models.map(m => (
+                                            {models.map((m: any) => (
                                                 <option key={m.slug} value={m.slug}>{m.name}</option>
                                             ))}
                                         </select>
@@ -500,7 +549,7 @@ export default function AIGeneratorMain({
 
                                     <div className="flex-[3] flex gap-2 h-14 bg-white border border-gray-200 rounded-xl overflow-hidden p-1">
                                         <div className="flex-1 bg-gray-50 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs px-2 whitespace-nowrap">
-                                            {tGen('balance', { count: balance })}
+                                            {isLoggedInInternal ? tGen('balance', { count: balance }) : tGen('login_to_view')}
                                         </div>
                                         <button
                                             onClick={handleBuyCredits}
@@ -552,7 +601,17 @@ export default function AIGeneratorMain({
 
                                             {referenceImages.length < 5 && (
                                                 <button
-                                                    onClick={() => fileInputRef.current?.click()}
+                                                    onClick={() => {
+                                                        if (!isLoggedInInternal) {
+                                                            const currentUrl = window.location.pathname + window.location.search
+                                                            if (typeof window !== 'undefined') {
+                                                                localStorage.setItem('auth_redirect_next', currentUrl)
+                                                            }
+                                                            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+                                                            return
+                                                        }
+                                                        fileInputRef.current?.click()
+                                                    }}
                                                     className="w-12 h-12 border-2 border-dashed border-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-all bg-gray-50/50"
                                                 >
                                                     <Plus className="w-6 h-6 text-gray-400 group-hover:text-blue-500" />
@@ -655,7 +714,7 @@ export default function AIGeneratorMain({
                                         onChange={(e) => setSelectedModel(e.target.value)}
                                         className="w-full h-14 pl-4 pr-10 bg-white border border-gray-200 rounded-xl appearance-none font-medium focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                     >
-                                        {models.map(m => (
+                                        {models.map((m: any) => (
                                             <option key={m.slug} value={m.slug}>{m.name}</option>
                                         ))}
                                     </select>
@@ -668,6 +727,7 @@ export default function AIGeneratorMain({
                                         onTextureUpdate={(url) => setCurrentTexture(url)}
                                         onSave={handleSaveDiy}
                                         isSaving={isSaving}
+                                        isLoggedIn={isLoggedInInternal}
                                     />
                                 </div>
                             </div>

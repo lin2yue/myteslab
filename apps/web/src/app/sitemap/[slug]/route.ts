@@ -14,15 +14,16 @@ export async function GET(
 
     // 1. Static Pages
     if (slug === 'static.xml') {
-        const staticPages = ['', 'terms', 'privacy', 'refund']
+        const staticPages = ['', 'terms', 'privacy', 'refund', 'ai-generate/generate']
         for (const page of staticPages) {
             for (const locale of locales) {
                 const url = `${baseUrl}/${locale}${page ? `/${page}` : ''}`
+                const priority = page === '' ? '1.0' : page === 'ai-generate/generate' ? '0.9' : '0.5'
                 xml += `  <url>
     <loc>${url}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>${page === '' ? '1.0' : '0.5'}</priority>
+    <priority>${priority}</priority>
     <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en${page ? `/${page}` : ''}"/>
     <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh${page ? `/${page}` : ''}"/>
   </url>\n`

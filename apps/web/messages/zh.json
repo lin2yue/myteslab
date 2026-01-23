@@ -42,7 +42,7 @@
         "sign_up": "注册",
         "sign_in_or_sign_up": "注册 / 登录",
         "continue": "继续",
-        "welcome_back": "欢迎回来",
+        "welcome_back": "请输入密码",
         "create_account": "创建账户",
         "or": "或者",
         "back": "返回",
@@ -92,6 +92,7 @@
     },
     "Generator": {
         "title": "AI 创作中心",
+        "login_to_view": "登录后查看",
         "history": "生成记录",
         "refresh": "刷新",
         "no_history": "还没有生成记录",

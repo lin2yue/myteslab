@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
 import { updateSession } from './utils/supabase/middleware';
@@ -7,8 +7,6 @@ const intlMiddleware = createIntlMiddleware(routing);
 
 export default async function middleware(request: NextRequest) {
     // 1. First update the Supabase session
-    // This will refresh the token if needed and handle cookies
-    // The updateSession function returns a response with the necessary set-cookie headers
     const supabaseResponse = await updateSession(request);
 
     const pathname = request.nextUrl.pathname;
@@ -19,11 +17,29 @@ export default async function middleware(request: NextRequest) {
         return supabaseResponse;
     }
 
-    // 2. For other routes, run intl middleware
+    // 2. Check for OAuth callback (code parameter at root path)
+    const code = request.nextUrl.searchParams.get('code');
+    if (code && (pathname === '/' || pathname.match(/^\/(en|zh)$/))) {
+        console.log('[Middleware] Detected OAuth callback, redirecting to handler');
+        const url = request.nextUrl.clone();
+        url.pathname = `${pathname === '/' ? '' : pathname}/auth/callback-handler`;
+        url.searchParams.delete('code'); // Remove code from URL
+
+        const redirectResponse = NextResponse.redirect(url);
+
+        // Transfer Supabase cookies
+        const supabaseCookies = supabaseResponse.cookies.getAll();
+        supabaseCookies.forEach(cookie => {
+            redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+        });
+
+        return redirectResponse;
+    }
+
+    // 3. For other routes, run intl middleware
     const response = intlMiddleware(request);
 
-    // 3. IMPORTANT: Transfer cookies from supabaseResponse to the final response
-    // Next.js middleware allows multiple Set-Cookie headers
+    // 4. IMPORTANT: Transfer cookies from supabaseResponse to the final response
     const supabaseCookies = supabaseResponse.cookies.getAll();
     supabaseCookies.forEach(cookie => {
         response.cookies.set(cookie.name, cookie.value, cookie);

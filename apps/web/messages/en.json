@@ -42,7 +42,7 @@
         "sign_up": "Sign up",
         "sign_in_or_sign_up": "Sign in / Sign up",
         "continue": "Continue",
-        "welcome_back": "Welcome back",
+        "welcome_back": "Please enter password",
         "create_account": "Create account",
         "or": "Or",
         "back": "Back",
@@ -92,6 +92,7 @@
     },
     "Generator": {
         "title": "AI Design Center",
+        "login_to_view": "Login to view",
         "history": "History",
         "refresh": "Refresh",
         "no_history": "No history yet",

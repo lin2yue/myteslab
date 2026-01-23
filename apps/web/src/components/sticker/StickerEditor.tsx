@@ -1,27 +1,32 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { getMaskUrl } from '@/lib/ai/mask-config'
+import { useRouter } from 'next/navigation'
 
 interface StickerEditorProps {
     modelSlug: string
     onTextureUpdate: (dataUrl: string) => void
     onSave: (dataUrl: string) => Promise<any>
     isSaving?: boolean
+    isLoggedIn?: boolean
 }
 
 export default function StickerEditor({
     modelSlug,
     onTextureUpdate,
     onSave,
-    isSaving = false
+    isSaving = false,
+    isLoggedIn = false
 }: StickerEditorProps) {
     const t = useTranslations('Generator')
     const [stickerImage, setStickerImage] = useState<string | null>(null)
     const [currentMergedTexture, setCurrentMergedTexture] = useState<string | null>(null)
     const [isProcessing, setIsProcessing] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const router = useRouter()
+    const locale = useLocale()
 
     // Automatically re-process image when model changes to adapt to new dimensions
     useEffect(() => {
@@ -106,7 +111,14 @@ export default function StickerEditor({
                     {!stickerImage ? (
                         <button
                             type="button"
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => {
+                                if (!isLoggedIn) {
+                                    const currentUrl = window.location.pathname + window.location.search
+                                    router.push(`/${locale}/login?next=${encodeURIComponent(currentUrl)}`)
+                                    return
+                                }
+                                fileInputRef.current?.click()
+                            }}
                             className="w-full h-48 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/10 transition-all bg-gray-50/50 group"
                         >
                             <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 border border-gray-100 group-hover:scale-110 transition-transform">
