@@ -121,6 +121,8 @@ CREATE INDEX IF NOT EXISTS idx_wraps_is_public ON wraps(is_public);
 CREATE INDEX IF NOT EXISTS idx_wraps_user_id ON wraps(user_id);
 CREATE INDEX IF NOT EXISTS idx_wraps_model_slug ON wraps(model_slug);
 CREATE INDEX IF NOT EXISTS idx_wraps_deleted_at ON wraps(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_wraps_is_public_created_at ON wraps(is_public, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wraps_is_public_download_count ON wraps(is_public, download_count DESC);
 
 -- ============================================
 -- 安全触发器 (Triggers)

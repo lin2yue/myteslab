@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
-import { routing } from './i18n/routing';
-import { updateSession } from './utils/supabase/middleware';
+import { routing } from './src/i18n/routing';
+import { updateSession } from './src/utils/supabase/middleware';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -39,9 +39,13 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - models (3D models)
-         * - textures (static textures)
+         * - sitemap.* (sitemap files)
+         * - robots.txt
+         * - models/ (3D models)
+         * - textures/ (static textures)
+         * - assets/ (shared assets)
+         * - Any file with a common extension (images, fonts, etc.)
          */
-        '/((?!_next/static|_next/image|favicon.ico|sitemap.*|robots\\.txt|models|textures|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sitemap.*|robots\\.txt|models/|textures/|assets/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|woff2?|ttf|eot)$).*)',
     ],
 };

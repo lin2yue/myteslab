@@ -31,9 +31,18 @@ export async function updateSession(request: NextRequest) {
     // supabase.auth.getUser(). A simple mistake can make it very hard to debug
     // issues with pins or sessions.
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    console.log('[Middleware] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING');
+
+    try {
+        const {
+            data: { user },
+            error
+        } = await supabase.auth.getUser()
+        if (error) console.error('[Middleware] getUser error:', error.message);
+        else console.log('[Middleware] getUser success');
+    } catch (e: any) {
+        console.error('[Middleware] getUser exception:', e.message);
+    }
 
     return supabaseResponse
 }

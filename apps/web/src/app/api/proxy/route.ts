@@ -27,25 +27,20 @@ export async function GET(request: NextRequest) {
             )
         }
 
-        // 获取文件内容
-        const buffer = await response.arrayBuffer()
-
-        // 智能判断 Content-Type
+        // 优先使用源服务器返回的 Content-Type
         let contentType = response.headers.get('Content-Type');
+
+        // 补充或纠正 Content-Type
         if (!contentType || contentType === 'application/octet-stream') {
-            if (url.toLowerCase().endsWith('.png')) {
-                contentType = 'image/png';
-            } else if (url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.jpeg')) {
-                contentType = 'image/jpeg';
-            } else if (url.toLowerCase().endsWith('.webp')) {
-                contentType = 'image/webp';
-            } else if (url.toLowerCase().endsWith('.glb')) {
-                contentType = 'model/gltf-binary';
-            }
+            const lowerUrl = url.toLowerCase();
+            if (lowerUrl.endsWith('.png')) contentType = 'image/png';
+            else if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) contentType = 'image/jpeg';
+            else if (lowerUrl.endsWith('.webp')) contentType = 'image/webp';
+            else if (lowerUrl.endsWith('.glb')) contentType = 'model/gltf-binary';
         }
 
-        // 返回文件,设置正确的CORS头
-        return new NextResponse(buffer, {
+        // 终极优化方案：使用流式转发 (Streaming), 解决大文件内存瓶颈
+        return new NextResponse(response.body, {
             status: 200,
             headers: {
                 'Content-Type': contentType || 'application/octet-stream',

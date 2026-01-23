@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from '@/i18n/routing';
+import { getModels } from '@/lib/api';
 import AIGeneratorMain from './AIGeneratorMain';
 
 export default async function GeneratePage({
@@ -26,15 +27,11 @@ export default async function GeneratePage({
         .eq('user_id', user.id)
         .single();
 
-    // Fetch available models from DB
-    const { data: modelsData } = await supabase
-        .from('wrap_models')
-        .select('slug, name, model_3d_url')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+    // Use the cached getModels function
+    const modelsData = await getModels();
 
     // Fallback or transform
-    const models = (modelsData || []).map(m => ({
+    const models = modelsData.map((m: any) => ({
         slug: m.slug,
         name: m.name,
         modelUrl: m.model_3d_url || undefined
