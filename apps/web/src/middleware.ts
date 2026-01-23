@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
-import { routing } from './src/i18n/routing';
-import { updateSession } from './src/utils/supabase/middleware';
+import { routing } from './i18n/routing';
+import { updateSession } from './utils/supabase/middleware';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
