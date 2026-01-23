@@ -1,26 +1,26 @@
 {
     "Index": {
         "title": "MyTesLab",
-        "description": "Visualize your next look: The ultimate studio for custom Tesla wrap designs.",
-        "welcome": "Customize Your Tesla",
-        "welcome_desc": "Real-time 3D preview of high-precision wrap designs with various styles.",
-        "explore": "Explore Wrap Styles",
+        "description": "Discover and download premium free Tesla wrap designs. Instant 3D visualization studio.",
+        "welcome": "Free Tesla Wrap Designs",
+        "welcome_desc": "Real-time 3D preview of high-precision wrap designs. Download your favorite styles for free.",
+        "explore": "Explore Free Designs",
         "loading": "Loading",
-        "no_wraps": "No wrap styles found",
+        "no_wraps": "No wrap designs found",
         "features": {
             "3d_preview": "3D Real-time Preview",
             "3d_preview_desc": "High-precision rendering based on WebGL",
-            "official_wraps": "Official Designs",
-            "official_wraps_desc": "Collection of various wrap designs from Tesla Official",
-            "one_click_download": "One-click Download",
-            "one_click_download_desc": "Directly get high-definition texture files for installation"
+            "official_wraps": "Premium Designs",
+            "official_wraps_desc": "Collection of various wrap designs for Tesla models",
+            "one_click_download": "Free Download",
+            "one_click_download_desc": "Directly get high-definition texture files for free installation"
         },
         "sort_latest": "Latest",
         "sort_popular": "Popular"
     },
     "Common": {
         "back_to_home": "Back to Home",
-        "download": "Download Wrap",
+        "download": "Download Free Wrap",
         "free_download": "Free Download, No Sign-in Required",
         "applicable_models": "Compatible Models",
         "tips": "💡 Drag to Rotate | Scroll to Zoom | Double Click to Reset",

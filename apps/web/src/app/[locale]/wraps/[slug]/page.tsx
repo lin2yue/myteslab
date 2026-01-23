@@ -33,17 +33,20 @@ export async function generateMetadata({
     const modelName = model ? (locale === 'en' ? model.name_en || model.name : model.name) : ''
 
     const title = modelName
-        ? (locale === 'en' ? `${name} for Tesla ${modelName} | MyTesLab` : `${name} - 特斯拉 ${modelName} 贴膜设计 | MyTesLab`)
-        : `${name} | MyTesLab`
+        ? (locale === 'en' ? `Free ${name} Tesla ${modelName} Wrap Design Download | MyTesLab` : `免费下载 ${name} - 特斯拉 ${modelName} 贴膜设计 | MyTesLab`)
+        : (locale === 'en' ? `Free ${name} Tesla Wrap Design Download | MyTesLab` : `免费下载 ${name} 特斯拉贴膜设计 | MyTesLab`)
 
     const description = locale === 'en'
-        ? wrap.description_en || wrap.description || `Download and preview the ${name} wrap design for your Tesla ${modelName || ''}. Professional 3D visualization and high-quality textures.`
-        : wrap.description || `下载并预览适用于特斯拉 ${modelName || ''} 的 ${name} 贴图设计。专业 3D 可视化与高质量纹理文件。`
+        ? wrap.description_en || wrap.description || `Download and preview the ${name} wrap design for your Tesla ${modelName || ''} for free. Professional 3D visualization and high-quality free textures.`
+        : wrap.description || `免费下载并预览适用于特斯拉 ${modelName || ''} 的 ${name} 贴图设计。专业 3D 可视化与高质量免费纹理文件。`
 
     const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200, quality: 85 })
     const absoluteImageUrl = imageUrl.startsWith('http')
         ? imageUrl
         : `https://myteslab.com${imageUrl}`
+
+    // 质量准入机制：官方贴图、已公开且有下载的作品才允许索引
+    const shouldIndex = wrap.category === 'official' || (wrap.is_public && wrap.download_count > 0)
 
     return {
         title,
@@ -78,7 +81,7 @@ export async function generateMetadata({
             images: [absoluteImageUrl],
         },
         robots: {
-            index: true,
+            index: shouldIndex,
             follow: true,
         },
     }
