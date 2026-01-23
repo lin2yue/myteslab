@@ -26,12 +26,12 @@ export async function generateMetadata({
 
     const modelName = locale === 'en' ? model.name_en || model.name : model.name
     const title = locale === 'en'
-        ? `${modelName} Tesla Wrap Ideas & Custom Designs | MyTesLab`
-        : `特斯拉 ${modelName} 车身贴膜设计与创意预览 | MyTesLab`
+        ? `${modelName} Free Tesla Wrap Designs & Download | 3D Visualization | MyTesLab`
+        : `特斯拉 ${modelName} 车身贴膜设计免费下载与 3D 预览 | MyTesLab`
 
     const description = tModels(`${slug}.description`) || (locale === 'en'
-        ? `Browse and download the best custom wrap designs for Tesla ${modelName}. Preview 3D wraps and find inspiration for your next look.`
-        : `浏览并下载最优秀的特斯拉 ${modelName} 定制车身贴图设计。实时 3D 预览，为您的爱车寻找下一个造型灵感。`)
+        ? `Browse and download the best free custom wrap designs for Tesla ${modelName}. Preview 3D wraps and find inspiration for your next look.`
+        : `浏览并免费下载最优秀的特斯拉 ${modelName} 定制车身贴图设计。实时 3D 预览，为您的爱车寻找下一个造型灵感。`)
 
     return {
         title,
