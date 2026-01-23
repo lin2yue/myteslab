@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import PricingModal from '@/components/pricing/PricingModal'
 import { useRouter } from '@/i18n/routing'
+import PublishModal from '@/components/publish/PublishModal'
 
 interface GenerationHistory {
     id: string
@@ -56,6 +57,13 @@ export default function AIGeneratorMain({
     const getProxyUrl = useCallback((url: string) => {
         if (!url) return '';
         const effectiveUrl = getCdnUrl(url);
+
+        // 系统性优化：直连 CDN 配合时间戳刷新缓存，确保 CORS 头生效
+        if (effectiveUrl.includes('cdn.tewan.club')) {
+            const separator = effectiveUrl.includes('?') ? '&' : '?';
+            return `${effectiveUrl}${separator}v=${Date.now()}`;
+        }
+
         if (effectiveUrl.startsWith('http') && typeof window !== 'undefined' && !effectiveUrl.includes(window.location.origin)) {
             return `/api/proxy?url=${encodeURIComponent(effectiveUrl)}`;
         }
@@ -78,6 +86,7 @@ export default function AIGeneratorMain({
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showPricing, setShowPricing] = useState(false)
     const router = useRouter()
+    const [showPublishModal, setShowPublishModal] = useState(false)
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -103,6 +112,7 @@ export default function AIGeneratorMain({
             const user = session?.user
             if (!user) {
                 console.log('fetchHistory: No user found')
+                setHistory([])
                 return
             }
 
@@ -112,21 +122,33 @@ export default function AIGeneratorMain({
                 .eq('user_id', user.id)
                 .is('deleted_at', null)
 
-            // Adjust filter based on active mode
+            // Simplied filter: either exactly 'diy' or anything else (which includes null/none)
             if (activeMode === 'diy') {
                 query = query.eq('category', 'diy')
             } else {
-                query = query.or('category.neq.diy,category.is.null')
+                // For AI mode, we show everything that is NOT 'diy'
+                // This is safer than the complex .or() filter
+                query = query.neq('category', 'diy')
             }
 
             const { data, error } = await query
                 .order('created_at', { ascending: false })
                 .limit(10)
 
-            if (error) throw error
-            if (data) setHistory(data)
+            if (error) {
+                console.error('Supabase query error:', error)
+                throw error
+            }
+
+            if (data) {
+                setHistory(data)
+            } else {
+                setHistory([])
+            }
         } catch (err) {
             console.error('Fetch history error:', err)
+            // Optional: could set an error state here to show in UI
+            setHistory([]) // Ensure we exit loading state
         } finally {
             isFetchingRef.current = false
             setIsFetchingHistory(false)
@@ -286,23 +308,25 @@ export default function AIGeneratorMain({
         }
         if (!viewerRef.current) return;
 
-        // Automatically save if not yet saved in DIY mode
-        let wrapIdToPublish = activeWrapId;
-        if (!wrapIdToPublish && activeMode === 'diy' && currentTexture) {
-            wrapIdToPublish = await handleSaveDiy(currentTexture);
-        }
+        // 已经发布了就不再操作
+        const currentWrap = activeWrapId ? history.find(h => h.id === activeWrapId) : null;
+        if (currentWrap?.is_public) return;
 
-        if (!wrapIdToPublish) return;
+        // 打开预览弹窗，而不再直接执行发布
+        setShowPublishModal(true);
+    };
+
+    const confirmPublish = async () => {
+        if (!viewerRef.current) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            alert('Please login again');
+            return;
+        }
 
         setIsPublishing(true);
         try {
-            // 0. 检查客户端登录状态
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                console.error('No session found on client before publish');
-                throw new Error('Please login again');
-            }
-
             // 1. 捕捉高分辨率 3D 预览图 (启用镜头拉远以确保车辆完整)
             const previewImageBase64 = await viewerRef.current.takeHighResScreenshot({ zoomOut: true });
 
@@ -315,7 +339,7 @@ export default function AIGeneratorMain({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    wrapId: wrapIdToPublish,
+                    wrapId: activeWrapId,
                     imageBase64: previewImageBase64
                 })
             });
@@ -324,8 +348,8 @@ export default function AIGeneratorMain({
             if (!data.success) throw new Error(data.error);
 
             alert(tGen('publish_success'));
-            // 刷新历史
             fetchHistory();
+            setShowPublishModal(false);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
             alert(`发布失败: ${message}`);
@@ -392,8 +416,6 @@ export default function AIGeneratorMain({
         alert('Payment integration coming soon!')
         setShowPricing(false)
     }
-
-
 
     return (
         <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-[#F4F4F4] overflow-y-auto lg:overflow-hidden">
@@ -740,6 +762,16 @@ export default function AIGeneratorMain({
                 isOpen={showPricing}
                 onClose={() => setShowPricing(false)}
                 onSelectTier={handleSelectTier}
+            />
+
+            <PublishModal
+                isOpen={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                onConfirm={confirmPublish}
+                modelSlug={selectedModel}
+                modelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.modelUrl || '')}
+                textureUrl={currentTexture || ''}
+                isPublishing={isPublishing}
             />
         </div>
     );

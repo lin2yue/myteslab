@@ -90,14 +90,7 @@ export default async function ModelPage({
         <div className="flex flex-col">
             <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
                 {/* 增加页面标题，对 SEO 有利 */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">
-                        {locale === 'en' ? `${currentModel.name_en || currentModel.name} Wraps` : `特斯拉 ${currentModel.name} 贴膜设计`}
-                    </h1>
-                    <p className="text-gray-500 dark:text-zinc-400">
-                        {tModels(`${slug}.description`)}
-                    </p>
-                </div>
+                {/* Header section removed per user request */}
 
                 <FilterBarWrapper models={models} sortBy={sortBy}>
                     <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} />

@@ -15,6 +15,9 @@ interface ModelViewerProps {
     environment?: string
     backgroundColor?: string
     ignoreConfigRotation?: boolean
+    cameraOrbit?: string
+    fieldOfView?: string
+    cameraControls?: boolean
 }
 
 export interface ModelViewerRef {
@@ -30,7 +33,10 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     autoRotate: propAutoRotate,
     environment = 'neutral',
     backgroundColor,
-    ignoreConfigRotation = false
+    ignoreConfigRotation = false,
+    cameraOrbit: propCameraOrbit,
+    fieldOfView: propFieldOfView,
+    cameraControls = true
 }, ref) => {
     const t = useTranslations('Common')
     const containerRef = useRef<HTMLDivElement>(null)
@@ -222,11 +228,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
 
         viewer.setAttribute('src', modelUrl)
-        viewer.setAttribute('camera-controls', 'true')
-        viewer.setAttribute('touch-action', 'none')
+        viewer.setAttribute('crossorigin', 'anonymous')
+        viewer.setAttribute('camera-controls', cameraControls ? 'true' : 'false')
+        viewer.setAttribute('touch-action', cameraControls ? 'none' : 'auto')
         viewer.setAttribute('interaction-prompt', config.interactionPrompt || 'none')
-        viewer.setAttribute('camera-orbit', config.cameraOrbit)
-        viewer.setAttribute('field-of-view', config.fieldOfView)
+        viewer.setAttribute('camera-orbit', propCameraOrbit || config.cameraOrbit)
+        viewer.setAttribute('field-of-view', propFieldOfView || config.fieldOfView)
         viewer.setAttribute('environment-image', environment || config.environmentImage)
         viewer.setAttribute('shadow-intensity', config.shadowIntensity.toString())
         viewer.setAttribute('shadow-softness', config.shadowSoftness.toString())

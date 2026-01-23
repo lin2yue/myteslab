@@ -127,7 +127,18 @@
         "scale": "Scale",
         "rotate": "Rotate",
         "reset": "Reset",
-        "save_diy": "Save Wrap"
+        "save_diy": "Save Wrap",
+        "publish_preview": "Publish Preview",
+        "publish_preview_desc": "Preview how your work will appear in the discovery gallery",
+        "preview_consistency_hint": "To maintain community visual consistency, the preview angle is fixed and cannot be changed.",
+        "terms_rule_title": "Content Compliance",
+        "terms_rule_desc": "Your content must comply with law and community guidelines, with no illegal or infringing info.",
+        "terms_share_title": "Distribution Grant",
+        "terms_share_desc": "By publishing, you agree to our Terms of Service and allow others to download and use the design.",
+        "terms_public_title": "Public Exhibition",
+        "terms_public_desc": "Once published, your work will appear in the 'Discover' channel for users to explore.",
+        "terms_agree_checkbox": "I have read and agree to the publishing terms and confirm to publish this work",
+        "confirm_publish": "Confirm Publish"
     },
     "Footer": {
         "tagline": "The ultimate studio for custom Tesla wrap designs",

@@ -127,7 +127,18 @@
         "scale": "缩放",
         "rotate": "旋转",
         "reset": "重置",
-        "save_diy": "保存贴纸"
+        "save_diy": "保存贴纸",
+        "publish_preview": "发布作品预览",
+        "publish_preview_desc": "预览作品在社区探索页展示的效果",
+        "preview_consistency_hint": "为了保持社区列表页视角一致，发布预览视角已固定，暂不支持修改。",
+        "terms_rule_title": "内容合规",
+        "terms_rule_desc": "您的作品需符合法律法规及社区准则，不得包含违法、低俗或侵权信息。",
+        "terms_share_title": "分发授权",
+        "terms_share_desc": "点击发布即代表您同意本平台的《服务条款》，并允许其他用户下载及使用该设计。",
+        "terms_public_title": "公开展示",
+        "terms_public_desc": "发布后，您的作品将展示在“发现”频道供全球用户探索和点赞。",
+        "terms_agree_checkbox": "我已阅读并知悉上述发布说明，确认发布此作品",
+        "confirm_publish": "确认发布作品"
     },
     "Footer": {
         "tagline": "终极特斯拉定制车身贴图设计工作室",
