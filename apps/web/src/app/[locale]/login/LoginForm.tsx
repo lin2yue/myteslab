@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, Mail, Lock, CheckCircle2, Loader2, ChevronRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useAlert } from '@/components/alert/AlertProvider';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -17,6 +18,7 @@ type ViewState = 'EMAIL' | 'LOGIN' | 'SIGNUP' | 'VERIFY' | 'FORGOT' | 'RESET_SEN
 
 export default function LoginForm() {
     const t = useTranslations('Login');
+    const alert = useAlert();
     const locale = useLocale();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -115,7 +117,8 @@ export default function LoginForm() {
                     setError(result.error || t('error_invalid_credentials'));
                 }
             } else if (result?.success) {
-                // 登录成功,使用客户端路由跳转
+                // 登录成功,显示通知并跳转
+                alert.success(t('login_success') || 'Login successful!');
                 let next = searchParams.get('next');
                 console.log('[LoginForm] Login success - next from URL:', next);
                 if (!next && typeof window !== 'undefined') {

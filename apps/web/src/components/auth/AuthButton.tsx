@@ -7,9 +7,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { useAlert } from '@/components/alert/AlertProvider';
 
 export default function AuthButton() {
     const t = useTranslations('Login');
+    const alert = useAlert();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export default function AuthButton() {
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         setIsMenuOpen(false);
+        alert.success(t('sign_out_success') || 'Successfully signed out');
         router.refresh();
     };
 

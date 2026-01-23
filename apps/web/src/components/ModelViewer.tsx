@@ -21,7 +21,8 @@ interface ModelViewerProps {
 }
 
 export interface ModelViewerRef {
-    takeHighResScreenshot: (options?: { zoomOut?: boolean }) => Promise<string | null>
+    takeHighResScreenshot: (options?: { zoomOut?: boolean, useStandardView?: boolean }) => Promise<string | null>;
+    waitForReady: (timeout?: number) => Promise<boolean>;
 }
 
 export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
@@ -32,7 +33,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     id,
     autoRotate: propAutoRotate,
     environment = 'neutral',
-    backgroundColor,
+    backgroundColor: propBackgroundColor,
     ignoreConfigRotation = false,
     cameraOrbit: propCameraOrbit,
     fieldOfView: propFieldOfView,
@@ -45,62 +46,178 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const [error, setError] = useState<string | null>(null)
     const [textureLoading, setTextureLoading] = useState(false)
 
+    // Refs for tracking readiness state without triggering re-renders
+    const modelLoadedRef = useRef(false)
+    const textureAppliedRef = useRef(false)
+
     useImperativeHandle(ref, () => ({
+        waitForReady: async (timeout = 10000) => {
+            const start = Date.now()
+            while (Date.now() - start < timeout) {
+                // If there's no textureUrl, we only care about model loading
+                const textureReady = !textureUrl || textureAppliedRef.current
+                if (modelLoadedRef.current && textureReady && !textureLoading) {
+                    return true
+                }
+                await new Promise(resolve => setTimeout(resolve, 200))
+            }
+            return false
+        },
         takeHighResScreenshot: async (options) => {
             const viewer = viewerElementRef.current;
             if (!viewer) return null;
 
-            // 1. 记录原始状态
-            const originalWidth = viewer.style.width;
-            const originalHeight = viewer.style.height;
+            // Define Standard View Configuration
+            const DEFAULT_ORBIT = "225deg 75deg 85%";
+            const STANDARD_FOV = "30deg";
+            const STANDARD_BG = "#1F1F1F";
+            const STANDARD_EXPOSURE = "1.0";
+
+            // Resolve model-specific orbit if available
+            const modelConfig = modelSlug ? (viewerConfig.models as any)[modelSlug] : null;
+            const targetOrbit = modelConfig?.cameraOrbit || DEFAULT_ORBIT;
+
+            // 1. Record original state
             const originalMinRenderScale = viewer.getAttribute('min-render-scale');
             const originalFOV = viewer.getAttribute('field-of-view');
+            const originalOrbit = viewer.getAttribute('camera-orbit');
+            const originalExposure = viewer.getAttribute('exposure');
+            const originalBG = viewer.style.backgroundColor;
+            const originalWidth = viewer.style.width;
+            const originalHeight = viewer.style.height;
+            const originalParent = viewer.parentElement;
+            const nextSibling = viewer.nextSibling;
 
             try {
-                // 2. 临时提升质量
+                // 2. Temporarily boost quality and apply requested view
                 viewer.setAttribute('min-render-scale', '1');
 
-                // 3. 根据选项进行镜头拉远
-                if (options?.zoomOut) {
-                    // 默认 30deg，拉远到 60deg 以确保车辆更加完整且效果明显
-                    viewer.setAttribute('field-of-view', '60deg');
-                    // 给更多时间让视角切换和渲染稳定
+                if (options?.useStandardView) {
+                    // AGGRESSIVE: Move to body to bypass any container constraints
+                    document.body.appendChild(viewer);
+                    viewer.style.setProperty('position', 'fixed', 'important');
+                    viewer.style.setProperty('top', '0', 'important');
+                    viewer.style.setProperty('left', '0', 'important');
+                    viewer.style.setProperty('width', '1024px', 'important');
+                    viewer.style.setProperty('height', '768px', 'important');
+                    viewer.style.setProperty('z-index', '10000', 'important');
+                    viewer.style.setProperty('max-width', 'none', 'important');
+                    viewer.style.setProperty('max-height', 'none', 'important');
+
+                    // CRITICAL: Force renderer to update its internal viewport size
                     await new Promise(resolve => requestAnimationFrame(resolve));
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    window.dispatchEvent(new Event('resize'));
+                    await new Promise(resolve => setTimeout(resolve, 400));
+
+                    console.log(`[ModelViewer] Applying standard view: orbit=${targetOrbit}, fov=${STANDARD_FOV}, exposure=${STANDARD_EXPOSURE}, slug=${modelSlug}`);
+                    viewer.setAttribute('camera-orbit', targetOrbit);
+                    viewer.setAttribute('field-of-view', STANDARD_FOV);
+                    viewer.setAttribute('exposure', STANDARD_EXPOSURE);
+
+                    // Note: We use canvas compositing for BG to ensuring it's not black, 
+                    // but we still set it on element for visual feedback.
+                    viewer.style.backgroundColor = STANDARD_BG;
+
+                    if (typeof viewer.jumpCameraToGoal === 'function') {
+                        viewer.jumpCameraToGoal();
+                    }
+
+                    // Redundant wait and jump cycle to ensure renderer settles and centers correctly
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    await new Promise(resolve => setTimeout(resolve, 800));
+
+                    if (typeof viewer.jumpCameraToGoal === 'function') {
+                        viewer.jumpCameraToGoal();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 700));
+
+                } else if (options?.zoomOut) {
+                    viewer.setAttribute('field-of-view', '60deg');
                     await new Promise(resolve => requestAnimationFrame(resolve));
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else {
                     await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => setTimeout(resolve, 500)); // 正常质量提升等待
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                // 4. 捕捉截图 (使用 model-viewer 的 toBlob 更加稳定)
+                // Log dimensions for verification
+                console.log(`[ModelViewer] Capturing screenshot. Element size: ${viewer.clientWidth}x${viewer.clientHeight}. Style: ${viewer.style.width}x${viewer.style.height}`);
+
+                // 3. Capture screenshot
+                // PNG maintains transparency, allowing us to composite onto our target BG color
                 const blob = await viewer.toBlob({
-                    mimeType: 'image/jpeg',
-                    qualityArgument: 0.9,
-                    idealAspect: true
+                    mimeType: 'image/png',
+                    qualityArgument: 1.0,
+                    idealAspect: false // Use element aspect ratio (1024/768 = 4:3)
                 });
 
                 if (!blob) return null;
 
+                // 4. Composite onto Background Canvas for consistent color and framing
                 return new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 1024;
+                        canvas.height = 768;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            resolve(null);
+                            return;
+                        }
+
+                        // Fill background
+                        ctx.fillStyle = STANDARD_BG;
+                        ctx.fillRect(0, 0, 1024, 768);
+
+                        // Draw model image (should be correctly sized and centered by now)
+                        // If model-viewer generated a sub-rectangle (off-center), we draw it at 0,0
+                        ctx.drawImage(img, 0, 0, 1024, 768);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                        resolve(dataUrl);
+                    };
+                    img.src = URL.createObjectURL(blob);
                 });
 
             } finally {
-                // 5. 还原状态
-                if (originalMinRenderScale) {
-                    viewer.setAttribute('min-render-scale', originalMinRenderScale);
-                } else {
-                    viewer.removeAttribute('min-render-scale');
+                // 4. Restore state
+                if (originalMinRenderScale) viewer.setAttribute('min-render-scale', originalMinRenderScale);
+                else viewer.removeAttribute('min-render-scale');
+
+                // Move back to original parent
+                if (originalParent) {
+                    if (nextSibling) originalParent.insertBefore(viewer, nextSibling);
+                    else originalParent.appendChild(viewer);
                 }
 
-                if (originalFOV) {
-                    viewer.setAttribute('field-of-view', originalFOV);
+                if (!options?.useStandardView) {
+                    if (originalFOV) viewer.setAttribute('field-of-view', originalFOV);
+                    else viewer.removeAttribute('field-of-view');
+
+                    if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
+                    else viewer.removeAttribute('camera-orbit');
+
+                    if (originalExposure) viewer.setAttribute('exposure', originalExposure);
+                    else viewer.removeAttribute('exposure');
+
+                    viewer.style.backgroundColor = originalBG;
+                    viewer.style.width = originalWidth;
+                    viewer.style.height = originalHeight;
+                    viewer.style.position = '';
+                    viewer.style.top = '';
+                    viewer.style.left = '';
+                    viewer.style.zIndex = '';
                 } else {
-                    viewer.removeAttribute('field-of-view');
+                    // Keep view settings but restore layout
+                    viewer.style.width = '100%';
+                    viewer.style.height = '100%';
+                    viewer.style.position = '';
+                    viewer.style.top = '';
+                    viewer.style.left = '';
+                    viewer.style.zIndex = '';
                 }
             }
         }
@@ -120,94 +237,121 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const applyTexture = async (viewer: any, url: string, slug?: string) => {
         if (!viewer || !url) return
         setTextureLoading(true)
-        try {
-            const config = {
-                ...viewerConfig.defaults,
-                ...(slug && (viewerConfig.models as any)[slug] ? (viewerConfig.models as any)[slug] : {})
-            }
+        textureAppliedRef.current = false
 
-            const texture = await viewer.createTexture(url)
-            const materials = viewer.model.materials
+        const maxRetries = 3
+        let lastError: any = null
 
-            // 1. 通过 Model Viewer API 设置纹理
-            materials.forEach((material: any) => {
-                const name = material.name?.toLowerCase() || ''
-                const isBody = name === '' ||
-                    name.includes('paint') ||
-                    name.includes('body') ||
-                    name.includes('exterior') ||
-                    name.includes('stainless') ||
-                    name === 'ext_body'
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`[ModelViewer] Loading texture (attempt ${attempt}/${maxRetries}): ${url.substring(0, 100)}...`)
 
-                if (isBody) {
-                    try {
-                        if (material.pbrMetallicRoughness.baseColorTexture) {
-                            material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
-                        }
-                    } catch (e) {
-                        console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
-                    }
-                }
-            })
-
-            // 2. Through Three.js adjustment
-            const threeTexture = (texture as any).source?.texture || (texture as any).texture
-            if (threeTexture) {
-                threeTexture.center.set(0.5, 0.5)
-
-                // Only apply rotation/mirror logic if NOT ignored (e.g., in DIY mode)
-                if (!ignoreConfigRotation) {
-                    if (config.rotation !== undefined) {
-                        threeTexture.rotation = (config.rotation * Math.PI) / 180
-                    }
-                    if (config.scale !== undefined) {
-                        const scaleX = config.mirror ? -config.scale : config.scale
-                        threeTexture.repeat.set(scaleX, config.scale)
-                    }
-                } else {
-                    // Reset to defaults for DIY
-                    threeTexture.rotation = 0
-                    threeTexture.repeat.set(1, 1)
+                const config = {
+                    ...viewerConfig.defaults,
+                    ...(slug && (viewerConfig.models as any)[slug] ? (viewerConfig.models as any)[slug] : {})
                 }
 
-                threeTexture.wrapS = 1000 // RepeatWrapping
-                threeTexture.wrapT = 1000 // RepeatWrapping
-                threeTexture.flipY = false
-                threeTexture.needsUpdate = true
-            }
+                const texture = await viewer.createTexture(url)
+                const materials = viewer.model.materials
 
-            // 3. Three.js fallback
-            const scene = getThreeScene(viewer)
-            if (scene) {
-                scene.traverse((node: any) => {
-                    if (node.isMesh && node.material) {
-                        const mats = Array.isArray(node.material) ? node.material : [node.material]
-                        mats.forEach((m: any) => {
-                            const name = m.name?.toLowerCase() || ''
-                            const isBody = name === '' ||
-                                name.includes('paint') ||
-                                name.includes('body') ||
-                                name.includes('exterior') ||
-                                name.includes('stainless') ||
-                                name === 'ext_body'
+                // 1. 通过 Model Viewer API 设置纹理
+                materials.forEach((material: any) => {
+                    const name = material.name?.toLowerCase() || ''
+                    const isBody = name === '' ||
+                        name.includes('paint') ||
+                        name.includes('body') ||
+                        name.includes('exterior') ||
+                        name.includes('stainless') ||
+                        name === 'ext_body'
 
-                            if (isBody) {
-                                if (threeTexture) {
-                                    m.map = threeTexture
-                                    m.color.setRGB(1, 1, 1)
-                                }
-                                m.side = 2
-                                m.needsUpdate = true
+                    if (isBody) {
+                        try {
+                            if (material.pbrMetallicRoughness.baseColorTexture) {
+                                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
                             }
-                        })
+                        } catch (e) {
+                            console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
+                        }
                     }
                 })
+
+                // 2. Through Three.js adjustment
+                const threeTexture = (texture as any).source?.texture || (texture as any).texture
+                if (threeTexture) {
+                    threeTexture.center.set(0.5, 0.5)
+
+                    // Only apply rotation/mirror logic if NOT ignored (e.g., in DIY mode)
+                    if (!ignoreConfigRotation) {
+                        if (config.rotation !== undefined) {
+                            threeTexture.rotation = (config.rotation * Math.PI) / 180
+                        }
+                        if (config.scale !== undefined) {
+                            const scaleX = config.mirror ? -config.scale : config.scale
+                            threeTexture.repeat.set(scaleX, config.scale)
+                        }
+                    } else {
+                        // Reset to defaults for DIY
+                        threeTexture.rotation = 0
+                        threeTexture.repeat.set(1, 1)
+                    }
+
+                    threeTexture.wrapS = 1000 // RepeatWrapping
+                    threeTexture.wrapT = 1000 // RepeatWrapping
+                    threeTexture.flipY = false
+                    threeTexture.needsUpdate = true
+                }
+
+                // 3. Three.js fallback
+                const scene = getThreeScene(viewer)
+                if (scene) {
+                    scene.traverse((node: any) => {
+                        if (node.isMesh && node.material) {
+                            const mats = Array.isArray(node.material) ? node.material : [node.material]
+                            mats.forEach((m: any) => {
+                                const name = m.name?.toLowerCase() || ''
+                                const isBody = name === '' ||
+                                    name.includes('paint') ||
+                                    name.includes('body') ||
+                                    name.includes('exterior') ||
+                                    name.includes('stainless') ||
+                                    name === 'ext_body'
+
+                                if (isBody) {
+                                    if (threeTexture) {
+                                        m.map = threeTexture
+                                        m.color.setRGB(1, 1, 1)
+                                    }
+                                    m.side = 2
+                                    m.needsUpdate = true
+                                }
+                            })
+                        }
+                    })
+                }
+
+                console.log(`[ModelViewer] Texture loaded successfully on attempt ${attempt}`)
+                setTextureLoading(false)
+                textureAppliedRef.current = true
+                return // Success, exit retry loop
+
+            } catch (err) {
+                lastError = err
+                console.error(`[ModelViewer] Texture loading failed (attempt ${attempt}/${maxRetries}):`, err)
+
+                if (attempt < maxRetries) {
+                    // Exponential backoff: wait 500ms, 1000ms, 2000ms
+                    const delay = 500 * Math.pow(2, attempt - 1)
+                    console.log(`[ModelViewer] Retrying in ${delay}ms...`)
+                    await new Promise(resolve => setTimeout(resolve, delay))
+                } else {
+                    console.error(`[ModelViewer] All ${maxRetries} attempts failed for texture: ${url}`)
+                }
             }
-        } catch (err) {
-            console.error('Failed to apply texture:', err)
-        } finally {
-            setTextureLoading(false)
         }
+
+        // All retries failed
+        setTextureLoading(false)
+        textureAppliedRef.current = false
     }
 
     // Effect 1: Handle model element creation and modelUrl changes
@@ -217,6 +361,8 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
         setLoading(true)
         setError(null)
+        modelLoadedRef.current = false
+        textureAppliedRef.current = false
 
         const viewer = document.createElement('model-viewer') as any
         if (id) viewer.id = id
@@ -229,8 +375,13 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
         viewer.setAttribute('src', modelUrl)
         viewer.setAttribute('crossorigin', 'anonymous')
-        viewer.setAttribute('camera-controls', cameraControls ? 'true' : 'false')
-        viewer.setAttribute('touch-action', cameraControls ? 'none' : 'auto')
+        if (cameraControls) {
+            viewer.setAttribute('camera-controls', 'true')
+            viewer.setAttribute('touch-action', 'none')
+        } else {
+            viewer.removeAttribute('camera-controls')
+            viewer.setAttribute('touch-action', 'auto')
+        }
         viewer.setAttribute('interaction-prompt', config.interactionPrompt || 'none')
         viewer.setAttribute('camera-orbit', propCameraOrbit || config.cameraOrbit)
         viewer.setAttribute('field-of-view', propFieldOfView || config.fieldOfView)
@@ -247,7 +398,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
         viewer.style.width = '100%'
         viewer.style.height = '100%'
-        if (backgroundColor) viewer.style.backgroundColor = backgroundColor
+        if (propBackgroundColor) viewer.style.backgroundColor = propBackgroundColor
 
         // Ensure auto-rotate is applied if enabled in state
         if (propAutoRotate) {
@@ -256,6 +407,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
         const onLoad = async () => {
             setLoading(false)
+            modelLoadedRef.current = true
             // UV Map logic
             const scene = getThreeScene(viewer)
             if (scene) {
@@ -316,24 +468,33 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
     }, [propAutoRotate])
 
-    // Effect 3: Update appearance (background, environment) without reload
+    // Effect 3: Update appearance (background, environment, exposure) without reload
     useEffect(() => {
         const viewer = viewerElementRef.current
         if (!viewer) return
 
-        if (backgroundColor) {
-            viewer.style.backgroundColor = backgroundColor
+        if (propBackgroundColor) {
+            viewer.style.backgroundColor = propBackgroundColor
         }
 
         const config = {
             ...viewerConfig.defaults,
             ...(modelSlug && (viewerConfig.models as any)[modelSlug] ? (viewerConfig.models as any)[modelSlug] : {})
         }
+
+        // Apply environment image
         const finalEnv = environment || config.environmentImage
         if (finalEnv) {
             viewer.setAttribute('environment-image', finalEnv)
         }
-    }, [backgroundColor, environment, modelSlug])
+
+        // Apply exposure based on day/night or config
+        // If background is dark (night mode), reduce exposure
+        const isNightMode = propBackgroundColor === '#1F1F1F'
+        const exposureBalance = isNightMode ? 0.6 : (config.exposure || 1.0)
+        viewer.setAttribute('exposure', exposureBalance.toString())
+
+    }, [propBackgroundColor, environment, modelSlug])
 
     // Effect 4: Handle textureUrl changes independently
     useEffect(() => {
@@ -377,7 +538,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 </div>
             )}
 
-            {!loading && !error && (
+            {!loading && !error && cameraControls && (
                 // Control Tips - Top Right
                 <div className="absolute top-4 right-4 bg-gray-800/80 backdrop-blur-sm text-white text-[10px] px-3 py-2 rounded-full shadow-lg pointer-events-none z-10 border border-white/10">
                     💡 {t('tips')}

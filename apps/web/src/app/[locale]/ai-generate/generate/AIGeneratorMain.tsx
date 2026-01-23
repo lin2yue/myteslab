@@ -14,6 +14,7 @@ import {
 import PricingModal from '@/components/pricing/PricingModal'
 import { useRouter } from '@/i18n/routing'
 import PublishModal from '@/components/publish/PublishModal'
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface GenerationHistory {
     id: string
@@ -40,6 +41,7 @@ export default function AIGeneratorMain({
     const t = useTranslations('Common')
     const tIndex = useTranslations('Index')
     const tGen = useTranslations('Generator')
+    const alert = useAlert()
     const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club'
 
     const getCdnUrl = (url: string) => {
@@ -54,12 +56,13 @@ export default function AIGeneratorMain({
         return url
     }
 
-    const getProxyUrl = useCallback((url: string) => {
+    const getProxyUrl = useCallback((url: string, options?: { stable?: boolean }) => {
         if (!url) return '';
         const effectiveUrl = getCdnUrl(url);
 
         // 系统性优化：直连 CDN 配合时间戳刷新缓存，确保 CORS 头生效
         if (effectiveUrl.includes('cdn.tewan.club')) {
+            if (options?.stable) return effectiveUrl;
             const separator = effectiveUrl.includes('?') ? '&' : '?';
             return `${effectiveUrl}${separator}v=${Date.now()}`;
         }
@@ -195,7 +198,7 @@ export default function AIGeneratorMain({
         }
         if (!prompt.trim() || isGenerating) return
         if (balance <= 0) {
-            alert('积分不足，请先购买生成包')
+            alert.warning('积分不足，请先购买生成包')
             return
         }
 
@@ -225,7 +228,7 @@ export default function AIGeneratorMain({
 
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            alert(`生成失败: ${message}`)
+            alert.error(`生成失败: ${message}`)
         } finally {
             setIsGenerating(false)
         }
@@ -290,7 +293,7 @@ export default function AIGeneratorMain({
             fetchHistory();
             return data.wrapId;
         } catch (err) {
-            alert('保存失败：' + (err instanceof Error ? err.message : String(err)));
+            alert.error('保存失败：' + (err instanceof Error ? err.message : String(err)));
             return null;
         } finally {
             setIsSaving(false);
@@ -321,14 +324,14 @@ export default function AIGeneratorMain({
 
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-            alert('Please login again');
+            alert.warning('Please login again');
             return;
         }
 
         setIsPublishing(true);
         try {
-            // 1. 捕捉高分辨率 3D 预览图 (启用镜头拉远以确保车辆完整)
-            const previewImageBase64 = await viewerRef.current.takeHighResScreenshot({ zoomOut: true });
+            // 1. 捕捉高分辨率 3D 预览图 (强制使用标准视角以保证社区一致性)
+            const previewImageBase64 = await viewerRef.current?.takeHighResScreenshot({ useStandardView: true });
 
             if (!previewImageBase64) {
                 throw new Error('Failed to capture 3D preview');
@@ -347,12 +350,12 @@ export default function AIGeneratorMain({
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
 
-            alert(tGen('publish_success'));
+            alert.success(tGen('publish_success'));
             fetchHistory();
             setShowPublishModal(false);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            alert(`发布失败: ${message}`);
+            alert.error(`发布失败: ${message}`);
         } finally {
             setIsPublishing(false);
         }
@@ -413,7 +416,7 @@ export default function AIGeneratorMain({
     const handleSelectTier = (tierId: string) => {
         // TODO: Implement payment logic
         console.log('Selected tier:', tierId)
-        alert('Payment integration coming soon!')
+        alert.info('Payment integration coming soon!')
         setShowPricing(false)
     }
 
@@ -428,7 +431,7 @@ export default function AIGeneratorMain({
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
-                            modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '')}
+                            modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
                             textureUrl={currentTexture || undefined}
                             modelSlug={selectedModel}
                             backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
@@ -439,7 +442,7 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    <div className="flex flex-row overflow-x-auto flex-nowrap lg:flex-wrap gap-2 lg:gap-3 pb-2 lg:pb-0">
+                    <div className="flex flex-row overflow-x-auto flex-nowrap lg:flex-nowrap gap-2 lg:gap-3 pb-2 lg:pb-0">
                         <button
                             onClick={() => setIsNight(!isNight)}
                             className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
@@ -769,7 +772,7 @@ export default function AIGeneratorMain({
                 onClose={() => setShowPublishModal(false)}
                 onConfirm={confirmPublish}
                 modelSlug={selectedModel}
-                modelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.modelUrl || '')}
+                modelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
                 textureUrl={currentTexture || ''}
                 isPublishing={isPublishing}
             />
@@ -796,12 +799,15 @@ function HistoryItem({
             onClick={onClick}
             className={`flex gap-3 p-3 rounded-xl border transition-all group cursor-pointer ${activeWrapId === item.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/30'}`}
         >
-            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+            <div
+                className="w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0"
+                style={{ aspectRatio: '4 / 3' }}
+            >
                 <Image
                     src={imgSrc}
                     alt="wrap"
                     width={64}
-                    height={64}
+                    height={48} // 64 / (4/3) = 48
                     className="w-full h-full object-cover"
                     onError={() => {
                         console.error('Failed to load history image:', item.texture_url);

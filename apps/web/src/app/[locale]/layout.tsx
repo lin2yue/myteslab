@@ -5,6 +5,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
+import { AlertProvider } from '@/components/alert/AlertProvider';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import "../globals.css";
@@ -112,11 +113,13 @@ export default async function RootLayout({
       >
         <GoogleAnalytics />
         <NextIntlClientProvider messages={messages}>
-          <Navbar />
-          <main className="flex-1 overflow-x-hidden">
-            {children}
-          </main>
-          <Footer />
+          <AlertProvider>
+            <Navbar />
+            <main className="flex-1 overflow-x-hidden">
+              {children}
+            </main>
+            <Footer />
+          </AlertProvider>
         </NextIntlClientProvider>
       </body>
     </html>

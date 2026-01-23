@@ -245,6 +245,7 @@ CREATE POLICY "Insert Downloads" ON user_downloads FOR INSERT WITH CHECK (auth.u
 -- 生成追踪
 ALTER TABLE generation_tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own Tasks" ON generation_tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Update Own Tasks" ON generation_tasks FOR UPDATE USING (auth.uid() = user_id);
 
 -- ============================================
 -- 初始数据索引加载

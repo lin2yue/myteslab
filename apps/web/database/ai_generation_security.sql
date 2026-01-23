@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
 -- 开启 RLS
 ALTER TABLE generation_tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own tasks" ON generation_tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own tasks" ON generation_tasks FOR UPDATE USING (auth.uid() = user_id);
 
 -- 3. 安全扣费存储过程 (Atomic Credit Deduction RPC)
 -- 此函数在数据库层面保证：余额不足不扣费，扣费成功才创建任务

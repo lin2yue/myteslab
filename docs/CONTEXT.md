@@ -58,6 +58,9 @@
 - **Architecture Analysis:** `docs/architecture/monorepo_analysis.md`
 - **DB Schema:** `apps/web/database/schema.sql`
 - **Deployment Status:** `docs/reports/mvp_status_report.md`
+- **3D Preview Standard (Source of Truth):** 
+    - Logic: `apps/miniprogram/scripts/generate_previews.js`
+    - Config: `apps/miniprogram/render_config.json`
 
 ## 7. Workflow Protocol (How to work here)
 1. **Check this file** for high-level context.

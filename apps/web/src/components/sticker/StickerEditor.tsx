@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { getMaskUrl } from '@/lib/ai/mask-config'
 import { useRouter } from 'next/navigation'
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface StickerEditorProps {
     modelSlug: string
@@ -21,6 +22,7 @@ export default function StickerEditor({
     isLoggedIn = false
 }: StickerEditorProps) {
     const t = useTranslations('Generator')
+    const alert = useAlert()
     const [stickerImage, setStickerImage] = useState<string | null>(null)
     const [currentMergedTexture, setCurrentMergedTexture] = useState<string | null>(null)
     const [isProcessing, setIsProcessing] = useState(false)
@@ -79,7 +81,7 @@ export default function StickerEditor({
             console.log('Image processing completed (without rotation)')
         } catch (err: any) {
             console.error('Processing error:', err)
-            alert(err.message || '图片处理失败，请重试')
+            alert.error(err.message || '图片处理失败，请重试')
         } finally {
             setIsProcessing(false)
         }

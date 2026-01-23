@@ -15,7 +15,7 @@
     },
     "models": {
         "cybertruck": {
-            "cameraOrbit": "200deg 80deg 90%",
+            "cameraOrbit": "225deg 75deg 80%",
             "exposure": 1.2
         },
         "model-3": {

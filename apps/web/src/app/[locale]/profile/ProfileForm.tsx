@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/utils/supabase/client'
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface ProfileFormProps {
     initialDisplayName: string | null
@@ -12,6 +13,7 @@ interface ProfileFormProps {
 
 export default function ProfileForm({ initialDisplayName, userId }: ProfileFormProps) {
     const t = useTranslations('Profile')
+    const alert = useAlert()
     const [displayName, setDisplayName] = useState(initialDisplayName || '')
     const [isEditing, setIsEditing] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
@@ -30,7 +32,7 @@ export default function ProfileForm({ initialDisplayName, userId }: ProfileFormP
             setIsEditing(false)
             router.refresh()
         } catch (err: any) {
-            alert(`Error: ${err.message}`)
+            alert.error(`Error: ${err.message}`)
         } finally {
             setIsLoading(false)
         }

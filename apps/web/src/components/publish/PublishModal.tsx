@@ -67,20 +67,20 @@ export default function PublishModal({
 
                         {/* Left: 3D Preview */}
                         <div className="flex flex-col gap-4">
-                            <div className="aspect-square bg-[#FFFFFF] rounded-2xl border border-gray-100 overflow-hidden relative shadow-inner">
+                            <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-gray-100 overflow-hidden relative shadow-inner">
                                 <ModelViewer
                                     ref={viewerRef}
                                     modelUrl={modelUrl}
                                     textureUrl={textureUrl}
                                     modelSlug={modelSlug}
-                                    backgroundColor={previewParams.backgroundColor}
+                                    backgroundColor="#1F1F1F"
                                     autoRotate={false}
                                     className="w-full h-full"
                                     cameraOrbit={previewParams.cameraOrbit}
                                     fieldOfView={previewParams.fieldOfView}
                                     cameraControls={false}
                                 />
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/10 backdrop-blur-md rounded-full text-[10px] text-gray-500 font-medium">
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-[10px] text-white/70 font-medium">
                                     3D Preview (Fixed Angle)
                                 </div>
                             </div>

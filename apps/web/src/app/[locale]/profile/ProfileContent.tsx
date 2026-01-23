@@ -6,6 +6,7 @@ import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions
 import { deleteUserAccount } from '@/lib/auth-actions';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/images';
+import { useAlert } from '@/components/alert/AlertProvider';
 
 interface Wrap {
     id: string;
@@ -34,6 +35,7 @@ interface ProfileContentProps {
 export default function ProfileContent({ generatedWraps, downloads }: ProfileContentProps) {
     const t = useTranslations('Profile');
     const tCommon = useTranslations('Common');
+    const alert = useAlert();
     const [activeTab, setActiveTab] = useState<'creations' | 'downloads'>('creations');
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [wraps, setWraps] = useState(generatedWraps);
@@ -53,7 +55,7 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
             // No alert needed for delete as item executes visual removal immediately
         } catch (e) {
             console.error(e);
-            alert(t('delete_failed'));
+            alert.error(t('delete_failed'));
         } finally {
             setLoadingId(null);
         }
@@ -64,10 +66,11 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
         try {
             await updateWrapVisibility(id, !currentStatus);
             setWraps(wraps.map(w => w.id === id ? { ...w, is_public: !currentStatus } : w));
-            alert(t('update_success'));
+            // Show success message for both publish and unpublish
+            alert.success(t('update_success'));
         } catch (e) {
             console.error(e);
-            alert(t('update_failed'));
+            alert.error(t('update_failed'));
         } finally {
             setLoadingId(null);
         }
@@ -81,7 +84,7 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
             // Redirect happens in action
         } catch (e) {
             console.error(e);
-            alert(t('delete_failed'));
+            alert.error(t('delete_failed'));
         } finally {
             setLoadingId(null);
         }

@@ -17,7 +17,7 @@
   },
   "models": {
     "cybertruck": {
-      "cameraOrbit": "225deg 75deg 85%",
+      "cameraOrbit": "225deg 75deg 80%",
       "bodyMaterials": [
         "Paint",
         "Paint_Rough",
