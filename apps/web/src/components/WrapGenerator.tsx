@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Image from 'next/image'
-import { flipImage180 } from '@/lib/utils/image-utils'
 
 interface GenerationHistory {
     id: string
@@ -158,84 +157,14 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                 throw new Error(data.error || '生成失败')
             }
 
-            // 1. Get generation result (Original) - flipped by server
-            let originalImageDataUrl = data.image.dataUrl;
+            // 1. Get generation result (Original) - fully corrected by server
+            const finalImageDataUrl = data.image.dataUrl;
+            console.log('[WrapGenerator] Using final server-side corrected image');
 
-            // 2. Flip the result 180° back to correct orientation
-            // (Server flipped the mask, so AI generated upside-down, now we flip it back)
-            try {
-                const flippedResult = await flipImage180(originalImageDataUrl);
-                originalImageDataUrl = flippedResult;
-                console.log('[WrapGenerator] Result flipped 180° to correct orientation');
-            } catch (flipErr) {
-                console.warn('Failed to flip result image:', flipErr);
-                // Continue with original if flip fails
-            }
-
-            // 3. Save original (flipped) image to filesystem
-            const timestamp = Date.now();
-            const originalFilename = `wrap_${selectedModel}_${timestamp}_original.png`;
-
-            let originalImageUrl = originalImageDataUrl; // Fallback to base64
-            try {
-                const saveOriginalResponse = await fetch('/api/wrap/save-image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        imageBase64: originalImageDataUrl,
-                        filename: originalFilename
-                    })
-                });
-                const saveOriginalData = await saveOriginalResponse.json();
-                if (saveOriginalData.success) {
-                    originalImageUrl = saveOriginalData.url;
-                }
-            } catch (err) {
-                console.warn('Failed to save original image to filesystem:', err);
-            }
-
-            // 3. Client-side Mask Enforcement
-            let processedImageDataUrl = originalImageDataUrl;
-            try {
-                let maskUrl = `/masks/${selectedModel}_mask.png`;
-                const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL;
-                if (cdnUrl && !window.location.host.includes('localhost')) {
-                    maskUrl = `${cdnUrl}/masks/${selectedModel}_mask.png`;
-                }
-
-                const compositedImage = await applyMaskComposite(originalImageDataUrl, maskUrl);
-                if (compositedImage) {
-                    processedImageDataUrl = compositedImage;
-                }
-            } catch (maskErr) {
-                console.warn('Failed to apply client-side mask:', maskErr);
-            }
-
-            // 4. Save processed image to filesystem
-            const processedFilename = `wrap_${selectedModel}_${timestamp}_processed.png`;
-            let processedImageUrl = processedImageDataUrl; // Fallback to base64
-
-            try {
-                const saveProcessedResponse = await fetch('/api/wrap/save-image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        imageBase64: processedImageDataUrl,
-                        filename: processedFilename
-                    })
-                });
-                const saveProcessedData = await saveProcessedResponse.json();
-                if (saveProcessedData.success) {
-                    processedImageUrl = saveProcessedData.url;
-                }
-            } catch (err) {
-                console.warn('Failed to save processed image to filesystem:', err);
-            }
-
-            // 5. Update state and history with file URLs (not base64)
+            // 2. Save result to history and state
             const result = {
-                imageDataUrl: processedImageUrl,
-                originalImageDataUrl: originalImageUrl,
+                imageDataUrl: finalImageDataUrl,
+                originalImageDataUrl: finalImageDataUrl,
                 modelSlug: selectedModel,
             };
 
@@ -249,37 +178,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
         }
     }
 
-    // Helper: Apply mask using Canvas
-    const applyMaskComposite = (imageSrc: string, maskSrc: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return reject('No canvas context');
 
-            const img = new window.Image();
-            img.crossOrigin = 'anonymous';
-
-            img.onload = () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-
-                const mask = new window.Image();
-                mask.crossOrigin = 'anonymous';
-
-                mask.onload = () => {
-                    ctx.globalCompositeOperation = 'multiply';
-                    ctx.drawImage(mask, 0, 0, canvas.width, canvas.height);
-                    ctx.globalCompositeOperation = 'source-over';
-                    resolve(canvas.toDataURL('image/png'));
-                };
-                mask.onerror = (e: unknown) => reject(e);
-                mask.src = maskSrc;
-            };
-            img.onerror = (e: unknown) => reject(e);
-            img.src = imageSrc;
-        });
-    }
 
     // Helper component for debug images
     const ImageWithInfo = ({ src, alt, label, onClick, isActive }: {
@@ -595,7 +494,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                             />
                         </div>
                     ) : (
-                                                <Image
+                        <Image
                             className="result-image"
                             src={generatedImage}
                             alt="生成的贴膜设计"

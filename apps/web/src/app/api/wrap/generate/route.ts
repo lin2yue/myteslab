@@ -255,35 +255,19 @@ export async function POST(request: NextRequest) {
             pipe = pipe.resize(targetWidth, targetHeight, { fit: 'fill' });
             console.log(`[AI-GEN] Resized to mask dimensions: ${targetWidth}x${targetHeight}`);
 
-            // 【重磅修复】重新应用 Mask 以确保黑区（如车顶玻璃）绝对干净，无 AI 溢出
-            if (maskImageBase64) {
-                const maskBuffer = Buffer.from(maskImageBase64, 'base64');
-                // 将黑白 Mask 转换为 Alpha 通道
-                const alphaBuffer = await sharp(maskBuffer)
-                    .resize(targetWidth, targetHeight)
-                    .greyscale()
-                    .toBuffer();
-
-                pipe = pipe.joinChannel(alphaBuffer);
-                console.log(`[AI-GEN] Applied mask alpha channel`);
-            }
 
             // 3. 执行旋转校正 (将其从 AI 的最优生成角度转回 3D 模型所需的官方角度)
             console.log(`[AI-GEN] ===== ROTATION LOGIC START =====`);
             console.log(`[AI-GEN] Current model slug: "${currentModelSlug}"`);
 
-            if (currentModelSlug === 'cybertruck') {
-                console.log('[AI-GEN] ✅ Executing Cybertruck rotation: 90 degrees CW');
+            if (currentModelSlug.includes('cybertruck')) {
+                console.log(`[AI-GEN] ✅ Executing Cybertruck correction: 90deg CW -> 1024x768`);
                 pipe = pipe.rotate(90);
-                // 确保最终尺寸是 1024x768
                 pipe = pipe.resize(1024, 768, { fit: 'fill' });
-                console.log('[AI-GEN] ✅ Cybertruck final resize to 1024x768');
             } else {
-                console.log('[AI-GEN] ✅ Executing Model 3/Y rotation: 180 degrees');
+                console.log(`[AI-GEN] ✅ Executing Model 3/Y correction: 180deg -> 1024x1024`);
                 pipe = pipe.rotate(180);
-                // 确保最终尺寸是 1024x1024
                 pipe = pipe.resize(1024, 1024, { fit: 'fill' });
-                console.log('[AI-GEN] ✅ Model 3/Y final resize to 1024x1024');
             }
             console.log(`[AI-GEN] ===== ROTATION LOGIC END =====`);
 

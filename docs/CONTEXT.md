@@ -27,6 +27,7 @@
 - **Direct Asset References:** Assets live in `assets/` but are uploaded to OSS. Web uses CDN URLs.
 - **Centralized AI Masks:** AI generation masks are stored in `assets/masks` (Monorepo root) and served via dynamic API routes to ensure consistency across the pipeline.
 - **i18n Strategy:** URL-based routing (`/en`, `/zh`) using `next-intl`.
+- **Responsive Image System:** Implemented a custom Next.js Loader for Aliyun OSS. Dynamically adjusts `w_` and `format` (webp) based on device DPR to balance 1024px quality and mobile performance. Managed via `ResponsiveOSSImage.tsx` to handle RSC serialization constraints.
 
 ## 5. Active Context & Next Steps
 - **Immediate Goal:** Maintenance and Documentation.
@@ -49,13 +50,17 @@
     - [x] **AI Generation**:
         - [x] Backend: Credit deduction RPC & Task tracking.
         - [x] API: Integration with Gemini for wrap generation.
-        - [x] Orientation Logic: Pre-rotated masks in `assets/masks`, post-generation rotation (M3/Y: 180, CT: 90 CW).
-        - [ ] UI: Generator page logic refinement & History UI optimization.
+        - [x] Orientation Logic: AI generation prefers vertical orientation (Portrait). 
+            - **Mask Strategy**: Masks in `assets/masks` are pre-rotated to Portrait (768x1024) for AI quality.
+            - **Post-Processing**: AI output is rotated 90° CW in `route.ts` to produce the final 1024x768 Landscape texture. No alpha masking is applied to preserve raw quality.
+            - **Result**: (M3/Y: 180, CT: 90 CW). Corrected output is saved as-is to OSS.
+        - [x] UI: Generator page logic refinement & History UI optimization (Responsive Loaders).
     - [ ] **Monetization**:
         - [ ] Configure payment system (Stripe/PayPal for credits).
 
 ## 6. Where to Find Knowledge
 - **Architecture Analysis:** `docs/architecture/monorepo_analysis.md`
+- **Development Best Practices:** `docs/guides/development_principles.md` (Contains 3D capture and Responsive Image Processing details)
 - **DB Schema:** `apps/web/database/schema.sql`
 - **Deployment Status:** `docs/reports/mvp_status_report.md`
 - **3D Preview Standard (Source of Truth):** 
