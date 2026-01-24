@@ -58,12 +58,19 @@ export async function POST(request: NextRequest) {
         let updateQuery;
 
         if (isAdmin) {
-            // Admin 模式：绕过 RLS 使用 Service Role (需要 ensure SUPABASE_SERVICE_ROLE_KEY is set)
-            const { createClient: createAdminClient } = require('@supabase/supabase-js');
-            const adminSupabase = createAdminClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY!
-            );
+            // Admin 模式：使用专门的 Admin 客户端 (Service Role)
+            const { createAdminClient } = require('@/utils/supabase/admin');
+
+            // 健壮性检查：确保 Service Role Key 存在
+            if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+                console.warn('[Upload-Preview] SUPABASE_SERVICE_ROLE_KEY is missing. Admin override failed.');
+                return NextResponse.json({
+                    success: false,
+                    error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing'
+                }, { status: 500 });
+            }
+
+            const adminSupabase = createAdminClient();
 
             console.log(`[Upload-Preview] Admin override for user ${userEmail}`);
             updateQuery = adminSupabase
