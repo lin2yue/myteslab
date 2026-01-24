@@ -57,22 +57,12 @@ export async function POST(request: NextRequest) {
 
         let updateQuery;
 
-        if (isAdmin) {
+        if (isAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
             // Admin 模式：使用专门的 Admin 客户端 (Service Role)
             const { createAdminClient } = require('@/utils/supabase/admin');
-
-            // 健壮性检查：确保 Service Role Key 存在
-            if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-                console.warn('[Upload-Preview] SUPABASE_SERVICE_ROLE_KEY is missing. Admin override failed.');
-                return NextResponse.json({
-                    success: false,
-                    error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing'
-                }, { status: 500 });
-            }
-
             const adminSupabase = createAdminClient();
 
-            console.log(`[Upload-Preview] Admin override for user ${userEmail}`);
+            console.log(`[Upload-Preview] Admin override enabled for user ${userEmail}`);
             updateQuery = adminSupabase
                 .from('wraps')
                 .update({
@@ -82,6 +72,10 @@ export async function POST(request: NextRequest) {
                 .eq('id', wrapId)
                 .select();
         } else {
+            // 普通模式或管理员降级模式：若管理员但缺少 Key，则打印警告并降级
+            if (isAdmin && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+                console.warn(`[Upload-Preview] Admin ${userEmail} triggered fallback due to missing Service Role Key`);
+            }
             // 普通模式：仅允许修改自己的作品
             updateQuery = supabase
                 .from('wraps')
