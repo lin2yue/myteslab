@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/images';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
+import PublishModal from '@/components/publish/PublishModal';
 
 interface Wrap {
     id: string;
@@ -17,6 +18,12 @@ interface Wrap {
     preview_url: string | null;
     is_public: boolean;
     created_at: string;
+    model_slug: string; // Added model_slug
+}
+
+interface ModelConfig {
+    slug: string;
+    model_3d_url: string;
 }
 
 interface DownloadItem {
@@ -31,15 +38,25 @@ interface DownloadItem {
 interface ProfileContentProps {
     generatedWraps: Wrap[];
     downloads: DownloadItem[];
+    wrapModels: ModelConfig[]; // Added wrapModels
 }
 
-export default function ProfileContent({ generatedWraps, downloads }: ProfileContentProps) {
+export default function ProfileContent({ generatedWraps, downloads, wrapModels }: ProfileContentProps) {
     const t = useTranslations('Profile');
     const tCommon = useTranslations('Common');
     const alert = useAlert();
     const [activeTab, setActiveTab] = useState<'creations' | 'downloads'>('creations');
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [wraps, setWraps] = useState(generatedWraps);
+
+    // Publish Modal State
+    const [showPublishModal, setShowPublishModal] = useState(false);
+    const [activePublishWrap, setActivePublishWrap] = useState<Wrap | null>(null);
+    const [isPublishing, setIsPublishing] = useState(false);
+
+    const getModelUrl = (slug: string) => {
+        return wrapModels.find(m => m.slug === slug)?.model_3d_url || '';
+    };
 
     // Sync wraps with props (for server revalidation updates)
     useEffect(() => {
@@ -62,18 +79,84 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
         }
     };
 
-    const handleTogglePublish = async (id: string, currentStatus: boolean) => {
-        setLoadingId(id);
+    const handleTogglePublish = async (wrap: Wrap) => {
+        if (wrap.is_public) {
+            // Unpublish - simple toggle is fine
+            setLoadingId(wrap.id);
+            try {
+                await updateWrapVisibility(wrap.id, false);
+                setWraps(wraps.map(w => w.id === wrap.id ? { ...w, is_public: false } : w));
+                alert.success(t('update_success'));
+            } catch (e) {
+                console.error(e);
+                alert.error(t('update_failed'));
+            } finally {
+                setLoadingId(null);
+            }
+        } else {
+            // Publish - trigger 3D modal flow
+            setActivePublishWrap(wrap);
+            setShowPublishModal(true);
+        }
+    };
+
+    const confirmPublish = async (previewImageBase64: string) => {
+        if (!activePublishWrap) return;
+
+        setIsPublishing(true);
         try {
-            await updateWrapVisibility(id, !currentStatus);
-            setWraps(wraps.map(w => w.id === id ? { ...w, is_public: !currentStatus } : w));
-            // Show success message for both publish and unpublish
-            alert.success(t('update_success'));
-        } catch (e) {
-            console.error(e);
-            alert.error(t('update_failed'));
+            // 1. 获取预签名上传链接
+            const signRes = await fetch('/api/wrap/get-upload-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wrapId: activePublishWrap.id })
+            });
+            const signData = await signRes.json();
+            if (!signData.success) throw new Error(`get-upload-url failed: ${signData.error}`);
+
+            const { uploadUrl, ossKey } = signData;
+
+            // 2. 将 Base64 转换为 Blob 准备直传
+            const base64Content = previewImageBase64.replace(/^data:image\/\w+;base64,/, '');
+            const byteCharacters = atob(base64Content);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' });
+
+            // 3. 客户端直传 OSS
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: { 'Content-Type': 'image/png' }
+            });
+
+            if (!uploadRes.ok) throw new Error('OSS direct upload failed');
+
+            // 4. 通知服务器确认
+            const confirmRes = await fetch('/api/wrap/confirm-publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wrapId: activePublishWrap.id,
+                    ossKey: ossKey
+                })
+            });
+
+            const confirmData = await confirmRes.json();
+            if (!confirmData.success) throw new Error(`confirm-publish failed: ${confirmData.error}`);
+
+            // Update UI
+            setWraps(wraps.map(w => w.id === activePublishWrap.id ? { ...w, is_public: true, preview_url: confirmData.previewUrl } : w));
+            alert.success(tCommon('publish_success'));
+            setShowPublishModal(false);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            alert.error(`发布失败: ${message}`);
+            console.error('[Profile-Publish] Error:', err);
         } finally {
-            setLoadingId(null);
+            setIsPublishing(false);
         }
     };
 
@@ -152,7 +235,7 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
 
                                             <div className="flex justify-between items-center gap-2">
                                                 <button
-                                                    onClick={() => handleTogglePublish(wrap.id, wrap.is_public)}
+                                                    onClick={() => handleTogglePublish(wrap)}
                                                     disabled={loadingId === wrap.id}
                                                     className={`flex-1 text-xs px-3 py-2 rounded border transition-colors ${wrap.is_public
                                                         ? 'border-yellow-500 text-yellow-600 hover:bg-yellow-50'
@@ -241,6 +324,19 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                     </button>
                 </div>
             </div>
+
+            {/* Unified Publish Modal */}
+            {showPublishModal && activePublishWrap && (
+                <PublishModal
+                    isOpen={showPublishModal}
+                    onClose={() => setShowPublishModal(false)}
+                    onConfirm={confirmPublish}
+                    modelSlug={activePublishWrap.model_slug}
+                    modelUrl={getModelUrl(activePublishWrap.model_slug)}
+                    textureUrl={activePublishWrap.texture_url}
+                    isPublishing={isPublishing}
+                />
+            )}
         </div>
     );
 }
