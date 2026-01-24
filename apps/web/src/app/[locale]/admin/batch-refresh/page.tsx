@@ -145,17 +145,48 @@ export default function BatchRefreshPage() {
             const imageBase64 = await viewerRef.current.takeHighResScreenshot({ useStandardView: true })
             if (!imageBase64) throw new Error('Screenshot failed')
 
-            const res = await fetch('/api/wrap/upload-preview', {
+            // 1. 获取预签名链接
+            const signRes = await fetch('/api/wrap/get-upload-url', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ wrapId: wrap.id, imageBase64 })
+                body: JSON.stringify({ wrapId: wrap.id })
+            })
+            const signData = await signRes.json()
+            if (!signData.success) throw new Error(`授权失败: ${signData.error}`)
+
+            const { uploadUrl, ossKey } = signData
+
+            // 2. 转换 Blob 并直传
+            const base64Content = imageBase64.replace(/^data:image\/\w+;base64,/, '')
+            const byteCharacters = atob(base64Content)
+            const byteNumbers = new Array(byteCharacters.length)
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i)
+            }
+            const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' })
+
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: { 'Content-Type': 'image/png' }
+            })
+            if (!uploadRes.ok) throw new Error('OSS直传失败 (可能需检查CORS)')
+
+            // 3. 通知服务器确认
+            const confirmRes = await fetch('/api/wrap/confirm-publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wrapId: wrap.id,
+                    ossKey: ossKey
+                })
             })
 
-            const result = await res.json()
-            if (!result.success) throw new Error(result.error)
+            const confirmData = await confirmRes.json()
+            if (!confirmData.success) throw new Error(`确认发布失败: ${confirmData.error}`)
 
-            // Update local state to reflect the new preview image in the list and current preview display
-            const newPreviewUrl = result.previewUrl
+            // Update local state
+            const newPreviewUrl = confirmData.previewUrl
             setWraps(prev => prev.map(w => w.id === wrap.id ? { ...w, preview_url: newPreviewUrl } : w))
             setActiveWrap(prev => prev && prev.id === wrap.id ? { ...prev, preview_url: newPreviewUrl } : prev)
 
@@ -301,7 +332,7 @@ export default function BatchRefreshPage() {
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-gray-400">Current Preview:</span>
                                 <div
-                                    className="w-20 bg-gray-100 rounded border border-gray-100 overflow-hidden cursor-zoom-in hover:border-blue-400 transition-colors"
+                                    className="w-20 bg-gray-100 rounded border border-gray-100 overflow-hidden cursor-zoom-in hover:border-blue-400 transition-colors relative"
                                     style={{ aspectRatio: '4 / 3' }}
                                     onClick={() => setZoomImage(getCdnUrl(activeWrap.preview_url))}
                                 >
@@ -343,7 +374,7 @@ export default function BatchRefreshPage() {
                                     </button>
 
                                     <div
-                                        className="w-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-100 cursor-zoom-in hover:border-blue-400 transition-colors"
+                                        className="w-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-100 cursor-zoom-in hover:border-blue-400 transition-colors relative"
                                         style={{ aspectRatio: '4 / 3' }}
                                         onClick={(e) => { e.stopPropagation(); setZoomImage(getCdnUrl(wrap.preview_url)); }}
                                     >
