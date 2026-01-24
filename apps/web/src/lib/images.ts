@@ -60,3 +60,17 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: OS
 
     return `${targetUrl}${separator}${processQuery}`;
 }
+
+/**
+ * Next.js Image Loader for Alibaba Cloud OSS
+ * 用于实现响应式图片加载 (srcset)
+ */
+export function aliyunLoader({ src, width, quality }: { src: string; width: number; quality?: number }): string {
+    // 调用现有的优化函数，强制使用 webp 格式
+    return getOptimizedImageUrl(src, {
+        width,
+        quality: quality || 75,
+        format: 'webp',
+        resize: 'lfit'
+    });
+}

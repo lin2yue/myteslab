@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import PricingModal from '@/components/pricing/PricingModal'
 import { useRouter } from '@/i18n/routing'
+import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import PublishModal from '@/components/publish/PublishModal'
 import { useAlert } from '@/components/alert/AlertProvider'
 
@@ -780,7 +781,6 @@ function HistoryItem({
     getCdnUrl: (url: string) => string;
 }) {
     const textureUrl = item.texture_url || '';
-    const [imgSrc, setImgSrc] = useState(getCdnUrl(textureUrl) || 'https://placehold.co/100x100?text=No+Image');
 
     return (
         <div
@@ -791,16 +791,12 @@ function HistoryItem({
                 className="w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0"
                 style={{ aspectRatio: '4 / 3' }}
             >
-                <Image
-                    src={imgSrc}
+                <ResponsiveOSSImage
+                    src={textureUrl}
                     alt="wrap"
                     width={64}
                     height={48} // 64 / (4/3) = 48
                     className="w-full h-full object-cover"
-                    onError={() => {
-                        console.error('Failed to load history image:', item.texture_url);
-                        setImgSrc('https://placehold.co/100x100?text=Error'); // Fallback
-                    }}
                 />
             </div>
             <div className="flex-1 min-w-0">

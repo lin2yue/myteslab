@@ -37,3 +37,21 @@
 ### 导出质量优化
 - **格式选择**：对于预览图展示，采用 `image/jpeg` 并设置 `0.9` 以上的质量参数，可以在保证视觉锐利度的同时，维持合理的图片体积。
 - **资产管道思维**：将每一次截图视为一次微型的“离屏渲染任务”，而非简单的 UI 快照。
+
+---
+
+## 3. 响应式图片处理 (Responsive Image System)
+
+### 动态缩略与按需下发
+**核心经验**：全量加载高清原图会极大损害移动端性能，而固定低分辨率压缩又会牺牲高清屏体验。
+- **方案**：利用“Next.js `Image` 组件 + 阿里云 OSS 动态缩略参数（`x-oss-process`）”实现业内最优解。
+- **做法**：实现自定义 `aliyunLoader`，根据组件请求的 `width` 动态计算 OSS 指令，自动适配不同 DPR（设备像素比）的屏幕。
+
+### 解决 Server Components 序列化问题
+**核心经验**：Next.js 不允许在 Server Components 中将自定义函数（如 Loader）直接作为 Props 传递给客户端组件。
+- **做法**：封装 [ResponsiveOSSImage.tsx](file:///Users/linpengfei/work/tesla-studio-monorepo/apps/web/src/components/image/ResponsiveOSSImage.tsx) 客户端组件，在内部硬编码 `loader` 逻辑。
+- **收益**：避免了运行时报错，同时在详情页等 Server Component 场景下保留了极其关键的响应式图片能力。
+
+### 布局稳定性 (CLS 优化)
+- **做法**：配合 `aspect-[4/3]` 容器与 `sizes` 属性。
+- **收益**：确保浏览器在图片下载前就能预留准确位置，完美避开布局抖动，提升 Core Web Vitals (LCP/CLS) 指标。

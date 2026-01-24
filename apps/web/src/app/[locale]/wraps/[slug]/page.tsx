@@ -8,6 +8,7 @@ import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
 import { createClient } from '@/utils/supabase/server'
+import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
 export async function generateMetadata({
     params,
@@ -194,9 +195,11 @@ export default async function WrapDetailPage({
                             <div className="bg-gray-50 rounded-xl border border-gray-100 p-2">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Texture Preview</p>
                                 <div className="w-full bg-white rounded-lg overflow-hidden relative group shadow-inner">
-                                    <img
-                                        src={getOptimizedImageUrl(wrap.texture_url, { width: 600, quality: 80 })}
+                                    <ResponsiveOSSImage
+                                        src={wrap.texture_url}
                                         alt={`${name} Tesla ${modelName || ''} wrap texture pattern preview`}
+                                        width={600}
+                                        height={450}
                                         className="w-full h-auto max-h-[180px] object-contain mx-auto"
                                     />
                                     {/* 放大遮罩 */}

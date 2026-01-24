@@ -3,6 +3,7 @@ import { useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import type { Wrap } from '@/lib/types'
 import { getOptimizedImageUrl } from '@/lib/images'
+import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
 interface WrapCardProps {
     wrap: Wrap
@@ -39,12 +40,12 @@ export function WrapCard({ wrap }: WrapCardProps) {
                 {/* 预览图容器 */}
                 <div className="aspect-[4/3] relative bg-gray-50 overflow-hidden">
                     {wrap.preview_image_url ? (
-                        <Image
-                            src={getOptimizedImageUrl(wrap.preview_image_url, { width: 400, quality: 75 })}
+                        <ResponsiveOSSImage
+                            src={wrap.preview_image_url}
                             alt={name}
                             fill
                             className="object-cover scale-[1.01] group-hover:scale-110 transition-transform duration-500 ease-out"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">

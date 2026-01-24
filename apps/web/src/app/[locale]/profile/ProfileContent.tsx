@@ -6,6 +6,7 @@ import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions
 import { deleteUserAccount } from '@/lib/auth-actions';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/images';
+import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
 
 interface Wrap {
@@ -126,8 +127,8 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                                     <div key={wrap.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                                         <div className="relative aspect-square bg-gray-50 group">
                                             {(wrap.preview_url || wrap.texture_url) ? (
-                                                <Image
-                                                    src={getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 600, height: 600, resize: 'fill' })}
+                                                <ResponsiveOSSImage
+                                                    src={wrap.preview_url || wrap.texture_url}
                                                     alt={wrap.name || wrap.prompt || 'Generated Wrap'}
                                                     fill
                                                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -190,8 +191,8 @@ export default function ProfileContent({ generatedWraps, downloads }: ProfileCon
                                         <div className="flex items-center">
                                             <div className="h-12 w-12 flex-shrink-0">
                                                 {item.wraps?.preview_url ? (
-                                                    <Image
-                                                        src={getOptimizedImageUrl(item.wraps.preview_url, { width: 100, height: 100, resize: 'fill' })}
+                                                    <ResponsiveOSSImage
+                                                        src={item.wraps.preview_url}
                                                         alt={item.wraps.name}
                                                         width={48}
                                                         height={48}

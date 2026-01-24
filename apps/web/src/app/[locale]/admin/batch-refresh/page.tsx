@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useTranslations } from 'next-intl'
 import { Loader2, CheckCircle2, AlertCircle, Play, Pause, RefreshCw, CheckSquare, Square, Eye } from 'lucide-react'
 import { useAlert } from '@/components/alert/AlertProvider'
+import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
 interface WrapRecord {
     id: string
@@ -304,7 +305,12 @@ export default function BatchRefreshPage() {
                                     style={{ aspectRatio: '4 / 3' }}
                                     onClick={() => setZoomImage(getCdnUrl(activeWrap.preview_url))}
                                 >
-                                    <img src={getCdnUrl(activeWrap.preview_url)} alt="curr" className="w-full h-full object-cover" />
+                                    <ResponsiveOSSImage
+                                        src={activeWrap.preview_url}
+                                        alt="curr"
+                                        fill
+                                        className="object-cover"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -341,7 +347,12 @@ export default function BatchRefreshPage() {
                                         style={{ aspectRatio: '4 / 3' }}
                                         onClick={(e) => { e.stopPropagation(); setZoomImage(getCdnUrl(wrap.preview_url)); }}
                                     >
-                                        <img src={getCdnUrl(wrap.preview_url)} alt="" className="w-full h-full object-cover" />
+                                        <ResponsiveOSSImage
+                                            src={wrap.preview_url}
+                                            alt=""
+                                            fill
+                                            className="object-cover"
+                                        />
                                     </div>
 
                                     <div className="flex-1 min-w-0" onClick={() => status !== 'running' && setActiveWrap(wrap)}>

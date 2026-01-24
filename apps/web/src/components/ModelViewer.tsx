@@ -117,6 +117,10 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     idealAspect: false
                 });
 
+                if (blob) {
+                    console.log(`[ModelViewer-Debug] Captured blob size: ${blob.size} bytes`);
+                }
+
                 if (!blob) return null;
 
                 // Composite onto Background Canvas for consistent color/alignment
@@ -137,6 +141,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         ctx.fillRect(0, 0, 1024, 768);
 
                         // Draw model image
+                        console.log(`[ModelViewer-Debug] Drawing image to canvas: ${img.width}x${img.height} -> 1024x768`);
                         ctx.drawImage(img, 0, 0, 1024, 768);
 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
