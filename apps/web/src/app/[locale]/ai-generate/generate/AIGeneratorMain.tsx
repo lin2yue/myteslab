@@ -333,7 +333,7 @@ export default function AIGeneratorMain({
                 body: JSON.stringify({ wrapId: activeWrapId })
             });
             const signData = await signRes.json();
-            if (!signData.success) throw new Error(signData.error);
+            if (!signData.success) throw new Error(`get-upload-url failed: ${signData.error}`);
 
             const { uploadUrl, ossKey } = signData;
 
@@ -368,15 +368,25 @@ export default function AIGeneratorMain({
             });
 
             const confirmData = await confirmRes.json();
-            if (!confirmData.success) throw new Error(confirmData.error);
+            if (!confirmData.success) throw new Error(`confirm-publish failed: ${confirmData.error}`);
 
             alert.success(tGen('publish_success'));
             fetchHistory();
             setShowPublishModal(false);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            alert.error(`发布失败: ${message}`);
-            console.error('[Publish-Refactor] Error:', err);
+            // 提高报错的可识别性，确定是哪个环节出错了
+            if (message.includes('get-upload-url')) {
+                alert.error(`获取授权失败: ${message}`);
+            } else if (message.includes('OSS direct upload') || err instanceof TypeError) {
+                // "Failed to fetch" 通常表现为 TypeError，且多发生在跨域 PUT 环节
+                alert.error(`OSS上传失败 (请检查CORS配置): ${message}`);
+            } else if (message.includes('confirm-publish')) {
+                alert.error(`同步状态失败: ${message}`);
+            } else {
+                alert.error(`发布失败: ${message}`);
+            }
+            console.error('[Publish-Refactor] Error Stage:', err);
         } finally {
             setIsPublishing(false);
         }
