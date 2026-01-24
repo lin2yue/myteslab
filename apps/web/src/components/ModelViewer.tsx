@@ -78,6 +78,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             const targetOrbit = modelConfig?.cameraOrbit || DEFAULT_ORBIT;
 
             // 1. Record original state
+            const originalAutoRotate = viewer.hasAttribute('auto-rotate');
             const originalMinRenderScale = viewer.getAttribute('min-render-scale');
             const originalFOV = viewer.getAttribute('field-of-view');
             const originalOrbit = viewer.getAttribute('camera-orbit');
@@ -89,73 +90,36 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             const nextSibling = viewer.nextSibling;
 
             try {
-                // 2. Temporarily boost quality and apply requested view
+                // Temporarily boost quality
                 viewer.setAttribute('min-render-scale', '1');
 
                 if (options?.useStandardView) {
-                    // AGGRESSIVE: Move to body to bypass any container constraints
-                    document.body.appendChild(viewer);
-                    viewer.style.setProperty('position', 'fixed', 'important');
-                    viewer.style.setProperty('top', '0', 'important');
-                    viewer.style.setProperty('left', '0', 'important');
-                    viewer.style.setProperty('width', '1024px', 'important');
-                    viewer.style.setProperty('height', '768px', 'important');
-                    viewer.style.setProperty('z-index', '10000', 'important');
-                    viewer.style.setProperty('max-width', 'none', 'important');
-                    viewer.style.setProperty('max-height', 'none', 'important');
-
-                    // CRITICAL: Force renderer to update its internal viewport size
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    window.dispatchEvent(new Event('resize'));
-                    await new Promise(resolve => setTimeout(resolve, 400));
-
-                    console.log(`[ModelViewer] Applying standard view: orbit=${targetOrbit}, fov=${STANDARD_FOV}, exposure=${STANDARD_EXPOSURE}, slug=${modelSlug}`);
+                    viewer.removeAttribute('auto-rotate');
                     viewer.setAttribute('camera-orbit', targetOrbit);
                     viewer.setAttribute('field-of-view', STANDARD_FOV);
                     viewer.setAttribute('exposure', STANDARD_EXPOSURE);
-
-                    // Note: We use canvas compositing for BG to ensuring it's not black, 
-                    // but we still set it on element for visual feedback.
                     viewer.style.backgroundColor = STANDARD_BG;
 
                     if (typeof viewer.jumpCameraToGoal === 'function') {
                         viewer.jumpCameraToGoal();
                     }
-
-                    // Redundant wait and jump cycle to ensure renderer settles and centers correctly
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => setTimeout(resolve, 800));
-
-                    if (typeof viewer.jumpCameraToGoal === 'function') {
-                        viewer.jumpCameraToGoal();
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 700));
-
-                } else if (options?.zoomOut) {
-                    viewer.setAttribute('field-of-view', '60deg');
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } else {
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                // Log dimensions for verification
-                console.log(`[ModelViewer] Capturing screenshot. Element size: ${viewer.clientWidth}x${viewer.clientHeight}. Style: ${viewer.style.width}x${viewer.style.height}`);
+                // Wait for renderer to settle
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                await new Promise(resolve => setTimeout(resolve, 300));
 
-                // 3. Capture screenshot
-                // PNG maintains transparency, allowing us to composite onto our target BG color
+                // Capture screenshot
                 const blob = await viewer.toBlob({
                     mimeType: 'image/png',
                     qualityArgument: 1.0,
-                    idealAspect: false // Use element aspect ratio (1024/768 = 4:3)
+                    idealAspect: false
                 });
 
                 if (!blob) return null;
 
-                // 4. Composite onto Background Canvas for consistent color and framing
+                // Composite onto Background Canvas for consistent color/alignment
                 return new Promise((resolve) => {
                     const img = new Image();
                     img.onload = () => {
@@ -172,8 +136,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         ctx.fillStyle = STANDARD_BG;
                         ctx.fillRect(0, 0, 1024, 768);
 
-                        // Draw model image (should be correctly sized and centered by now)
-                        // If model-viewer generated a sub-rectangle (off-center), we draw it at 0,0
+                        // Draw model image
                         ctx.drawImage(img, 0, 0, 1024, 768);
 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
@@ -183,41 +146,28 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 });
 
             } finally {
-                // 4. Restore state
+                // Restore auto-rotate state
+                if (originalAutoRotate) viewer.setAttribute('auto-rotate', 'true');
+                else viewer.removeAttribute('auto-rotate');
+
+                // Restore View Attributes
                 if (originalMinRenderScale) viewer.setAttribute('min-render-scale', originalMinRenderScale);
                 else viewer.removeAttribute('min-render-scale');
 
-                // Move back to original parent
-                if (originalParent) {
-                    if (nextSibling) originalParent.insertBefore(viewer, nextSibling);
-                    else originalParent.appendChild(viewer);
-                }
+                if (originalFOV) viewer.setAttribute('field-of-view', originalFOV);
+                else viewer.removeAttribute('field-of-view');
 
-                if (!options?.useStandardView) {
-                    if (originalFOV) viewer.setAttribute('field-of-view', originalFOV);
-                    else viewer.removeAttribute('field-of-view');
+                if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
+                else viewer.removeAttribute('camera-orbit');
 
-                    if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
-                    else viewer.removeAttribute('camera-orbit');
+                if (originalExposure) viewer.setAttribute('exposure', originalExposure);
+                else viewer.removeAttribute('exposure');
 
-                    if (originalExposure) viewer.setAttribute('exposure', originalExposure);
-                    else viewer.removeAttribute('exposure');
+                // Restore Style
+                viewer.style.backgroundColor = originalBG;
 
-                    viewer.style.backgroundColor = originalBG;
-                    viewer.style.width = originalWidth;
-                    viewer.style.height = originalHeight;
-                    viewer.style.position = '';
-                    viewer.style.top = '';
-                    viewer.style.left = '';
-                    viewer.style.zIndex = '';
-                } else {
-                    // Keep view settings but restore layout
-                    viewer.style.width = '100%';
-                    viewer.style.height = '100%';
-                    viewer.style.position = '';
-                    viewer.style.top = '';
-                    viewer.style.left = '';
-                    viewer.style.zIndex = '';
+                if (typeof viewer.jumpCameraToGoal === 'function') {
+                    viewer.jumpCameraToGoal();
                 }
             }
         }

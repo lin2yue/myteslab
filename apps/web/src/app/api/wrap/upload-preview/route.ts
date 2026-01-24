@@ -50,16 +50,44 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        // 3. 更新数据库
-        const { data: updateData, error: updateError, status: updateStatus } = await supabase
-            .from('wraps')
-            .update({
-                preview_url: previewUrl,
-                is_public: true // 上传预览图通常伴随着发布
-            })
-            .eq('id', wrapId)
-            .eq('user_id', user.id)
-            .select();
+        // 2. 检查权限策略
+        const ADMIN_EMAILS = ['linpengfei', 'admin', 'lin2yue@gmail.com']; // 简单的 Admin 检查，可根据需求扩展 (e.g. env var)
+        const userEmail = user.email || '';
+        const isAdmin = ADMIN_EMAILS.some(admin => userEmail.includes(admin));
+
+        let updateQuery;
+
+        if (isAdmin) {
+            // Admin 模式：绕过 RLS 使用 Service Role (需要 ensure SUPABASE_SERVICE_ROLE_KEY is set)
+            const { createClient: createAdminClient } = require('@supabase/supabase-js');
+            const adminSupabase = createAdminClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+
+            console.log(`[Upload-Preview] Admin override for user ${userEmail}`);
+            updateQuery = adminSupabase
+                .from('wraps')
+                .update({
+                    preview_url: previewUrl,
+                    is_public: true
+                })
+                .eq('id', wrapId)
+                .select();
+        } else {
+            // 普通模式：仅允许修改自己的作品
+            updateQuery = supabase
+                .from('wraps')
+                .update({
+                    preview_url: previewUrl,
+                    is_public: true
+                })
+                .eq('id', wrapId)
+                .eq('user_id', user.id)
+                .select();
+        }
+
+        const { data: updateData, error: updateError } = await updateQuery;
 
         if (updateError) {
             console.error('Failed to update wrap preview:', updateError);

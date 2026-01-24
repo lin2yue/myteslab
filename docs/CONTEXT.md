@@ -20,7 +20,7 @@
 - **Database:** Supabase (PostgreSQL). Schema shared conceptually but managed via `apps/web/database/schema.sql`.
 - **3D Engine:** `<model-viewer>` (Google).
 - **Styling:** Tailwind CSS.
-- **Assets:** Aliyun OSS (proxied via `cdn.tewan.club`).
+- **Assets:** Aliyun OSS (strict access via CDN `cdn.tewan.club`). **CRITICAL: NEVER change CDN to direct OSS URL.**
 
 ## 4. Key Architectural Decisions (ADRs)
 - **No Shared Code Package:** We deliberately kept `packages/shared` empty. Code sharing is done via copy-paste or parallel implementation until duplication becomes critical (Rule of 3).
@@ -67,3 +67,4 @@
 2. **Update this file** if you complete a major milestone (e.g., "Language Switcher Added").
 3. **Respect constraints:** Do not add `packages/` unless approved. Do not add heavy libraries without check.
 4. **Communication:** Always use **Chinese** (中文) when communicating with the user, unless technical terminology requires English.
+5. **Systemic Problem Solving:** Do not focus solely on single-point failures. Analyze the root cause and seek optimal, architectural, and systemic solutions. Avoid patching symptoms.

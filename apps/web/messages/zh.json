@@ -139,7 +139,8 @@
         "terms_public_title": "公开展示",
         "terms_public_desc": "发布后，您的作品将展示在“发现”频道供全球用户探索和点赞。",
         "terms_agree_checkbox": "我已阅读并知悉上述发布说明，确认发布此作品",
-        "confirm_publish": "确认发布作品"
+        "confirm_publish": "确认发布作品",
+        "preparing_preview": "正在准备预览图..."
     },
     "Footer": {
         "tagline": "终极特斯拉定制车身贴图设计工作室",

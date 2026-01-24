@@ -107,13 +107,13 @@
         "publishing": "Publishing...",
         "day_mode": "Day Mode",
         "night_mode": "Night Mode",
-        "auto_rotate_on": "Stop Rotation",
-        "auto_rotate_off": "Auto Rotate",
-        "screenshot": "Take Snapshot",
-        "download_png": "Download PNG",
+        "auto_rotate_on": "Stop",
+        "auto_rotate_off": "Rotate",
+        "screenshot": "Snapshot",
+        "download_png": "Download",
         "publish": "Publish",
         "publish_success": "Published successfully to discovery section",
-        "already_published": "Already Public",
+        "already_published": "Public",
         "nav_back": "Back to Home",
         "insufficient_credits": "Insufficient credits, please buy a package",
         "generate_error": "Generation failed, please try again",
@@ -139,7 +139,8 @@
         "terms_public_title": "Public Exhibition",
         "terms_public_desc": "Once published, your work will appear in the 'Discover' channel for users to explore.",
         "terms_agree_checkbox": "I have read and agree to the publishing terms and confirm to publish this work",
-        "confirm_publish": "Confirm Publish"
+        "confirm_publish": "Confirm",
+        "preparing_preview": "Preparing..."
     },
     "Footer": {
         "tagline": "The ultimate studio for custom Tesla wrap designs",

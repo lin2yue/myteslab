@@ -60,11 +60,8 @@ export default function AIGeneratorMain({
         if (!url) return '';
         const effectiveUrl = getCdnUrl(url);
 
-        // 系统性优化：直连 CDN 配合时间戳刷新缓存，确保 CORS 头生效
         if (effectiveUrl.includes('cdn.tewan.club')) {
-            if (options?.stable) return effectiveUrl;
-            const separator = effectiveUrl.includes('?') ? '&' : '?';
-            return `${effectiveUrl}${separator}v=${Date.now()}`;
+            return effectiveUrl;
         }
 
         if (effectiveUrl.startsWith('http') && typeof window !== 'undefined' && !effectiveUrl.includes(window.location.origin)) {
@@ -319,9 +316,7 @@ export default function AIGeneratorMain({
         setShowPublishModal(true);
     };
 
-    const confirmPublish = async () => {
-        if (!viewerRef.current) return;
-
+    const confirmPublish = async (previewImageBase64: string) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             alert.warning('Please login again');
@@ -330,13 +325,6 @@ export default function AIGeneratorMain({
 
         setIsPublishing(true);
         try {
-            // 1. 捕捉高分辨率 3D 预览图 (强制使用标准视角以保证社区一致性)
-            const previewImageBase64 = await viewerRef.current?.takeHighResScreenshot({ useStandardView: true });
-
-            if (!previewImageBase64) {
-                throw new Error('Failed to capture 3D preview');
-            }
-
             // 2. 调用上传并发布接口
             const res = await fetch('/api/wrap/upload-preview', {
                 method: 'POST',
@@ -442,10 +430,10 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    <div className="flex flex-row overflow-x-auto flex-nowrap lg:flex-nowrap gap-2 lg:gap-3 pb-2 lg:pb-0">
+                    <div className="flex flex-row overflow-x-auto lg:overflow-visible flex-nowrap lg:flex-nowrap gap-1.5 lg:gap-2 pb-2 lg:pb-0">
                         <button
                             onClick={() => setIsNight(!isNight)}
-                            className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
+                            className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-1.5 flex-shrink"
                         >
                             {isNight ? (
                                 <>
@@ -461,7 +449,7 @@ export default function AIGeneratorMain({
                         </button>
                         <button
                             onClick={() => setAutoRotate(!autoRotate)}
-                            className={`px-3 py-2 lg:px-6 lg:py-3 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-2 flex-shrink-0 ${autoRotate ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-700'}`}
+                            className={`px-2.5 py-2 lg:px-4 lg:py-2.5 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-1.5 flex-shrink ${autoRotate ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-700'}`}
                         >
                             {autoRotate ? (
                                 <>
@@ -478,7 +466,7 @@ export default function AIGeneratorMain({
                         <div className="hidden lg:block lg:flex-1" />
                         <button
                             onClick={takeSnapshot}
-                            className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-2 flex-shrink-0"
+                            className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-1.5 flex-shrink"
                         >
                             <>
                                 <Camera className="w-5 h-5 lg:w-4 lg:h-4" />
@@ -488,7 +476,7 @@ export default function AIGeneratorMain({
                         <button
                             onClick={handleDownload}
                             disabled={!currentTexture}
-                            className="px-3 py-2 lg:px-6 lg:py-3 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 flex-shrink-0"
+                            className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink"
                         >
                             <>
                                 <Download className="w-5 h-5 lg:w-4 lg:h-4" />
@@ -498,7 +486,7 @@ export default function AIGeneratorMain({
                         <button
                             onClick={handlePublish}
                             disabled={isPublishing || isSaving || (activeMode === 'ai' && !activeWrapId) || (activeMode === 'diy' && !currentTexture) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
-                            className={`px-3 py-2 lg:px-6 lg:py-3 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-2 flex-shrink-0 ${isPublishing || isSaving ? 'bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 disabled:opacity-50')}`}
+                            className={`px-2.5 py-2 lg:px-4 lg:py-2.5 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-1.5 flex-shrink ${isPublishing || isSaving ? 'bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 disabled:opacity-50')}`}
                         >
                             {(isPublishing || isSaving) ? (
                                 <>

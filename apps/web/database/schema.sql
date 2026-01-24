@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   is_public BOOLEAN DEFAULT TRUE,         -- 是否公开
   is_active BOOLEAN DEFAULT TRUE,         -- 是否激活
   author_name TEXT,                       -- 作者名 (冗余备份)
+  reference_images TEXT[],                -- AI 参考图列表
   deleted_at TIMESTAMP WITH TIME ZONE,    -- 软删除标记
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

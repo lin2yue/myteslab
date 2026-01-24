@@ -12,7 +12,7 @@ export default function AlertContainer({ alerts, onRemove }: AlertContainerProps
     if (alerts.length === 0) return null;
 
     return (
-        <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full px-4 lg:px-0">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-3 max-w-md w-full px-4">
             {alerts.map((alert) => (
                 <AlertItem key={alert.id} alert={alert} onRemove={onRemove} />
             ))}

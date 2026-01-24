@@ -8,7 +8,7 @@ import { X, Loader2, Globe, ShieldCheck, DownloadCloud } from 'lucide-react'
 interface PublishModalProps {
     isOpen: boolean
     onClose: () => void
-    onConfirm: () => Promise<void>
+    onConfirm: (imageBase64: string) => Promise<void>
     modelSlug: string
     modelUrl: string
     textureUrl: string
@@ -27,9 +27,9 @@ export default function PublishModal({
     const t = useTranslations('Common')
     const tGen = useTranslations('Generator')
     const [agree, setAgree] = useState(false)
+    const [isProcessing, setIsProcessing] = useState(false)
     const viewerRef = useRef<ModelViewerRef>(null)
-
-    if (!isOpen) return null
+    const hiddenViewerRef = useRef<ModelViewerRef>(null)
 
     // Params from render_config.json to match the generation script exactly
     const previewParams = {
@@ -40,6 +40,29 @@ export default function PublishModal({
         environmentImage: "neutral",
         shadowIntensity: 1,
         shadowSoftness: 1
+    }
+
+    if (!isOpen) return null
+
+    const handleConfirm = async () => {
+        if (!hiddenViewerRef.current) return
+
+        setIsProcessing(true)
+        try {
+            // Wait for theDedicated snapshot renderer to be fully ready
+            await hiddenViewerRef.current.waitForReady(5000)
+
+            // Capture from the standard 1024x768 instance
+            const imageBase64 = await hiddenViewerRef.current.takeHighResScreenshot({ useStandardView: true })
+
+            if (imageBase64) {
+                await onConfirm(imageBase64)
+            }
+        } catch (error) {
+            console.error('Failed to capture snapshot:', error)
+        } finally {
+            setIsProcessing(false)
+        }
     }
 
     return (
@@ -55,7 +78,7 @@ export default function PublishModal({
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        disabled={isPublishing}
+                        disabled={isPublishing || isProcessing}
                     >
                         <X className="w-6 h-6 text-gray-400" />
                     </button>
@@ -65,7 +88,7 @@ export default function PublishModal({
                 <div className="flex-1 overflow-y-auto p-6 md:p-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-                        {/* Left: 3D Preview */}
+                        {/* Left: 3D Preview (User facing) */}
                         <div className="flex flex-col gap-4">
                             <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-gray-100 overflow-hidden relative shadow-inner">
                                 <ModelViewer
@@ -81,7 +104,7 @@ export default function PublishModal({
                                     cameraControls={false}
                                 />
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-[10px] text-white/70 font-medium">
-                                    3D Preview (Fixed Angle)
+                                    3D Preview (Live)
                                 </div>
                             </div>
                             <p className="text-xs text-gray-400 text-center italic">
@@ -147,19 +170,19 @@ export default function PublishModal({
                                 <button
                                     onClick={onClose}
                                     className="flex-1 h-12 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all text-sm"
-                                    disabled={isPublishing}
+                                    disabled={isPublishing || isProcessing}
                                 >
                                     {t('cancel')}
                                 </button>
                                 <button
-                                    onClick={onConfirm}
-                                    disabled={!agree || isPublishing}
-                                    className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${agree && !isPublishing ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                    onClick={handleConfirm}
+                                    disabled={!agree || isPublishing || isProcessing}
+                                    className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${agree && !isPublishing && !isProcessing ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >
-                                    {isPublishing ? (
+                                    {isPublishing || isProcessing ? (
                                         <>
                                             <Loader2 className="w-5 h-5 animate-spin" />
-                                            {tGen('publishing')}
+                                            {isPublishing ? tGen('publishing') : tGen('preparing_preview')}
                                         </>
                                     ) : (
                                         <>
@@ -171,6 +194,37 @@ export default function PublishModal({
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* 
+                  Snapshot Pipe: Dedicated hidden instance locked at 1024x768 
+                  This follows the industry standard of separating 'Viewing' from 'Asset Generation'.
+                */}
+                <div
+                    style={{
+                        position: 'fixed',
+                        left: 0,
+                        top: 0,
+                        width: '1024px',
+                        height: '768px',
+                        opacity: 0.01,
+                        pointerEvents: 'none',
+                        zIndex: -1
+                    }}
+                    aria-hidden="true"
+                >
+                    <ModelViewer
+                        ref={hiddenViewerRef}
+                        modelUrl={modelUrl}
+                        textureUrl={textureUrl}
+                        modelSlug={modelSlug}
+                        backgroundColor="#1F1F1F"
+                        autoRotate={false}
+                        className="w-full h-full"
+                        cameraOrbit={previewParams.cameraOrbit}
+                        fieldOfView={previewParams.fieldOfView}
+                        cameraControls={false}
+                    />
                 </div>
             </div>
         </div>
