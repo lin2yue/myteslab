@@ -66,7 +66,7 @@ export async function getWraps(
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
             ['wraps-v6', modelSlug || 'all', String(page), sortBy],
-            { revalidate: 60 }
+            { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
         console.error('获取贴图列表异常:', error)

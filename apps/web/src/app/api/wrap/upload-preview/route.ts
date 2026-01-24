@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { uploadToOSS } from '@/lib/oss';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, resolve } from 'path';
@@ -101,6 +102,15 @@ export async function POST(request: NextRequest) {
                 success: false,
                 error: 'Wrap not found or access denied'
             }, { status: 404 });
+        }
+
+        // 3. 强制刷新首页缓存
+        try {
+            console.log('[Upload-Preview] Triggering cache revalidation for homepage and wraps tag');
+            revalidatePath('/', 'layout');
+            revalidateTag('wraps');
+        } catch (revalidateErr) {
+            console.error('[Upload-Preview] Cache revalidation failed (non-blocking):', revalidateErr);
         }
 
         return NextResponse.json({
