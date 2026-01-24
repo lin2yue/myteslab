@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         try {
             console.log('[Upload-Preview] Triggering cache revalidation for homepage and wraps tag');
             revalidatePath('/', 'layout');
-            revalidateTag('wraps');
+            revalidateTag('wraps', 'default');
         } catch (revalidateErr) {
             console.error('[Upload-Preview] Cache revalidation failed (non-blocking):', revalidateErr);
         }
