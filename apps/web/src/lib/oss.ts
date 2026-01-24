@@ -57,3 +57,35 @@ export async function uploadToOSS(
         throw error;
     }
 }
+/**
+ * Generate a signed PUT URL for client-side direct upload
+ */
+export async function getSignedUrl(
+    filename: string,
+    folder: string = 'wraps/previews'
+): Promise<{ url: string; key: string }> {
+    const OSS = require('ali-oss');
+    const config = {
+        region: process.env.OSS_REGION || 'oss-cn-beijing',
+        accessKeyId: process.env.OSS_ACCESS_KEY_ID!,
+        accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET!,
+        bucket: process.env.OSS_BUCKET || 'lock-sounds',
+        secure: true // 强制使用 HTTPS
+    };
+
+    if (!config.accessKeyId || !config.accessKeySecret) {
+        throw new Error('OSS credentials missing');
+    }
+
+    const client = new OSS(config);
+    const ossKey = `${folder}/${filename}`;
+
+    // 生成 2 分钟有效的 PUT 签名连接
+    const url = client.signatureUrl(ossKey, {
+        method: 'PUT',
+        'Content-Type': 'image/png',
+        expires: 120
+    });
+
+    return { url, key: ossKey };
+}

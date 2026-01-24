@@ -326,18 +326,49 @@ export default function AIGeneratorMain({
 
         setIsPublishing(true);
         try {
-            // 2. 调用上传并发布接口
-            const res = await fetch('/api/wrap/upload-preview', {
+            // 1. 获取预签名上传链接 (Authorized Link)
+            const signRes = await fetch('/api/wrap/get-upload-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wrapId: activeWrapId })
+            });
+            const signData = await signRes.json();
+            if (!signData.success) throw new Error(signData.error);
+
+            const { uploadUrl, ossKey } = signData;
+
+            // 2. 将 Base64 转换为 Blob 准备直传
+            const base64Content = previewImageBase64.replace(/^data:image\/\w+;base64,/, '');
+            const byteCharacters = atob(base64Content);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' });
+
+            // 3. 客户端直传 OSS (Direct PUT)
+            // 该请求由浏览器直接发往阿里云，避免跨境中转超时
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: { 'Content-Type': 'image/png' }
+            });
+
+            if (!uploadRes.ok) throw new Error('OSS direct upload failed');
+
+            // 4. 通知服务器同步元数据并刷新缓存
+            const confirmRes = await fetch('/api/wrap/confirm-publish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     wrapId: activeWrapId,
-                    imageBase64: previewImageBase64
+                    ossKey: ossKey
                 })
             });
 
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            const confirmData = await confirmRes.json();
+            if (!confirmData.success) throw new Error(confirmData.error);
 
             alert.success(tGen('publish_success'));
             fetchHistory();
@@ -345,6 +376,7 @@ export default function AIGeneratorMain({
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
             alert.error(`发布失败: ${message}`);
+            console.error('[Publish-Refactor] Error:', err);
         } finally {
             setIsPublishing(false);
         }
