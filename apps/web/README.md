@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tesla Studio - Web Application
 
-## Getting Started
+这是基于 Next.js 16 (App Router) 构建的特斯拉车身改色预览平台。
 
-First, run the development server:
+## 🎯 核心功能
+- **3D 实时预览**：基于 `<model-viewer>` 实现 GLB 模型的高保真渲染。
+- **AI 生图 (Gemini Integrated)**：通过 Gemini Pro Vision 实现个性化贴图生成。
+- **DIY 系统**：支持用户上传图片并在浏览器中完成 3D 贴合。
+- **全自动下载**：导出 1:1 物理像素对齐的官方规格贴图。
 
+## 📐 核心技术实践
+
+### 1. 云端图像处理 (OSS IMG)
+为了减轻服务端 CPU 压力，本应用深度集成了阿里云 OSS 的 IMG 处理能力。
+- **动态校正**：AI 生成的“车头向下”贴图，在读取时由 OSS 实时旋转 90°/180° 为“官方标准”。
+- **响应式加载**：通过自定义 `aliyunLoader` 自动适配 device rendering 比例，分发 WebP 格式提升 LCP 面板评分。
+
+### 2. 多语言支持 (i18n)
+使用 `next-intl` 实现 URL 路由级的国际化支持（`/zh`, `/en`）。
+
+## 🛠️ 开发指南
+
+### 环境变量
+请确保 `.env.local` 包含以下关键配置：
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GEMINI_API_KEY`
+- `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET`
+
+### 本地运行
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📚 说明文档
+- [AI 背景与架构逻辑 (CONTEXT)](../../docs/CONTEXT.md)
+- [贴图旋转标准指南](../../docs/guides/development_principles.md#4-贴图旋转与方向标准-texture-orientation-standards)
+- [数据库 Schema](../../database/schema.sql)
