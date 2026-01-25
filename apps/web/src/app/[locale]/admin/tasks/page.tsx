@@ -77,6 +77,55 @@ export default function AdminTasksPage() {
 
     useEffect(() => {
         fetchTasks();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('admin-tasks-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'generation_tasks'
+                },
+                async (payload) => {
+                    console.log('Realtime Event:', payload);
+
+                    if (payload.eventType === 'INSERT') {
+                        // New task: Fetch full details including profile
+                        const { data: newTask, error } = await supabase
+                            .from('generation_tasks')
+                            .select(`
+                                *,
+                                profiles (
+                                    display_name,
+                                    email
+                                )
+                            `)
+                            .eq('id', payload.new.id)
+                            .single();
+
+                        if (!error && newTask) {
+                            setTasks((prev) => [newTask as GenerationTask, ...prev]);
+                            // Optional: Alert or sound?
+                        }
+                    } else if (payload.eventType === 'UPDATE') {
+                        // Update existing task
+                        setTasks((prev) =>
+                            prev.map((task) =>
+                                task.id === payload.new.id
+                                    ? { ...task, ...payload.new }
+                                    : task
+                            )
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const handleRefund = async (taskId: string) => {
