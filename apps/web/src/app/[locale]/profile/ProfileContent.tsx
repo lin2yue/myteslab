@@ -9,11 +9,13 @@ import { getOptimizedImageUrl } from '@/lib/images';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PublishModal from '@/components/publish/PublishModal';
+import { Link } from '@/i18n/routing';
 
 interface Wrap {
     id: string;
     name?: string;
     prompt?: string | null;
+    slug?: string; // Added slug
     texture_url: string;
     preview_url: string | null;
     is_public: boolean;
@@ -208,30 +210,63 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                                 {wraps.map((wrap) => (
                                     <div key={wrap.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="relative aspect-square bg-gray-50 group">
-                                            {(wrap.preview_url || wrap.texture_url) ? (
-                                                <ResponsiveOSSImage
-                                                    src={wrap.preview_url || wrap.texture_url}
-                                                    alt={wrap.name || wrap.prompt || 'Generated Wrap'}
-                                                    fill
-                                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
-                                                    No Images
+                                        {wrap.slug ? (
+                                            <Link href={`/wraps/${wrap.slug}`} className="block">
+                                                <div className="relative aspect-square bg-gray-50 group">
+                                                    {wrap.texture_url ? (
+                                                        <ResponsiveOSSImage
+                                                            src={wrap.texture_url}
+                                                            alt={wrap.name || wrap.prompt || 'Generated Wrap'}
+                                                            fill
+                                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                                            className="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                                                            No Images
+                                                        </div>
+                                                    )}
+                                                    {wrap.is_public && (
+                                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full z-10">
+                                                            {t('published')}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {wrap.is_public && (
-                                                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                                                    {t('published')}
-                                                </div>
-                                            )}
-                                        </div>
+                                            </Link>
+                                        ) : (
+                                            <div className="relative aspect-square bg-gray-50 group cursor-default">
+                                                {wrap.texture_url ? (
+                                                    <ResponsiveOSSImage
+                                                        src={wrap.texture_url}
+                                                        alt={wrap.name || wrap.prompt || 'Generated Wrap'}
+                                                        fill
+                                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                                        className="object-contain p-2"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                                                        No Images
+                                                    </div>
+                                                )}
+                                                {wrap.is_public && (
+                                                    <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full z-10">
+                                                        {t('published')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="p-4">
-                                            <p className="text-sm text-gray-900 font-bold line-clamp-2 mb-4 h-10" title={wrap.name || wrap.prompt || ''}>
-                                                {wrap.name || wrap.prompt || tCommon('untitled')}
-                                            </p>
+                                            {wrap.slug ? (
+                                                <Link href={`/wraps/${wrap.slug}`} className="block">
+                                                    <p className="text-sm text-gray-900 font-bold line-clamp-2 mb-4 h-10 hover:text-blue-600 transition-colors" title={wrap.name || wrap.prompt || ''}>
+                                                        {wrap.name || wrap.prompt || tCommon('untitled')}
+                                                    </p>
+                                                </Link>
+                                            ) : (
+                                                <p className="text-sm text-gray-900 font-bold line-clamp-2 mb-4 h-10 text-gray-500 cursor-default" title={wrap.name || wrap.prompt || ''}>
+                                                    {wrap.name || wrap.prompt || tCommon('untitled')}
+                                                </p>
+                                            )}
 
                                             <div className="flex justify-between items-center gap-2">
                                                 <button

@@ -49,8 +49,9 @@ export async function POST(request: NextRequest) {
             texture_url: savedUrl,
             preview_url: savedUrl, // DIY simple preview is same as texture or we could capture from 3D later
             is_public: false,
-            category: 'diy'
-        }).select('id').single();
+            category: 'diy',
+            slug: crypto.randomBytes(6).toString('hex')
+        }).select('id, slug').single();
 
         if (dbError) {
             throw dbError;

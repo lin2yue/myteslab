@@ -31,7 +31,7 @@ export default async function ProfilePage({
     const [profileRes, creditsRes, wrapsRes, downloadsRes, modelsRes] = await Promise.all([
         supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
         supabase.from('user_credits').select('balance, total_earned').eq('user_id', user.id).single(),
-        supabase.from('wraps').select('id, name, prompt, texture_url, preview_url, is_public, created_at, model_slug').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
+        supabase.from('wraps').select('id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('user_downloads').select('id, downloaded_at, wraps(id, name, preview_url, texture_url)').eq('user_id', user.id).order('downloaded_at', { ascending: false }).limit(20),
         supabase.from('wrap_models').select('slug, model_3d_url')
     ]);

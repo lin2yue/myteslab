@@ -248,8 +248,9 @@ export async function POST(request: NextRequest) {
             preview_url: savedUrl,
             is_public: false,
             category: 'community',
-            reference_images: savedReferenceUrls
-        }).select('id').single();
+            reference_images: savedReferenceUrls,
+            slug: crypto.randomBytes(6).toString('hex')
+        }).select('id, slug').single();
 
         if (historyError) {
             console.error('Failed to save history:', historyError);
