@@ -55,9 +55,11 @@
                 - Model 3/Y: 1024x1024, **Heading UP**.
                 - Cybertruck: 1024x768, **Heading LEFT**.
             - **Pipeline Handling**: 
-                - AI Route (`route.ts`) post-processes raw AI output (Heading DOWN) by rotating it **90° CW** for Cybertruck and **180°** for Model 3/Y.
-                - DIY Editor (`StickerEditor.tsx`) also applies the same rotation post-composite.
-                - **CRITICAL**: The 3D Viewer (`ModelViewer.tsx`) trusts these assets and applies **0°** rotation. Never add rotation offsets for dynamic assets.
+                - **Cloud-Powered correction**: AI Route (`route.ts`) now offloads computation to **Aliyun OSS IMG**. We store URLs containing specific `x-oss-process` parameters.
+                - **Cybertruck**: `rotate,90/resize,w_1024,h_768`.
+                - **Model 3/Y**: `rotate,180/resize,w_1024,h_1024`.
+                - **DIY Editor**: Still performs local composite, but results are compliant with standard output.
+                - **CRITICAL**: The 3D Viewer trusts these assets. Never add manual rotation offsets in `ModelViewer.tsx` or `viewer-config.json`.
         - [x] UI: Generator page logic refinement & History UI optimization (Responsive Loaders).
     - [ ] **Monetization**:
         - [ ] Configure payment system (Stripe/PayPal for credits).

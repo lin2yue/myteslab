@@ -67,9 +67,11 @@
 *   **Cybertruck**: 1024x768，**车头朝左** (Heading LEFT)。
 
 ### 自动处理流程 (Non-negotiable)
-*   **AI 生成处理 (`route.ts`)**: 原始构图为垂直方向（车头向下），在保存前必须强制执行：Cybertruck 顺时针旋转 **90°**，其他车型顺时针旋转 **180°**。
-*   **DIY 贴画处理 (`StickerEditor.tsx`)**: 合成逻辑中必须包含与服务端一致的旋转步骤，确保输出资产符合上述规格。
-*   **渲染器逻辑 (`ModelViewer.tsx`)**: 3D 查看器应默认信任动态资产的方向，**禁止**在渲染层添加针对动态贴图的二次旋转偏移（忽略 `viewer-config.json` 中的 `rotation` 参数）。
-
+*   **AI 生成处理 (`route.ts`)**: 系统采用“云端实时纠偏”策略。API 移除本地 `sharp` 计算，直接将原始图上传，存储并在 `texture_url` 中包含 OSS 图像处理指令：
+    - **Cybertruck**: `?x-oss-process=image/rotate,90/resize,w_1024,h_768`
+    - **Model 3/Y**: `?x-oss-process=image/rotate,180/resize,w_1024,h_1024`
+*   **DIY 贴画处理 (`StickerEditor.tsx`)**: 合成逻辑在客户端 Canvas 中执行标准方向输出，确保结果资产符合上述规格。
+*   **渲染器逻辑 (`ModelViewer.tsx`)**: 3D 查看器应默认信任动态资产的方向，**禁止**在渲染层添加针对动态贴图的二次旋转偏移。
+*   **参数合并支持 (`images.ts`)**: `getOptimizedImageUrl` 函数支持将业务层的动态缩放参数与数据库中的预设旋转参数进行智能合并。
 > [!IMPORTANT]
 > 此逻辑是系统性的，严禁在未同步修改生成端的情况下，为了修正某个车型的预览方向而调整 `ModelViewer.tsx` 或 `viewer-config.json`。

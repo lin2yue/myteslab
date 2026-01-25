@@ -86,13 +86,14 @@ OUTPUT REQUIREMENTS
 - Output a SINGLE image at the requested resolution.
 - Background outside the mask must be pure black (#000000).
 - The design must look correct when wrapped onto a 3D car model.
+- ORIENTATION: The car's FRONT (Hood) MUST face the BOTTOM of the image. REAR faces TOP.
 `;
 
 export const buildWrapPrompt = (
-    userPrompt: string,
-    modelName: string
+  userPrompt: string,
+  modelName: string
 ): string => {
-    return `
+  return `
 Create a wrap design for a ${modelName}.
 
 User's Request: "${userPrompt}"

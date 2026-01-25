@@ -74,10 +74,9 @@ export default function StickerEditor({
             ctx.translate(designWidth / 2, designHeight / 2);
 
             if (isCybertruck) {
-                ctx.rotate(90 * Math.PI / 180);
-                // Since we rotated 90deg CW, the "up" in source is now "right".
-                // The source image (AI-style) is heading down.
-                // Rotation 90deg CW makes heading down lead to Heading LEFT. Correct!
+                // Cybertruck: 顺时针旋转 270 度 (或逆时针 90 度) -> 车头向左 (1024x768)
+                // 注：用户上传的贴纸通常车头向上 (Heading Up)，逆时针 90 度正好向左
+                ctx.rotate(-90 * Math.PI / 180);
                 const scale = Math.max(designHeight / stickerImg.width, designWidth / stickerImg.height)
                 const w = stickerImg.width * scale
                 const h = stickerImg.height * scale

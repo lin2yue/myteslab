@@ -11,6 +11,8 @@ import { generateWrapTexture, imageUrlToBase64 } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions } from '@/lib/ai/mask-config';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
+import { logTaskStep } from '@/lib/ai/task-logger';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -153,23 +155,13 @@ export async function POST(request: NextRequest) {
         }
 
         // 5. 调用 AI 生成
-        // 更新任务状态为处理中，记录步骤
-        console.log(`[AI-GEN] Setting task status to processing for task ${taskId}...`);
-        try {
-            await supabase.from('generation_tasks').update({
-                status: 'processing',
-                updated_at: new Date().toISOString(),
-                steps: supabase.rpc('append_task_step', { p_task_id: taskId, p_step: 'ai_call_start' }) // 假设有辅助函数，如果没有直接在下面用 SQL 风格更新
-            }).eq('id', taskId);
+        // 记录步骤：准备开始调用 AI
+        console.log(`[AI-GEN] Updating task status to processing for task ${taskId}...`);
 
-            // 简单的步骤更新逻辑：直接追加
-            const { data: taskData } = await supabase.from('generation_tasks').select('steps').eq('id', taskId).single();
-            const newSteps = [...(Array.isArray(taskData?.steps) ? taskData.steps : []), { step: 'ai_call_start', ts: new Date().toISOString() }];
-            await supabase.from('generation_tasks').update({ steps: newSteps }).eq('id', taskId);
+        const logStep = (step: string, status?: string, reason?: string) =>
+            logTaskStep(taskId, step, status, reason);
 
-        } catch (updateErr) {
-            console.error('[AI-GEN] ❌ Failed to update task status to processing:', updateErr);
-        }
+        await logStep('ai_call_start', 'processing');
 
         const result = await generateWrapTexture({
             modelSlug,
@@ -191,6 +183,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: result.error }, { status: 500 });
         }
 
+        // 记录步骤：AI 响应成功
+        await logStep('ai_response_received');
+
         // 7. 成功：记录结果并返回
         if (!result.dataUrl) {
             return NextResponse.json({ success: false, error: 'AI generated image but no data returned' }, { status: 500 });
@@ -206,6 +201,9 @@ export async function POST(request: NextRequest) {
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
             const buffer = Buffer.from(base64Data, 'base64');
 
+            // 记录步骤：准备上传 OSS
+            await logStep('oss_upload_start');
+
             // 1. 直接上传到云端 OSS (不经过 Sharp 旋转)
             try {
                 const rawUrl = await uploadToOSS(buffer, filename, 'wraps/ai-generated');
@@ -214,12 +212,16 @@ export async function POST(request: NextRequest) {
                 // 核心逻辑：从 AI 视角(车头向下)转回 3D 视角
                 if (currentModelSlug.includes('cybertruck')) {
                     // Cybertruck: 顺时针旋转 90 度 -> 车头向左 (1024x768)
+                    // 注：AI 输出固定为车头向下 (Heading Down)，顺时针 90 度正好向左
                     savedUrl = `${rawUrl}?x-oss-process=image/rotate,90/resize,w_1024,h_768`;
                 } else {
                     // Model 3/Y: 旋转 180 度 -> 车头向上 (1024x1024)
                     savedUrl = `${rawUrl}?x-oss-process=image/rotate,180/resize,w_1024,h_1024`;
                 }
                 correctedDataUrl = savedUrl; // 前端可以直接使用带参数的 URL
+
+                // 记录步骤：OSS 上传成功
+                await logStep('oss_upload_success');
 
             } catch (ossErr) {
                 console.error('OSS Upload failed:', ossErr);
@@ -232,6 +234,9 @@ export async function POST(request: NextRequest) {
             await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'Image processing failed' });
             return NextResponse.json({ success: false, error: 'Image correction failed' }, { status: 500 });
         }
+
+        // 记录步骤：准备保存至作品表
+        await logStep('database_save_start');
 
         // 插入到统一的作品表 wraps
         const { data: wrapData, error: historyError } = await supabase.from('wraps').insert({
@@ -248,18 +253,17 @@ export async function POST(request: NextRequest) {
 
         if (historyError) {
             console.error('Failed to save history:', historyError);
+            await logStep('database_save_failed', undefined, historyError.message);
             return NextResponse.json({ success: false, error: 'Failed to save result' }, { status: 500 });
         }
 
         const wrapId = wrapData?.id;
 
-        // 更新任务状态为已完成，记录最终步骤
-        const { data: finalTaskData } = await supabase.from('generation_tasks').select('steps').eq('id', taskId).single();
-        const finalSteps = [...(Array.isArray(finalTaskData?.steps) ? finalTaskData.steps : []), { step: 'completed', ts: new Date().toISOString() }];
+        // 记录步骤：作品保存成功
+        await logStep('database_save_success');
 
-        await supabase.from('generation_tasks')
-            .update({ status: 'completed', steps: finalSteps, updated_at: new Date().toISOString() })
-            .eq('id', taskId);
+        // 记录步骤：任务最终完成
+        await logStep('completed', 'completed');
 
         return NextResponse.json({
             success: true,
@@ -278,8 +282,9 @@ export async function POST(request: NextRequest) {
 
         if (taskId) {
             try {
+                const adminSupabase = createAdminClient();
                 console.log(`[AI-GEN] Triggering emergency auto-refund for task ${taskId} due to global error...`);
-                const { data: refundRes } = await supabase.rpc('refund_task_credits', {
+                const { data: refundRes } = await adminSupabase.rpc('refund_task_credits', {
                     p_task_id: taskId,
                     p_reason: `Global API Error: ${error instanceof Error ? error.message : String(error)}`
                 });
