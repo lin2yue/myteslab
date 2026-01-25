@@ -49,41 +49,38 @@ export async function GET(
             });
         }
 
-        // 3. 处理文件获取并强制下载
-        let fileBuffer: Buffer | ArrayBuffer;
-        let contentType: string;
-
+        // 3. 优化下载逻辑：使用 302 重定向直连 OSS
         if (wrapData.url.startsWith('data:')) {
-            // 处理 Base64 DataURL
+            // 兼容 Base64 DataURL (虽然线上实际上全是 OSS URL)
             const matches = wrapData.url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
             if (!matches || matches.length !== 3) {
                 return NextResponse.json({ error: '无效的贴图数据' }, { status: 500 });
             }
-            contentType = matches[1];
-            fileBuffer = Buffer.from(matches[2], 'base64');
+            const contentType = matches[1];
+            const fileBuffer = Buffer.from(matches[2], 'base64');
+
+            return new NextResponse(fileBuffer as any, {
+                headers: {
+                    'Content-Disposition': `attachment; filename="${fileNamePrefix}.png"`,
+                    'Content-Type': contentType,
+                },
+            });
         } else {
-            // 从远程 URL (OSS/CDN) 获取
-            const response = await fetch(wrapData.url)
-            if (!response.ok) {
-                return NextResponse.json(
-                    { error: '无法获取贴图文件' },
-                    { status: 500 }
-                )
-            }
-            fileBuffer = await response.arrayBuffer();
-            contentType = response.headers.get('Content-Type') || 'image/png';
+            // 构建 OSS 下载 URL
+            const downloadUrl = new URL(wrapData.url);
+
+            // 添加/追加 response-content-disposition 参数以强制浏览器下载而不是预览
+            // 注意：阿里云 OSS 的参数格式是 ?x-oss-process=...
+            // 但 response-content-disposition 是标准 HTTP 查询参数，可以并存
+            downloadUrl.searchParams.set(
+                'response-content-disposition',
+                `attachment; filename="${fileNamePrefix}.png"`
+            );
+
+            // 返回 302 重定向，让用户直接从 OSS/CDN 下载
+            // 极快，且不消耗 Vercel 流量
+            return NextResponse.redirect(downloadUrl.toString());
         }
-
-        // 生成文件名
-        const filename = `${fileNamePrefix}.png`
-
-        // 返回文件，添加 Content-Disposition header 强制下载
-        return new NextResponse(fileBuffer as any, {
-            headers: {
-                'Content-Disposition': `attachment; filename="${filename}"`,
-                'Content-Type': contentType,
-            },
-        })
 
     } catch (error) {
         console.error('下载失败:', error)
