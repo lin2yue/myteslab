@@ -18,16 +18,18 @@ export default async function middleware(request: NextRequest) {
     }
 
     // 2. Check for OAuth callback (code parameter at root path)
-    const code = request.nextUrl.searchParams.get('code');
+    const searchParams = request.nextUrl.searchParams;
+    const code = searchParams.get('code');
     if (code && (pathname === '/' || pathname.match(/^\/(en|zh)$/))) {
-        console.log('[Middleware] Detected OAuth callback, redirecting to handler');
-        const url = request.nextUrl.clone();
-        url.pathname = `${pathname === '/' ? '' : pathname}/auth/callback-handler`;
-        url.searchParams.delete('code'); // Remove code from URL
+        console.log('[Middleware] Detected OAuth callback at root, redirecting to API handler');
+        const next = searchParams.get('next') ?? '/';
+        const callbackUrl = new URL('/api/auth/callback', request.url);
+        callbackUrl.searchParams.set('code', code);
+        callbackUrl.searchParams.set('next', next);
 
-        const redirectResponse = NextResponse.redirect(url);
+        const redirectResponse = NextResponse.redirect(callbackUrl);
 
-        // Transfer Supabase cookies
+        // Transfer Supabase cookies (may contain PCKE verifier)
         const supabaseCookies = supabaseResponse.cookies.getAll();
         supabaseCookies.forEach(cookie => {
             redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
