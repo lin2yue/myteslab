@@ -234,21 +234,10 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     threeTexture.center.set(0.5, 0.5)
 
                     // Standardize dynamic texture application:
-                    // Trust that provided textureUrl is already standardized (Heading Up/Left) 
-                    // and skip legacy model-specific rotation offsets.
-                    if (false) { // Keep structure but disable the skip for now to see if we can just fix it via config
-                        if (config.rotation !== undefined) {
-                            threeTexture.rotation = (config.rotation * Math.PI) / 180
-                        }
-                        if (config.scale !== undefined) {
-                            const scaleX = config.mirror ? -config.scale : config.scale
-                            threeTexture.repeat.set(scaleX, config.scale)
-                        }
-                    } else {
-                        // Reset to defaults (no transformation) for standardized dynamic assets
-                        threeTexture.rotation = 0
-                        threeTexture.repeat.set(1, 1)
-                    }
+                    // Trust that provided textureUrl (AI/DIY) is already standardized (Heading Up/Left) 
+                    // and skip legacy model-specific rotation offsets from config.
+                    threeTexture.rotation = 0
+                    threeTexture.repeat.set(1, 1)
 
                     threeTexture.wrapS = 1000 // RepeatWrapping
                     threeTexture.wrapT = 1000 // RepeatWrapping
