@@ -50,17 +50,21 @@
     - [x] **AI Generation**:
         - [x] Backend: Credit deduction RPC & Task tracking.
         - [x] API: Integration with Gemini for wrap generation.
-        - [x] Orientation Logic: AI generation prefers vertical orientation (Portrait). 
-            - **Mask Strategy**: Masks in `assets/masks` are pre-rotated to Portrait (768x1024) for AI quality.
-            - **Post-Processing**: AI output is rotated 90° CW in `route.ts` to produce the final 1024x768 Landscape texture. No alpha masking is applied to preserve raw quality.
-            - **Result**: (M3/Y: 180, CT: 90 CW). Corrected output is saved as-is to OSS.
+        - [x] **Orientation Logic (NON-NEGOTIABLE)**: 
+            - **Standard Texture Formats**: 
+                - Model 3/Y: 1024x1024, **Heading UP**.
+                - Cybertruck: 1024x768, **Heading LEFT**.
+            - **Pipeline Handling**: 
+                - AI Route (`route.ts`) post-processes raw AI output (Heading DOWN) by rotating it **90° CW** for Cybertruck and **180°** for Model 3/Y.
+                - DIY Editor (`StickerEditor.tsx`) also applies the same rotation post-composite.
+                - **CRITICAL**: The 3D Viewer (`ModelViewer.tsx`) trusts these assets and applies **0°** rotation. Never add rotation offsets for dynamic assets.
         - [x] UI: Generator page logic refinement & History UI optimization (Responsive Loaders).
     - [ ] **Monetization**:
         - [ ] Configure payment system (Stripe/PayPal for credits).
 
 ## 6. Where to Find Knowledge
 - **Architecture Analysis:** `docs/architecture/monorepo_analysis.md`
-- **Development Best Practices:** `docs/guides/development_principles.md` (Contains 3D capture and Responsive Image Processing details)
+- **Development Best Practices:** `docs/guides/development_principles.md` (Contains 3D capture and Texture Orientation details)
 - **DB Schema:** `apps/web/database/schema.sql`
 - **Deployment Status:** `docs/reports/mvp_status_report.md`
 - **3D Preview Standard (Source of Truth):** 

@@ -55,3 +55,21 @@
 ### 布局稳定性 (CLS 优化)
 - **做法**：配合 `aspect-[4/3]` 容器与 `sizes` 属性。
 - **收益**：确保浏览器在图片下载前就能预留准确位置，完美避开布局抖动，提升 Core Web Vitals (LCP/CLS) 指标。
+
+---
+
+## 4. 贴图旋转与方向标准 (Texture Orientation Standards)
+
+**核心原则**：为了确保 3D 预览、画廊展示与下载资产的 100% 一致性，系统采用“资产端预校正”策略。
+
+### 官方规格 (Official Spec)
+*   **Model 3/Y**: 1024x1024，**车头朝上** (Heading UP)。
+*   **Cybertruck**: 1024x768，**车头朝左** (Heading LEFT)。
+
+### 自动处理流程 (Non-negotiable)
+*   **AI 生成处理 (`route.ts`)**: 原始构图为垂直方向（车头向下），在保存前必须强制执行：Cybertruck 顺时针旋转 **90°**，其他车型顺时针旋转 **180°**。
+*   **DIY 贴画处理 (`StickerEditor.tsx`)**: 合成逻辑中必须包含与服务端一致的旋转步骤，确保输出资产符合上述规格。
+*   **渲染器逻辑 (`ModelViewer.tsx`)**: 3D 查看器应默认信任动态资产的方向，**禁止**在渲染层添加针对动态贴图的二次旋转偏移（忽略 `viewer-config.json` 中的 `rotation` 参数）。
+
+> [!IMPORTANT]
+> 此逻辑是系统性的，严禁在未同步修改生成端的情况下，为了修正某个车型的预览方向而调整 `ModelViewer.tsx` 或 `viewer-config.json`。
