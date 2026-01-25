@@ -13,19 +13,32 @@ export async function logTaskStep(
     taskId: string | undefined,
     step: string,
     status?: string,
-    reason?: string
+    reason?: string,
+    supabaseClient?: any
 ) {
     if (!taskId) {
         console.warn(`[TASK-LOG] ⚠️ No taskId provided for step: ${step}`);
         return;
     }
 
-    const adminSupabase = createAdminClient();
+    let client = supabaseClient;
+    if (!client) {
+        try {
+            client = createAdminClient();
+        } catch (e) {
+            console.warn('[TASK-LOG] ⚠️ Failed to create admin client, logging will effectively be skipped unless rpc works via console log:', e);
+            // If we can't create a client, we can't log to DB.
+            return;
+        }
+    }
+
+    // Safety check just in case
+    if (!client) return;
 
     try {
         console.log(`[TASK-LOG] 📝 Task ${taskId}: ${step}${status ? ` -> ${status}` : ''}`);
 
-        const { error } = await adminSupabase.rpc('append_task_step', {
+        const { error } = await client.rpc('append_task_step', {
             p_task_id: taskId,
             p_status: status || null,
             p_step: step,

@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
         console.log(`[AI-GEN] Updating task status to processing for task ${taskId}...`);
 
         const logStep = (step: string, status?: string, reason?: string) =>
-            logTaskStep(taskId, step, status, reason);
+            logTaskStep(taskId, step, status, reason, supabase);
 
         await logStep('ai_call_start', 'processing');
 
@@ -282,6 +282,14 @@ export async function POST(request: NextRequest) {
         console.error('❌ [AI-GEN] Global API Error:', error);
 
         if (taskId) {
+            // Try to log the failure to the DB so it shows in Admin Console
+            try {
+                // Try logging with user client first as it's already instantiated (hopefully)
+                await logTaskStep(taskId, 'failed', 'failed', `Global Error: ${error instanceof Error ? error.message : String(error)}`, supabase);
+            } catch (logErr) {
+                console.error('[AI-GEN] Failed to log final error status:', logErr);
+            }
+
             try {
                 const adminSupabase = createAdminClient();
                 console.log(`[AI-GEN] Triggering emergency auto-refund for task ${taskId} due to global error...`);
@@ -291,7 +299,8 @@ export async function POST(request: NextRequest) {
                 });
                 console.log(`[AI-GEN] Emergency refund result:`, refundRes);
             } catch (innerErr) {
-                console.error('[AI-GEN] Failed to refund task credits in exit handler:', innerErr);
+                console.error('[AI-GEN] Failed to refund task credits/create admin client in exit handler:', innerErr);
+                // The task is already logged as failed above, so at least we have visibility.
             }
         }
 
