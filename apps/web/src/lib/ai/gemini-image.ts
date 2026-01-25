@@ -298,7 +298,7 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
 
         // Note: Using flash-latest for fast and cheap text generation
         const MODEL = 'gemini-flash-latest';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/\${MODEL}:generateContent?key=\${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
 
         const systemInstruction = `You are a professional automotive wrap titler. 
 Based on the user's prompt (which could be in Chinese, English, or any other language), generate a creative title and a short description for the car wrap in BOTH Chinese and English. 
