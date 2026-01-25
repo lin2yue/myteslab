@@ -55,10 +55,20 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: OS
 
     if (processParts.length === 0) return targetUrl;
 
-    const separator = targetUrl.includes('?') ? '&' : '?';
-    const processQuery = `x-oss-process=${processParts.join('/')}`;
+    // 参数合并逻辑：支持 URL 中已有的 x-oss-process
+    const urlObj = new URL(targetUrl.startsWith('http') ? targetUrl : `https://temp.com${targetUrl}`);
+    const existingProcess = urlObj.searchParams.get('x-oss-process');
 
-    return `${targetUrl}${separator}${processQuery}`;
+    if (existingProcess) {
+        // 如果已有处理流，直接在后面追加
+        urlObj.searchParams.set('x-oss-process', `${existingProcess}/${processParts.join('/')}`);
+    } else {
+        urlObj.searchParams.set('x-oss-process', `image/${processParts.join('/')}`);
+    }
+
+    // 还原 URL (如果是相对路径需要去掉假前缀)
+    const finalUrl = targetUrl.startsWith('http') ? urlObj.toString() : urlObj.toString().replace('https://temp.com', '');
+    return finalUrl;
 }
 
 /**

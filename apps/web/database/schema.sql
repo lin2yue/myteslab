@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS wrap_models (
 -- 2. 贴图方案表 (统一作品表：包含官方与用户生成)
 CREATE TABLE IF NOT EXISTS wraps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- 用户关联 (官方作品为空)
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- 关联 Profiles 以便进行 Join
   slug VARCHAR(100) UNIQUE,               -- 官方作品标识 (用户生成作品可为空)
   name VARCHAR(200) NOT NULL,             -- 作品名称
   name_en VARCHAR(200),                   -- 英文名称
@@ -77,7 +77,7 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS generation_tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   prompt TEXT NOT NULL,
   status generation_status DEFAULT 'pending',
   credits_spent INTEGER DEFAULT 5,
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
 -- 6.1 积分变动账本 (金融审计回溯)
 CREATE TABLE IF NOT EXISTS credit_ledger (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   task_id UUID REFERENCES generation_tasks(id) ON DELETE SET NULL,
   amount INTEGER NOT NULL,                  -- 负s为扣减，正数为增加/退款
   type VARCHAR(50) NOT NULL,                -- 'generation', 'refund', 'top-up', 'adjustment'

@@ -39,7 +39,7 @@ export default function StickerEditor({
 
     const processImage = async (imageSrc: string) => {
         setIsProcessing(true)
-        console.log('Starting simplified image processing (no rotation) for model:', modelSlug)
+        console.log('Starting image processing with orientation correction for model:', modelSlug)
         try {
             // 1. Load sticker image
             const stickerImg = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -96,7 +96,7 @@ export default function StickerEditor({
 
             setCurrentMergedTexture(finalDataUrl)
             onTextureUpdate(finalDataUrl)
-            console.log('Image processing completed (without rotation)')
+            console.log('Image processing completed with orientation correction')
         } catch (err: any) {
             console.error('Processing error:', err)
             alert.error(err.message || '图片处理失败，请重试')

@@ -202,35 +202,25 @@ export async function POST(request: NextRequest) {
         try {
             if (!taskId) throw new Error('Task ID is missing');
             const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
-            // @ts-ignore
-            const sharp = (await import('sharp')).default;
 
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
-            let buffer = Buffer.from(base64Data, 'base64');
+            const buffer = Buffer.from(base64Data, 'base64');
 
-            // 1. 获取 Mask 的尺寸作为目标尺寸
-            const maskDimensions = getMaskDimensions(currentModelSlug);
-            const targetWidth = maskDimensions.width;
-            const targetHeight = maskDimensions.height;
-            console.log(`[AI-GEN] Target dimensions for ${currentModelSlug}: ${targetWidth}x${targetHeight}`);
-
-            // 2. 执行纠偏和校正
-            let pipe = sharp(buffer);
-            pipe = pipe.resize(targetWidth, targetHeight, { fit: 'fill' });
-
-            // 3. 执行旋转校正
-            if (currentModelSlug.includes('cybertruck')) {
-                pipe = pipe.rotate(90).resize(1024, 768, { fit: 'fill' });
-            } else {
-                pipe = pipe.rotate(180).resize(1024, 1024, { fit: 'fill' });
-            }
-
-            const finalBuffer = await pipe.png().toBuffer();
-            correctedDataUrl = `data:image/png;base64,${finalBuffer.toString('base64')}`;
-
-            // 4. 上传到云端 OSS
+            // 1. 直接上传到云端 OSS (不经过 Sharp 旋转)
             try {
-                savedUrl = await uploadToOSS(finalBuffer, filename, 'wraps/ai-generated');
+                const rawUrl = await uploadToOSS(buffer, filename, 'wraps/ai-generated');
+
+                // 2. 在 URL 后挂载云端旋转和缩放参数 (x-oss-process)
+                // 核心逻辑：从 AI 视角(车头向下)转回 3D 视角
+                if (currentModelSlug.includes('cybertruck')) {
+                    // Cybertruck: 顺时针旋转 90 度 -> 车头向左 (1024x768)
+                    savedUrl = `${rawUrl}?x-oss-process=image/rotate,90/resize,w_1024,h_768`;
+                } else {
+                    // Model 3/Y: 旋转 180 度 -> 车头向上 (1024x1024)
+                    savedUrl = `${rawUrl}?x-oss-process=image/rotate,180/resize,w_1024,h_1024`;
+                }
+                correctedDataUrl = savedUrl; // 前端可以直接使用带参数的 URL
+
             } catch (ossErr) {
                 console.error('OSS Upload failed:', ossErr);
                 await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'OSS upload failed' });
