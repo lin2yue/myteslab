@@ -28,9 +28,7 @@
             "cameraOrbit": "225deg 75deg 85%"
         },
         "model-y-2025-plus": {
-            "cameraOrbit": "225deg 75deg 85%",
-            "rotation": 180,
-            "mirror": true
+            "cameraOrbit": "225deg 75deg 85%"
         }
     }
 }

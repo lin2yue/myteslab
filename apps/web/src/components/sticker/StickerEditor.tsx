@@ -50,9 +50,7 @@ export default function StickerEditor({
             })
 
             // 2. Determine target dimensions based on model
-            // Standardizing on 1024x1024 for textures, Cybertruck uses 1024x768 or 768x1024 depending on UV
-            // However, to keep it simple and follow "no rotation", we fit to standard square for most, 
-            // and follow the design dimensions without extra engine-specific rotation.
+            // Standardizing on 1024x1024 for textures, Cybertruck uses 1024x768 
             const isCybertruck = modelSlug === 'cybertruck'
             const designWidth = isCybertruck ? 1024 : 1024
             const designHeight = isCybertruck ? 768 : 1024
@@ -68,11 +66,31 @@ export default function StickerEditor({
             ctx.fillStyle = '#000000'
             ctx.fillRect(0, 0, designWidth, designHeight)
 
-            // Draw Sticker (Aspect Fill)
-            const scale = Math.max(designWidth / stickerImg.width, designHeight / stickerImg.height)
-            const w = stickerImg.width * scale
-            const h = stickerImg.height * scale
-            ctx.drawImage(stickerImg, (designWidth - w) / 2, (designHeight - h) / 2, w, h)
+            // 4. Perform standardized rotation to match 3D UV format
+            // Based on user feedback:
+            // Cybertruck -> 90deg CW (Official is Heading Left)
+            // Model 3/Y -> 180deg (Official is Heading Up)
+            ctx.save();
+            ctx.translate(designWidth / 2, designHeight / 2);
+
+            if (isCybertruck) {
+                ctx.rotate(90 * Math.PI / 180);
+                // Since we rotated 90deg CW, the "up" in source is now "right".
+                // The source image (AI-style) is heading down.
+                // Rotation 90deg CW makes heading down lead to Heading LEFT. Correct!
+                const scale = Math.max(designHeight / stickerImg.width, designWidth / stickerImg.height)
+                const w = stickerImg.width * scale
+                const h = stickerImg.height * scale
+                ctx.drawImage(stickerImg, -w / 2, -h / 2, w, h)
+            } else {
+                ctx.rotate(180 * Math.PI / 180);
+                // Heading down -> 180 deg -> Heading UP. Correct!
+                const scale = Math.max(designWidth / stickerImg.width, designHeight / stickerImg.height)
+                const w = stickerImg.width * scale
+                const h = stickerImg.height * scale
+                ctx.drawImage(stickerImg, -w / 2, -h / 2, w, h)
+            }
+            ctx.restore();
 
             const finalDataUrl = canvas.toDataURL('image/png')
 

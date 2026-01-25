@@ -467,7 +467,6 @@ export default function AIGeneratorMain({
                             modelSlug={selectedModel}
                             backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
                             autoRotate={autoRotate}
-                            ignoreConfigRotation={activeMode === 'diy'}
                             className="w-full h-full"
                         />
                     </div>

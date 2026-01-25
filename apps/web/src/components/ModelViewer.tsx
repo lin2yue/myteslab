@@ -14,7 +14,6 @@ interface ModelViewerProps {
     autoRotate?: boolean
     environment?: string
     backgroundColor?: string
-    ignoreConfigRotation?: boolean
     cameraOrbit?: string
     fieldOfView?: string
     cameraControls?: boolean
@@ -34,7 +33,6 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     autoRotate: propAutoRotate,
     environment = 'neutral',
     backgroundColor: propBackgroundColor,
-    ignoreConfigRotation = false,
     cameraOrbit: propCameraOrbit,
     fieldOfView: propFieldOfView,
     cameraControls = true
@@ -235,8 +233,10 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 if (threeTexture) {
                     threeTexture.center.set(0.5, 0.5)
 
-                    // Only apply rotation/mirror logic if NOT ignored (e.g., in DIY mode)
-                    if (!ignoreConfigRotation) {
+                    // Standardize dynamic texture application:
+                    // Trust that provided textureUrl is already standardized (Heading Up/Left) 
+                    // and skip legacy model-specific rotation offsets.
+                    if (false) { // Keep structure but disable the skip for now to see if we can just fix it via config
                         if (config.rotation !== undefined) {
                             threeTexture.rotation = (config.rotation * Math.PI) / 180
                         }
@@ -245,7 +245,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                             threeTexture.repeat.set(scaleX, config.scale)
                         }
                     } else {
-                        // Reset to defaults for DIY
+                        // Reset to defaults (no transformation) for standardized dynamic assets
                         threeTexture.rotation = 0
                         threeTexture.repeat.set(1, 1)
                     }
