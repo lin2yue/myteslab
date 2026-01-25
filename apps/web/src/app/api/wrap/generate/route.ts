@@ -28,9 +28,10 @@ const MODEL_NAMES: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
     let taskId: string | undefined;
+    const supabase = await createClient();
+
     try {
         // 1. 身份验证 (Authentication)
-        const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { modelSlug, prompt, referenceImages } = body;
+        const { modelSlug, prompt, referenceImages, idempotencyKey } = body;
 
         // 2. 参数校验
         if (!modelSlug || !prompt) {
@@ -50,11 +51,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Invalid model' }, { status: 400 });
         }
 
-        // 3. 执行数据库原子扣费 RPC
-        // 这个函数会检查余额 -> 扣费 -> 创建任务记录，全部在数据库事务中完成
+        // 3. 执行数据库原子扣费 RPC (带幂等支持)
         const { data: deductResultRaw, error: rpcError } = await supabase.rpc('deduct_credits_for_generation', {
             p_prompt: prompt,
-            p_amount: 5 // 每次消耗 5 积分
+            p_amount: 5,
+            p_idempotency_key: idempotencyKey || null
         });
 
         if (rpcError || !deductResultRaw?.[0]?.success) {
@@ -65,7 +66,14 @@ export async function POST(request: NextRequest) {
         }
 
         taskId = deductResultRaw[0].task_id;
-        console.log(`[AI-GEN] ✅ Task created: ${taskId}`);
+
+        // 如果是幂等命中，且任务已经完成，直接返回结果 (理想情况下这里应该查询任务结果)
+        if (deductResultRaw[0].error_msg === 'Idempotent hit') {
+            console.log(`[AI-GEN] ♻️ Idempotency hit: ${taskId}`);
+            // TODO: 这里可以优化为：如果任务已经完成，直接查询 wraps 表并返回
+        }
+
+        console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
         const currentModelSlug = modelSlug.toLowerCase();
         let maskImageBase64: string | null = null;
@@ -145,10 +153,20 @@ export async function POST(request: NextRequest) {
         }
 
         // 5. 调用 AI 生成
-        // 更新任务状态为处理中
+        // 更新任务状态为处理中，记录步骤
         console.log(`[AI-GEN] Setting task status to processing for task ${taskId}...`);
         try {
-            await supabase.from('generation_tasks').update({ status: 'processing', updated_at: new Date().toISOString() }).eq('id', taskId);
+            await supabase.from('generation_tasks').update({
+                status: 'processing',
+                updated_at: new Date().toISOString(),
+                steps: supabase.rpc('append_task_step', { p_task_id: taskId, p_step: 'ai_call_start' }) // 假设有辅助函数，如果没有直接在下面用 SQL 风格更新
+            }).eq('id', taskId);
+
+            // 简单的步骤更新逻辑：直接追加
+            const { data: taskData } = await supabase.from('generation_tasks').select('steps').eq('id', taskId).single();
+            const newSteps = [...(Array.isArray(taskData?.steps) ? taskData.steps : []), { step: 'ai_call_start', ts: new Date().toISOString() }];
+            await supabase.from('generation_tasks').update({ steps: newSteps }).eq('id', taskId);
+
         } catch (updateErr) {
             console.error('[AI-GEN] ❌ Failed to update task status to processing:', updateErr);
         }
@@ -161,44 +179,19 @@ export async function POST(request: NextRequest) {
             referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
         });
 
-        // 【调试部分】保存所有 AI 参数和提示词到任务文件夹
-        try {
-            if (taskId) {
-                const taskDebugDir = join(process.cwd(), '../../dev-studio/test-previews', taskId);
-                if (!existsSync(taskDebugDir)) await mkdir(taskDebugDir, { recursive: true }); // Ensure directory exists
-                if (existsSync(taskDebugDir)) {
-                    const debugParams = {
-                        taskId,
-                        modelSlug,
-                        modelName,
-                        userPrompt: prompt,
-                        referenceImagesCount: referenceImagesBase64.length,
-                        finalPromptSentToAI: result.finalPrompt, // Correctly use result.finalPrompt
-                        timestamp: new Date().toLocaleString()
-                    };
-                    await writeFile(
-                        join(taskDebugDir, 'debug-params.json'),
-                        JSON.stringify(debugParams, null, 2)
-                    );
-                    console.log(`[AI-DEBUG] Debug params saved to: ${taskDebugDir}/debug-params.json`);
-                }
-            }
-        } catch (debugErr) {
-            console.error('[AI-DEBUG] Failed to save debug params:', debugErr);
-        }
-
         // 6. 处理结果
         if (!result.success) {
-            // 失败：更新任务状态，理论上这里可以考虑返还积分，或者记录错误供客服处理
-            await supabase.from('generation_tasks')
-                .update({ status: 'failed', error_message: result.error, updated_at: new Date().toISOString() })
-                .eq('id', taskId);
+            // 失败：更新任务状态并自动退款
+            console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}...`);
+            await supabase.rpc('refund_task_credits', {
+                p_task_id: taskId,
+                p_reason: `AI API Error: ${result.error}`
+            });
 
             return NextResponse.json({ success: false, error: result.error }, { status: 500 });
         }
 
         // 7. 成功：记录结果并返回
-        // 在开发模式下，也将图片保存到本地文件系统以便历史预览
         if (!result.dataUrl) {
             return NextResponse.json({ success: false, error: 'AI generated image but no data returned' }, { status: 500 });
         }
@@ -215,33 +208,6 @@ export async function POST(request: NextRequest) {
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
             let buffer = Buffer.from(base64Data, 'base64');
 
-            const metadata = await sharp(buffer).metadata();
-            const rawWidth = metadata.width || 0;
-            const rawHeight = metadata.height || 0;
-            console.log(`[AI-DEBUG] AI raw output dimensions: ${rawWidth}x${rawHeight}`);
-
-            // 【调试部分】保存 AI 生成的原始图到任务文件夹
-            try {
-                if (taskId) {
-                    const taskDebugDir = join(process.cwd(), '../../dev-studio/test-previews', taskId);
-                    if (existsSync(taskDebugDir)) {
-                        const rawPath = join(taskDebugDir, 'raw-output.png');
-                        await writeFile(rawPath, buffer);
-
-                        // 同时更新 debug-params.json 记录尺寸
-                        const debugParamsPath = join(taskDebugDir, 'debug-params.json');
-                        if (existsSync(debugParamsPath)) {
-                            const params = JSON.parse(await readFile(debugParamsPath, 'utf8'));
-                            params.aiOutputDimensions = `${rawWidth}x${rawHeight}`;
-                            await writeFile(debugParamsPath, JSON.stringify(params, null, 2));
-                        }
-                        console.log(`[AI-DEBUG] Raw AI output saved and dimensions logged.`);
-                    }
-                }
-            } catch (debugErr) {
-                console.error('[AI-DEBUG] Failed to save raw debug info:', debugErr);
-            }
-
             // 1. 获取 Mask 的尺寸作为目标尺寸
             const maskDimensions = getMaskDimensions(currentModelSlug);
             const targetWidth = maskDimensions.width;
@@ -250,97 +216,32 @@ export async function POST(request: NextRequest) {
 
             // 2. 执行纠偏和校正
             let pipe = sharp(buffer);
-
-            // 首先调整到 Mask 的原始尺寸（解决 AI 输出尺寸微差导致的对齐问题）
             pipe = pipe.resize(targetWidth, targetHeight, { fit: 'fill' });
-            console.log(`[AI-GEN] Resized to mask dimensions: ${targetWidth}x${targetHeight}`);
 
-
-            // 3. 执行旋转校正 (将其从 AI 的最优生成角度转回 3D 模型所需的官方角度)
-            console.log(`[AI-GEN] ===== ROTATION LOGIC START =====`);
-            console.log(`[AI-GEN] Current model slug: "${currentModelSlug}"`);
-
+            // 3. 执行旋转校正
             if (currentModelSlug.includes('cybertruck')) {
-                console.log(`[AI-GEN] ✅ Executing Cybertruck correction: 90deg CW -> 1024x768`);
-                pipe = pipe.rotate(90);
-                pipe = pipe.resize(1024, 768, { fit: 'fill' });
+                pipe = pipe.rotate(90).resize(1024, 768, { fit: 'fill' });
             } else {
-                console.log(`[AI-GEN] ✅ Executing Model 3/Y correction: 180deg -> 1024x1024`);
-                pipe = pipe.rotate(180);
-                pipe = pipe.resize(1024, 1024, { fit: 'fill' });
+                pipe = pipe.rotate(180).resize(1024, 1024, { fit: 'fill' });
             }
-            console.log(`[AI-GEN] ===== ROTATION LOGIC END =====`);
 
             const finalBuffer = await pipe.png().toBuffer();
-            const finalMetadata = await sharp(finalBuffer).metadata();
-            console.log(`[AI-GEN] Final buffer dimensions: ${finalMetadata.width}x${finalMetadata.height}`);
-
             correctedDataUrl = `data:image/png;base64,${finalBuffer.toString('base64')}`;
-
-            // 【调试部分】保存旋转后的"最终修正图"到任务文件夹
-            try {
-                if (taskId) {
-                    const taskDebugDir = join(process.cwd(), '../../dev-studio/test-previews', taskId);
-                    if (existsSync(taskDebugDir)) {
-                        const finalPath = join(taskDebugDir, 'corrected-final.png');
-                        await writeFile(finalPath, finalBuffer);
-                        console.log(`[AI-DEBUG] Final corrected image saved to: ${finalPath}`);
-                    }
-                }
-            } catch (debugErr) {
-                console.error('[AI-DEBUG] Failed to save corrected debug image:', debugErr);
-            }
 
             // 4. 上传到云端 OSS
             try {
-                // 恢复使用 'wraps/ai-generated' 子目录，并带上 Content-Type
                 savedUrl = await uploadToOSS(finalBuffer, filename, 'wraps/ai-generated');
-                console.log('[AI-GEN] ✅ Successfully uploaded ROTATED image to OSS:', savedUrl);
             } catch (ossErr) {
                 console.error('OSS Upload failed:', ossErr);
-
-                // 更新任务状态为失败
-                await supabase.from('generation_tasks')
-                    .update({
-                        status: 'failed',
-                        error_message: `OSS upload failed: ${ossErr instanceof Error ? ossErr.message : 'Unknown error'}`,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', taskId!);
-
-                // 返回错误，不保存到 wraps 表
-                return NextResponse.json({
-                    success: false,
-                    error: 'Failed to upload texture to storage. Please try again.'
-                }, { status: 500 });
+                await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'OSS upload failed' });
+                return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
             }
 
         } catch (err) {
-            console.error('❌ [AI-GEN] CRITICAL ERROR during image correction/upload:', err);
-            console.error('❌ [AI-GEN] Error stack:', err instanceof Error ? err.stack : 'No stack trace');
-
-            // 更新任务状态为失败
-            await supabase.from('generation_tasks')
-                .update({
-                    status: 'failed',
-                    error_message: `Image processing failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', taskId);
-
-            // 返回错误但不抛出，避免丢失积分
-            return NextResponse.json({
-                success: false,
-                error: 'Image processing failed. Please contact support if credits were deducted.'
-            }, { status: 500 });
+            console.error('❌ [AI-GEN] Image processing error:', err);
+            await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'Image processing failed' });
+            return NextResponse.json({ success: false, error: 'Image correction failed' }, { status: 500 });
         }
-
-        // 获取用户昵称
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('id', user.id)
-            .single();
 
         // 插入到统一的作品表 wraps
         const { data: wrapData, error: historyError } = await supabase.from('wraps').insert({
@@ -350,32 +251,32 @@ export async function POST(request: NextRequest) {
             model_slug: modelSlug,
             texture_url: savedUrl,
             preview_url: savedUrl,
-            is_public: false, // 默认不公开，用户在个人中心手动发布
+            is_public: false,
             category: 'community',
             reference_images: savedReferenceUrls
         }).select('id').single();
 
         if (historyError) {
             console.error('Failed to save history:', historyError);
-            return NextResponse.json({
-                success: false,
-                error: `Failed to save generation history: ${historyError.message}. Please ensure database schema is up to date.`
-            }, { status: 500 });
+            return NextResponse.json({ success: false, error: 'Failed to save result' }, { status: 500 });
         }
 
         const wrapId = wrapData?.id;
 
-        // 更新任务状态为已完成
+        // 更新任务状态为已完成，记录最终步骤
+        const { data: finalTaskData } = await supabase.from('generation_tasks').select('steps').eq('id', taskId).single();
+        const finalSteps = [...(Array.isArray(finalTaskData?.steps) ? finalTaskData.steps : []), { step: 'completed', ts: new Date().toISOString() }];
+
         await supabase.from('generation_tasks')
-            .update({ status: 'completed', updated_at: new Date().toISOString() })
+            .update({ status: 'completed', steps: finalSteps, updated_at: new Date().toISOString() })
             .eq('id', taskId);
 
         return NextResponse.json({
             success: true,
             taskId,
-            wrapId, // 返回真正的作品 ID
+            wrapId,
             image: {
-                dataUrl: correctedDataUrl, // 返回纠正后的 DataUrl 供前端即时渲染
+                dataUrl: correctedDataUrl,
                 mimeType: result.mimeType,
                 savedUrl: savedUrl
             },
@@ -385,24 +286,17 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('❌ [AI-GEN] Global API Error:', error);
 
-        // 尝试在全局错误时也将任务状态更新为失败（如果 taskId 已存在）
-        // 这里使用 try-catch 防止这个最后的补丁逻辑本身也崩了
-        try {
-            // Re-read body if possible or just rely on scoped taskId
-            // Since taskId is in the scope of the main try block, it should be available here if it was created
-            if (taskId) {
-                console.log(`[AI-GEN] Attempting to mark task ${taskId} as failed in global catch...`);
-                const supabase = await createClient();
-                await supabase.from('generation_tasks')
-                    .update({
-                        status: 'failed',
-                        error_message: `Global error: ${error instanceof Error ? error.message : String(error)}`,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', taskId);
+        if (taskId) {
+            try {
+                console.log(`[AI-GEN] Triggering emergency auto-refund for task ${taskId} due to global error...`);
+                const { data: refundRes } = await supabase.rpc('refund_task_credits', {
+                    p_task_id: taskId,
+                    p_reason: `Global API Error: ${error instanceof Error ? error.message : String(error)}`
+                });
+                console.log(`[AI-GEN] Emergency refund result:`, refundRes);
+            } catch (innerErr) {
+                console.error('[AI-GEN] Failed to refund task credits in exit handler:', innerErr);
             }
-        } catch (innerErr) {
-            console.error('[AI-GEN] Failed to finalize task status in global catch:', innerErr);
         }
 
         return NextResponse.json({

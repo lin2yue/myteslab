@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS user_credits (
 
 -- 6. AI 生成任务表 (追踪进度与扣费)
 DO $$ BEGIN
-    CREATE TYPE generation_status AS ENUM ('pending', 'processing', 'completed', 'failed');
+    CREATE TYPE generation_status AS ENUM ('pending', 'processing', 'completed', 'failed', 'failed_refunded');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -80,10 +80,24 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   prompt TEXT NOT NULL,
   status generation_status DEFAULT 'pending',
-  credits_spent INTEGER DEFAULT 1,
+  credits_spent INTEGER DEFAULT 5,
   error_message TEXT,
+  idempotency_key UUID UNIQUE,              -- 防止重复提交的唯一键
+  steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪 (e.g. [{"step": "mask_fetched", "ts": "..."}])
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6.1 积分变动账本 (金融审计回溯)
+CREATE TABLE IF NOT EXISTS credit_ledger (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  task_id UUID REFERENCES generation_tasks(id) ON DELETE SET NULL,
+  amount INTEGER NOT NULL,                  -- 负s为扣减，正数为增加/退款
+  type VARCHAR(50) NOT NULL,                -- 'generation', 'refund', 'top-up', 'adjustment'
+  description TEXT,                         -- 变动说明
+  metadata JSONB,                           -- 额外上下文 (e.g. {admin_id: "...", reason: "..."})
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 7. 用户下载历史记录
@@ -124,6 +138,8 @@ CREATE INDEX IF NOT EXISTS idx_wraps_model_slug ON wraps(model_slug);
 CREATE INDEX IF NOT EXISTS idx_wraps_deleted_at ON wraps(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public_created_at ON wraps(is_public, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public_download_count ON wraps(is_public, download_count DESC);
+CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
+CREATE INDEX IF NOT EXISTS idx_generation_tasks_idempotency ON generation_tasks(idempotency_key);
 
 -- ============================================
 -- 安全触发器 (Triggers)
@@ -140,6 +156,10 @@ BEGIN
   -- 赋予 3 初始积分
   INSERT INTO public.user_credits (user_id, balance, total_earned)
   VALUES (new.id, 3, 3);
+  
+  -- 记录初始积分发放
+  INSERT INTO public.credit_ledger (user_id, amount, type, description)
+  VALUES (new.id, 3, 'top-up', 'New user registration reward');
   
   RETURN new;
 END;
@@ -162,10 +182,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 2. 原子扣费生成函数
+-- 2. 原子扣费生成函数 (增强版)
 CREATE OR REPLACE FUNCTION deduct_credits_for_generation(
   p_prompt TEXT,
-  p_amount INTEGER DEFAULT 1
+  p_amount INTEGER DEFAULT 5,
+  p_idempotency_key UUID DEFAULT NULL
 )
 RETURNS TABLE (
   task_id UUID,
@@ -176,8 +197,19 @@ RETURNS TABLE (
 DECLARE
   v_current_balance INTEGER;
   v_new_task_id UUID;
+  v_existing_task_id UUID;
 BEGIN
-  -- 获取并锁定余额行
+  -- 1. 幂等性检查
+  IF p_idempotency_key IS NOT NULL THEN
+    SELECT id INTO v_existing_task_id FROM generation_tasks WHERE idempotency_key = p_idempotency_key;
+    IF v_existing_task_id IS NOT NULL THEN
+      SELECT balance INTO v_current_balance FROM user_credits WHERE user_id = auth.uid();
+      RETURN QUERY SELECT v_existing_task_id, TRUE, v_current_balance, 'Idempotent hit'::TEXT;
+      RETURN;
+    END IF;
+  END IF;
+
+  -- 2. 获取并锁定余额行
   SELECT balance INTO v_current_balance
   FROM user_credits
   WHERE user_id = auth.uid()
@@ -188,7 +220,12 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 扣费
+  -- 3. 创建任务记录
+  INSERT INTO generation_tasks (user_id, prompt, credits_spent, status, idempotency_key, steps)
+  VALUES (auth.uid(), p_prompt, p_amount, 'pending', p_idempotency_key, jsonb_build_array(jsonb_build_object('step', 'deducted', 'ts', NOW())))
+  RETURNING id INTO v_new_task_id;
+
+  -- 4. 扣费
   UPDATE user_credits
   SET 
     balance = balance - p_amount,
@@ -196,15 +233,77 @@ BEGIN
     updated_at = NOW()
   WHERE user_id = auth.uid();
 
-  -- 创建任务记录
-  INSERT INTO generation_tasks (user_id, prompt, credits_spent, status)
-  VALUES (auth.uid(), p_prompt, p_amount, 'pending')
-  RETURNING id INTO v_new_task_id;
+  -- 5. 记录流水
+  INSERT INTO credit_ledger (user_id, task_id, amount, type, description)
+  VALUES (auth.uid(), v_new_task_id, -p_amount, 'generation', 'AI Wrap Generation: ' || left(p_prompt, 50));
 
   RETURN QUERY SELECT v_new_task_id, TRUE, (v_current_balance - p_amount), NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN
   RETURN QUERY SELECT NULL::UUID, FALSE, v_current_balance, SQLERRM;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. 自动退款 RPC
+CREATE OR REPLACE FUNCTION refund_task_credits(
+  p_task_id UUID,
+  p_reason TEXT DEFAULT 'System technical failure'
+)
+RETURNS TABLE (
+  success BOOLEAN,
+  new_balance INTEGER,
+  error_msg TEXT
+) AS $$
+DECLARE
+  v_user_id UUID;
+  v_amount INTEGER;
+  v_status generation_status;
+  v_current_balance INTEGER;
+BEGIN
+  -- 1. 获取任务信息并锁定
+  SELECT user_id, credits_spent, status INTO v_user_id, v_amount, v_status
+  FROM generation_tasks
+  WHERE id = p_task_id
+  FOR UPDATE;
+
+  IF v_user_id IS NULL THEN
+    RETURN QUERY SELECT FALSE, NULL::INTEGER, 'Task not found'::TEXT;
+    RETURN;
+  END IF;
+
+  -- 2. 检查状态，防止重复退款
+  IF v_status = 'failed_refunded' THEN
+    SELECT balance INTO v_current_balance FROM user_credits WHERE user_id = v_user_id;
+    RETURN QUERY SELECT TRUE, v_current_balance, 'Already refunded'::TEXT;
+    RETURN;
+  END IF;
+
+  -- 3. 更新任务状态
+  UPDATE generation_tasks
+  SET 
+    status = 'failed_refunded',
+    error_message = COALESCE(error_message || ' | ' || p_reason, p_reason),
+    updated_at = NOW(),
+    steps = steps || jsonb_build_object('step', 'refunded', 'reason', p_reason, 'ts', NOW())
+  WHERE id = p_task_id;
+
+  -- 4. 返还积分
+  UPDATE user_credits
+  SET 
+    balance = balance + v_amount,
+    total_spent = total_spent - v_amount,
+    updated_at = NOW()
+  WHERE user_id = v_user_id
+  RETURNING balance INTO v_current_balance;
+
+  -- 5. 记录退款流水
+  INSERT INTO credit_ledger (user_id, task_id, amount, type, description)
+  VALUES (v_user_id, p_task_id, v_amount, 'refund', 'Refund for task: ' || p_task_id || '. Reason: ' || p_reason);
+
+  RETURN QUERY SELECT TRUE, v_current_balance, NULL::TEXT;
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN QUERY SELECT FALSE, NULL::INTEGER, SQLERRM;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
