@@ -243,5 +243,34 @@
         "model-x": {
             "description": "独特的 Model X 改色灵感。结合鹰翼门预览设计效果，为您的特斯拉 Model X 选择最佳风格。"
         }
+    },
+    "Admin": {
+        "title": "管理后台",
+        "tasks_title": "AI 生成任务",
+        "tasks_desc": "实时监控生成进度并管理退款",
+        "credits_title": "积分审计台账",
+        "credits_desc": "系统内每一笔积分变动的完整明细",
+        "batch_refresh": "批量刷新预览",
+        "batch_refresh_desc": "统一现有作品至标准视角 (225° 暗色)",
+        "refresh": "刷新",
+        "refund_btn": "手动退款",
+        "refund_confirm": "确定要给该任务手动退款吗？",
+        "refund_success": "退款成功",
+        "refund_failed": "退款失败",
+        "status_success": "成功",
+        "status_failed": "失败",
+        "status_refunded": "已退款",
+        "status_processing": "处理中",
+        "steps_title": "执行步骤记录",
+        "context_title": "任务上下文",
+        "details": "详情",
+        "user": "用户",
+        "prompt": "提示词",
+        "amount": "积分",
+        "timestamp": "时间",
+        "transaction": "交易类型",
+        "lifetime_generated": "累计生成任务",
+        "total_refunded": "累计退款积分",
+        "total_rewarded": "累计赠送积分"
     }
 }

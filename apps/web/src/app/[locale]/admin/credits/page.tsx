@@ -1,0 +1,225 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useTranslations } from 'next-intl';
+import {
+    Download,
+    Upload,
+    RotateCcw,
+    Search,
+    ArrowUpCircle,
+    ArrowDownCircle,
+    UserCircle,
+    FileText
+} from 'lucide-react';
+import { useAlert } from '@/components/alert/AlertProvider';
+import { format } from 'date-fns';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
+
+interface CreditLog {
+    id: string;
+    user_id: string;
+    task_id: string | null;
+    amount: number;
+    type: 'generation' | 'refund' | 'top-up' | 'adjustment';
+    description: string;
+    created_at: string;
+    profiles: {
+        display_name: string;
+        email: string;
+    } | null;
+}
+
+export default function AdminCreditsPage() {
+    const t = useTranslations('Admin');
+    const alert = useAlert();
+    const supabase = createClient();
+    const [logs, setLogs] = useState<CreditLog[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('credit_ledger')
+            .select(`
+                *,
+                profiles (
+                    display_name,
+                    email
+                )
+            `)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            alert.error(error.message);
+        } else {
+            setLogs(data || []);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    const filteredLogs = logs.filter(log =>
+        log.user_id.toLowerCase().includes(search.toLowerCase()) ||
+        log.profiles?.email.toLowerCase().includes(search.toLowerCase()) ||
+        log.profiles?.display_name?.toLowerCase().includes(search.toLowerCase()) ||
+        log.description.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-end">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('credits_title')}</h1>
+                    <p className="text-gray-500 text-sm mt-1">{t('credits_desc')}</p>
+                </div>
+                <div className="flex gap-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 pr-4 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all shrink-0 w-64"
+                        />
+                    </div>
+                    <button
+                        onClick={fetchLogs}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+                    >
+                        <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} />
+                        {t('refresh')}
+                    </button>
+                </div>
+            </div>
+
+            {/* Stats Summary */}
+            <div className="grid grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm transition-all hover:scale-[1.01]">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl">
+                            <Upload className="w-6 h-6" />
+                        </div>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('lifetime_generated')}</span>
+                    </div>
+                    <div className="text-3xl font-black text-gray-900 dark:text-white">
+                        {Math.abs(logs.filter(l => l.type === 'generation').reduce((sum, l) => sum + l.amount, 0))}
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">From visible ledger entries</p>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm transition-all hover:scale-[1.01]">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl">
+                            <RotateCcw className="w-6 h-6" />
+                        </div>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('total_refunded')}</span>
+                    </div>
+                    <div className="text-3xl font-black text-gray-900 dark:text-white">
+                        {logs.filter(l => l.type === 'refund').reduce((sum, l) => sum + l.amount, 0)}
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">Returned to users</p>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm transition-all hover:scale-[1.01]">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-xl">
+                            <Download className="w-6 h-6" />
+                        </div>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('total_rewarded')}</span>
+                    </div>
+                    <div className="text-3xl font-black text-gray-900 dark:text-white">
+                        {logs.filter(l => l.type === 'top-up').reduce((sum, l) => sum + l.amount, 0)}
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">Initial/Promotion credits</p>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50 dark:bg-zinc-800/50 text-gray-400 text-xs uppercase font-bold tracking-wider">
+                        <tr>
+                            <th className="px-6 py-4">{t('transaction')}</th>
+                            <th className="px-6 py-4">{t('user')}</th>
+                            <th className="px-6 py-4">{t('amount')}</th>
+                            <th className="px-6 py-4">{t('details')}</th>
+                            <th className="px-6 py-4">{t('timestamp')}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
+                        {loading && logs.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">{t('auditing_transactions')}</td>
+                            </tr>
+                        ) : filteredLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "w-8 h-8 rounded-lg flex items-center justify-center",
+                                            log.type === 'generation' ? "bg-red-50 text-red-500 dark:bg-red-900/20" :
+                                                log.type === 'refund' ? "bg-blue-50 text-blue-500 dark:bg-blue-900/20" :
+                                                    "bg-green-50 text-green-500 dark:bg-green-900/20"
+                                        )}>
+                                            {log.type === 'generation' ? <ArrowDownCircle size={18} /> :
+                                                log.type === 'refund' ? <RotateCcw size={18} /> :
+                                                    <ArrowUpCircle size={18} />}
+                                        </div>
+                                        <span className="text-sm font-bold capitalize">{log.type}</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <UserCircle className="w-4 h-4 text-gray-400" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium truncate max-w-[150px]">{log.profiles?.display_name || 'System'}</span>
+                                            <span className="text-[10px] text-gray-400 select-all">{log.user_id.substring(0, 16)}...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className={cn(
+                                        "text-sm font-black font-mono",
+                                        log.amount > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                                    )}>
+                                        {log.amount > 0 ? `+${log.amount}` : log.amount}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-col gap-1 max-w-sm">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
+                                            {log.description}
+                                        </span>
+                                        {log.task_id && (
+                                            <div className="flex items-center gap-1 text-[10px] text-blue-500 font-mono">
+                                                <FileText size={10} />
+                                                <span className="truncate">Task: {log.task_id}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-xs text-gray-400 whitespace-nowrap">
+                                    {format(new Date(log.created_at), 'yyyy-MM-dd')}
+                                    <br />
+                                    <span className="text-[10px] opacity-70">{format(new Date(log.created_at), 'HH:mm:ss')}</span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}

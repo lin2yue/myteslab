@@ -107,6 +107,13 @@ export default function AuthButton() {
                     >
                         My Profile
                     </Link>
+                    <Link
+                        href="/admin/tasks"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Admin Dashboard
+                    </Link>
                     <button
                         onClick={handleSignOut}
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-zinc-700"
