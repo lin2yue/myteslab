@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64 } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, imageUrlToBase64, generateBilingualMetadata } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions } from '@/lib/ai/mask-config';
 import { createClient } from '@/utils/supabase/server';
@@ -238,10 +238,15 @@ export async function POST(request: NextRequest) {
         // 记录步骤：准备保存至作品表
         await logStep('database_save_start');
 
+        // 并行获取双语标题和描述
+        const metadata = await generateBilingualMetadata(prompt, modelName);
+
         // 插入到统一的作品表 wraps
         const { data: wrapData, error: historyError } = await supabase.from('wraps').insert({
             user_id: user.id,
-            name: (prompt || 'AI生成贴纸').substring(0, 50),
+            name: metadata.name,
+            name_en: metadata.name_en,
+            description_en: metadata.description_en,
             prompt: prompt,
             model_slug: modelSlug,
             texture_url: savedUrl,

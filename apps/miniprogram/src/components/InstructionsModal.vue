@@ -29,11 +29,11 @@
         </div>
          <div class="flex items-start">
           <div class="w-6 h-6 rounded-full bg-[#E82127] flex items-center justify-center text-xs font-bold text-white mt-0.5 mr-3 shrink-0">2</div>
-          <text class="text-gray-300 text-sm leading-relaxed">下载涂装图片文件。</text>
+          <text class="text-gray-300 text-sm leading-relaxed">在 U 盘根目录创建「Wraps」文件夹（W 必须大写）</text>
         </div>
          <div class="flex items-start">
           <div class="w-6 h-6 rounded-full bg-[#E82127] flex items-center justify-center text-xs font-bold text-white mt-0.5 mr-3 shrink-0">3</div>
-          <text class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">在 U 盘创建 Toybox 文件夹，内部创建 Wraps 文件夹，将图片放入其中。</text>
+          <text class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">将 PNG 文件放入 Wraps 文件夹（最多 10 张）</text>
         </div>
       </div>
 

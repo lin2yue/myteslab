@@ -38,6 +38,9 @@ function normalizeWrap(w: any): Wrap {
     return {
         ...w,
         name: w.name || w.prompt || 'Untitled Wrap',
+        name_en: w.name_en || w.name || w.prompt || 'Untitled Wrap',
+        description: w.description || '',
+        description_en: w.description_en || w.description || '',
         slug: w.slug || w.id,
         wrap_image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
         preview_image_url: w.preview_url ? ensureCdn(w.preview_url) : undefined,
@@ -92,6 +95,7 @@ async function fetchWrapsInternal(
                 id, 
                 slug, 
                 name, 
+                name_en,
                 prompt, 
                 category, 
                 preview_url, 

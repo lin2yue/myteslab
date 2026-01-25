@@ -282,3 +282,59 @@ export function validateImageDimensions(
         message: `Image dimensions ${width}x${height} do not match expected ${expectedWidth}x${expectedHeight}`
     };
 }
+
+/**
+ * Utility to generate bilingual title and description using Gemini text model
+ */
+export async function generateBilingualMetadata(userPrompt: string, modelName: string): Promise<{
+    name: string;
+    name_en: string;
+    description: string;
+    description_en: string;
+}> {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error('GEMINI_API_KEY missing');
+
+        // Note: Using flash-latest for fast and cheap text generation
+        const MODEL = 'gemini-flash-latest';
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/\${MODEL}:generateContent?key=\${apiKey}`;
+
+        const systemInstruction = `You are a professional automotive wrap titler. 
+Based on the user's prompt (which could be in Chinese, English, or any other language), generate a creative title and a short description for the car wrap in BOTH Chinese and English. 
+- If the prompt is in English, generate a high-quality Chinese equivalent.
+- If the prompt is in Chinese, generate a high-quality English equivalent.
+Return ONLY a JSON object with keys: name, name_en, description, description_en. 
+Keep titles under 15 characters and descriptions under 50 characters.`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: `User Prompt: ${userPrompt}\nModel: ${modelName}` }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                }
+            })
+        });
+
+        if (!response.ok) throw new Error(`Metadata AI failed: ${response.status}`);
+
+        const content = await response.json();
+        const text = content.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('No text in metadata response');
+
+        return JSON.parse(text);
+    } catch (err) {
+        console.error('Failed to generate bilingual metadata:', err);
+        // Fallback
+        const fallbackName = userPrompt.substring(0, 50);
+        return {
+            name: fallbackName,
+            name_en: fallbackName,
+            description: '',
+            description_en: ''
+        };
+    }
+}
