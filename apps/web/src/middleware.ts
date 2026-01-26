@@ -47,6 +47,9 @@ export default async function middleware(request: NextRequest) {
         response.cookies.set(cookie.name, cookie.value, cookie);
     });
 
+    // 5. Add Vary: Accept-Language header for International SEO
+    response.headers.set('Vary', 'Accept-Language');
+
     return response;
 }
 

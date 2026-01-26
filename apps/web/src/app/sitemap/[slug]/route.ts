@@ -27,6 +27,7 @@ export async function GET(
     <priority>${priority}</priority>
     <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en${page ? `/${page}` : ''}"/>
     <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh${page ? `/${page}` : ''}"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${page ? `/${page}` : ''}"/>
   </url>\n`
             }
         }
@@ -46,6 +47,7 @@ export async function GET(
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/models/${model.slug}"/>
     <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh/models/${model.slug}"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}/models/${model.slug}"/>
   </url>\n`
                 }
             }
@@ -64,7 +66,6 @@ export async function GET(
 
         try {
             const wraps = await getWraps()
-            // Quality Gate: Published, Noindex=false, and (Official or (Downloads > 0 and has preview))
             const qualifiedWraps = wraps.filter(w =>
                 w.is_active !== false && w.is_public !== false
             )
@@ -94,6 +95,7 @@ export async function GET(
     <priority>0.6</priority>
     <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/wraps/${wrap.slug}"/>
     <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh/wraps/${wrap.slug}"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}/wraps/${wrap.slug}"/>
     <image:image>
       <image:loc>${absoluteImgUrl}</image:loc>
       <image:title>${imgTitle}</image:title>
