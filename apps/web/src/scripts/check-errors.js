@@ -11,11 +11,11 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkWraps() {
-    console.log('--- Checking for community wraps ---');
+    console.log('--- Checking for AI generated wraps ---');
     const { data, error } = await supabase
         .from('wraps')
         .select('id, name, prompt, category, created_at')
-        .eq('category', 'community')
+        .eq('category', 'ai_generated')
         .order('created_at', { ascending: false })
         .limit(10);
 

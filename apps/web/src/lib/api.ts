@@ -46,7 +46,7 @@ function normalizeWrap(w: any): Wrap {
         preview_image_url: w.preview_url ? ensureCdn(w.preview_url) : undefined,
         image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
         model_slug: w.model_slug,
-        category: w.category || 'community',
+        category: w.category || 'ai_generated', // Maintain a safe fallback for display
         is_active: true,
         author_name: profile?.display_name || (w.category === 'official' ? 'MyTesLab' : 'Anonymous'),
         author_avatar_url: profile?.avatar_url,

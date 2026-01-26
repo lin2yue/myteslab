@@ -9,6 +9,7 @@ import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
 import { createClient } from '@/utils/supabase/server'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
+import { CategoryBadge } from '@/components/CategoryBadge'
 
 export async function generateMetadata({
     params,
@@ -195,14 +196,7 @@ export default async function WrapDetailPage({
                             {/* 标题，标签与作者 */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${wrap.category === 'official'
-                                        ? 'bg-blue-50 text-blue-600 border-blue-100'
-                                        : wrap.category === 'community'
-                                            ? 'bg-purple-50 text-purple-600 border-purple-100'
-                                            : 'bg-green-50 text-green-600 border-green-100'
-                                        }`}>
-                                        {wrap.category === 'official' ? 'Official' : wrap.category === 'community' ? 'AI Generated' : 'DIY Custom'}
-                                    </span>
+                                    <CategoryBadge category={wrap.category} />
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -285,7 +279,7 @@ export default async function WrapDetailPage({
                         </div>
 
                         {/* AI 提示词卡片 */}
-                        {wrap.category === 'community' && wrap.prompt && (
+                        {wrap.category === 'ai_generated' && wrap.prompt && (
                             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                                 <div className="flex items-center justify-between mb-3">
                                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">

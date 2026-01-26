@@ -13,6 +13,7 @@ import { getMaskUrl, getMaskDimensions } from '@/lib/ai/mask-config';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { logTaskStep } from '@/lib/ai/task-logger';
+import { WRAP_CATEGORY } from '@/lib/constants/category';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -252,7 +253,7 @@ export async function POST(request: NextRequest) {
             texture_url: savedUrl,
             preview_url: savedUrl,
             is_public: false,
-            category: 'community',
+            category: WRAP_CATEGORY.AI_GENERATED,
             reference_images: savedReferenceUrls,
             slug: crypto.randomBytes(6).toString('hex')
         }).select('id, slug').single();

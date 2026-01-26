@@ -19,7 +19,7 @@ export interface Wrap {
     description?: string
     description_en?: string
     prompt?: string       // AI 生成使用的提示词
-    category: string      // 'official' | 'community'
+    category: string      // 'official' | 'ai_generated' | 'diy'
 
     // 核心资源字段
     texture_url: string   // 纹理大图路径

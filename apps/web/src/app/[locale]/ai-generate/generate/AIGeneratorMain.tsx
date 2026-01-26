@@ -123,13 +123,11 @@ export default function AIGeneratorMain({
                 .eq('user_id', user.id)
                 .is('deleted_at', null)
 
-            // Simplied filter: either exactly 'diy' or anything else (which includes null/none)
+            // Strictly filter by category defined at writing
             if (activeMode === 'diy') {
                 query = query.eq('category', 'diy')
             } else {
-                // For AI mode, we show everything that is NOT 'diy'
-                // This is safer than the complex .or() filter
-                query = query.neq('category', 'diy')
+                query = query.eq('category', 'ai_generated')
             }
 
             const { data, error } = await query

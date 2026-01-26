@@ -20,6 +20,9 @@
     },
     "Common": {
         "back_to_home": "返回",
+        "category_official": "官方设计",
+        "category_ai_generated": "AI 创作",
+        "category_diy": "用户自定",
         "cancel": "取消",
         "download": "免费下载贴图",
         "free_download": "免费下载，无需登录",

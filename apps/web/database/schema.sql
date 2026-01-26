@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   model_slug TEXT,                        -- 车型标识
   texture_url TEXT NOT NULL,              -- 贴图地址
   preview_url TEXT NOT NULL,              -- 预览图地址
-  category VARCHAR(50) DEFAULT 'official',-- 分类: official, community
+  category VARCHAR(50),                   -- 分类: official(官方), community(AI设计), diy(用户图片)
   download_count INTEGER DEFAULT 0,
   is_public BOOLEAN DEFAULT TRUE,         -- 是否公开
   is_active BOOLEAN DEFAULT TRUE,         -- 是否激活
