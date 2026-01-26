@@ -229,15 +229,10 @@ export default async function WrapDetailPage({
                                 </div>
                             </div>
 
-                            {/* Dynamic SEO Description Section */}
-                            <div className="bg-gray-50/50 dark:bg-zinc-800/50 rounded-2xl p-6 border border-gray-100 dark:border-zinc-800">
-                                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    {locale === 'en' ? 'About this Design' : '关于此设计'}
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
+                            {/* Dynamic SEO Description Section (Hidden for users, visible for SEO) */}
+                            <div className="sr-only" aria-hidden="true">
+                                <h2>{locale === 'en' ? 'About this Tesla Wrap Design' : '关于这款特斯拉贴膜设计'}</h2>
+                                <p>
                                     {locale === 'en'
                                         ? wrap.description_en || wrap.description || `This custom Tesla ${modelName || ''} wrap design, named "${name}", is available for free download. It provides a unique aesthetic for your vehicle with high-precision 4K texture patterns. Preview it in real-time using our 3D visualization studio before applying it to your car.`
                                         : wrap.description || `这款名为“${name}”的定制特斯拉 ${modelName || ''} 车身贴膜设计现在可以免费下载。它通过高精度 4K 纹理图案为您提供独特的外观方案。在正式施工前，您可以使用我们的 3D 可视化工作室进行实时效果预览。`}
