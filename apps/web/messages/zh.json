@@ -275,5 +275,10 @@
         "lifetime_generated": "累计生成任务",
         "total_refunded": "累计退款积分",
         "total_rewarded": "累计赠送积分"
+    },
+    "NotFound": {
+        "title": "未找到该设计",
+        "desc": "您寻找的特斯拉贴膜设计可能已被移动或下线。别担心，还有更多精彩设计等你探索！",
+        "explore_btn": "探索最新设计"
     }
 }
