@@ -185,6 +185,7 @@ export default async function WrapDetailPage({
                                 textureUrl={textureUrl}
                                 modelSlug={wrap.model_slug}
                                 className="w-full h-full"
+                                autoRotate
                             />
                         </div>
                     </div>
