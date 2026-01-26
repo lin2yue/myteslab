@@ -65,8 +65,7 @@ export async function GET(
             const wraps = await getWraps()
             // Quality Gate: Published, Noindex=false, and (Official or (Downloads > 0 and has preview))
             const qualifiedWraps = wraps.filter(w =>
-                w.is_active !== false && // Assume active equals published in current schema
-                (w.category === 'official' || (w.is_public && w.download_count > 0 && w.preview_url))
+                w.is_active !== false && w.is_public !== false
             )
 
             const start = (pageNumber - 1) * WRAPS_PER_PAGE

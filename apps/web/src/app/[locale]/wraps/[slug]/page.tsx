@@ -34,8 +34,8 @@ export async function generateMetadata({
     const modelName = model ? (locale === 'en' ? model.name_en || model.name : model.name) : ''
 
     const title = modelName
-        ? (locale === 'en' ? `Free ${name} Tesla ${modelName} Wrap Design Download | MyTesLab` : `免费下载 ${name} - 特斯拉 ${modelName} 贴膜设计 | MyTesLab`)
-        : (locale === 'en' ? `Free ${name} Tesla Wrap Design Download | MyTesLab` : `免费下载 ${name} 特斯拉贴膜设计 | MyTesLab`)
+        ? (locale === 'en' ? `${name} Tesla ${modelName} Wrap Design - Free Download | MyTesLab` : `${name} - 特斯拉 ${modelName} 车身贴膜设计免费下载 | MyTesLab`)
+        : (locale === 'en' ? `${name} Tesla Wrap Design - Free Download | MyTesLab` : `${name} - 特斯拉车身贴膜设计免费下载 | MyTesLab`)
 
     const description = locale === 'en'
         ? wrap.description_en || wrap.description || `Download and preview the ${name} wrap design for your Tesla ${modelName || ''} for free. Professional 3D visualization and high-quality free textures.`
@@ -46,8 +46,8 @@ export async function generateMetadata({
         ? imageUrl
         : `https://myteslab.com${imageUrl}`
 
-    // 质量准入机制：官方贴图、已公开且有下载的作品才允许索引
-    const shouldIndex = wrap.category === 'official' || (wrap.is_public && wrap.download_count > 0)
+    // 质量准入机制：只要是公开且生效的贴图，就允许索引
+    const shouldIndex = wrap.is_active !== false && wrap.is_public === true
 
     return {
         title,
@@ -57,6 +57,7 @@ export async function generateMetadata({
             languages: {
                 en: `/en/wraps/${slug}`,
                 zh: `/zh/wraps/${slug}`,
+                'x-default': `/wraps/${slug}`,
             },
         },
         openGraph: {
