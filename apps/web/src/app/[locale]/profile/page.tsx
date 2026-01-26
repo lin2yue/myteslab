@@ -24,7 +24,7 @@ export default async function ProfilePage({
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return redirect({ href: '/login', locale });
+        return redirect({ href: '/login?next=/profile', locale });
     }
 
     // 并行获取所有数据，减少串行等待时间

@@ -17,14 +17,21 @@ export default async function middleware(request: NextRequest) {
         return supabaseResponse;
     }
 
-    // 2. Check for OAuth callback (code parameter at root path)
+    // 2. Check for OAuth callback (code or token_hash parameter at root path)
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
-    if (code && (pathname === '/' || pathname.match(/^\/(en|zh)$/))) {
-        console.log('[Middleware] Detected OAuth callback at root, redirecting to API handler');
+    const token_hash = searchParams.get('token_hash');
+    const type = searchParams.get('type');
+
+    if ((code || token_hash) && (pathname === '/' || pathname.match(/^\/(en|zh)$/))) {
+        console.log('[Middleware] Detected OAuth/Auth callback at root, redirecting to API handler');
         const next = searchParams.get('next') ?? '/';
         const callbackUrl = new URL('/api/auth/callback', request.url);
-        callbackUrl.searchParams.set('code', code);
+
+        if (code) callbackUrl.searchParams.set('code', code);
+        if (token_hash) callbackUrl.searchParams.set('token_hash', token_hash);
+        if (type) callbackUrl.searchParams.set('type', type);
+
         callbackUrl.searchParams.set('next', next);
 
         const redirectResponse = NextResponse.redirect(callbackUrl);

@@ -3,9 +3,9 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { login, signup, checkUserExists, resetPassword, resendVerification } from './actions';
+import { login, signup, resetPassword, resendVerification } from './actions';
 import { createClient } from '@/utils/supabase/client';
-import { ArrowLeft, Mail, Lock, CheckCircle2, Loader2, ChevronRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, CheckCircle2, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAlert } from '@/components/alert/AlertProvider';
@@ -14,7 +14,8 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-type ViewState = 'EMAIL' | 'LOGIN' | 'SIGNUP' | 'VERIFY' | 'FORGOT' | 'RESET_SENT';
+type ViewState = 'AUTH' | 'VERIFY' | 'FORGOT' | 'RESET_SENT';
+type AuthMode = 'LOGIN' | 'SIGNUP';
 
 export default function LoginForm() {
     const t = useTranslations('Login');
@@ -24,7 +25,8 @@ export default function LoginForm() {
     const router = useRouter();
 
     // States
-    const [view, setView] = useState<ViewState>('EMAIL');
+    const [view, setView] = useState<ViewState>('AUTH');
+    const [mode, setMode] = useState<AuthMode>('LOGIN'); // 'LOGIN' or 'SIGNUP'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +36,6 @@ export default function LoginForm() {
     const [resendTimer, setResendTimer] = useState(0);
 
     const emailInputRef = useRef<HTMLInputElement>(null);
-    const passwordInputRef = useRef<HTMLInputElement>(null);
 
     // Initial check for params
     useEffect(() => {
@@ -76,86 +77,58 @@ export default function LoginForm() {
         }
     };
 
-    const onContinue = async (e: React.FormEvent) => {
+    const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        if (!email) return;
+        if (!email || !password) return;
 
-        startTransition(async () => {
-            const result = await checkUserExists(email);
-            if (result.exists) {
-                if (result.confirmed) {
-                    setView('LOGIN');
-                } else {
-                    setView('VERIFY');
-                    setResendTimer(60);
-                }
-            } else {
-                setView('SIGNUP');
-            }
-        });
-    };
-
-    const onLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
         const formData = new FormData();
         formData.append('email', email);
         formData.append('password', password);
 
         startTransition(async () => {
-            const result = await login(formData);
-            if (result && !result.success) {
-                // Check if email is not confirmed
-                if (result.error === 'Email not confirmed') {
-                    // Auto-switch to VERIFY view
-                    setPassword(''); // Clear password
-                    setView('VERIFY');
-                    setResendTimer(60);
-                    setError(null); // Clear error since we're showing the verify view
-                } else {
-                    setError(result.error || t('error_invalid_credentials'));
+            if (mode === 'LOGIN') {
+                const result = await login(formData);
+                if (result && !result.success) {
+                    if (result.error === 'Email not confirmed') {
+                        // Auto-switch to VERIFY view
+                        setPassword('');
+                        setView('VERIFY');
+                        setResendTimer(60);
+                        setError(null);
+                    } else {
+                        // For login, we typically show "Invalid credentials"
+                        setError(result.error || t('error_invalid_credentials'));
+                    }
+                } else if (result?.success) {
+                    // Login success
+                    alert.success(t('login_success') || 'Login successful!');
+                    let next = searchParams.get('next');
+                    if (!next && typeof window !== 'undefined') {
+                        next = localStorage.getItem('auth_redirect_next');
+                    }
+                    if (next && typeof window !== 'undefined') {
+                        localStorage.removeItem('auth_redirect_next');
+                        window.location.href = next;
+                    } else {
+                        // Force full reload to ensure auth state is cleanly picked up
+                        window.location.href = `/${locale}`;
+                    }
                 }
-            } else if (result?.success) {
-                // 登录成功,显示通知并跳转
-                alert.success(t('login_success') || 'Login successful!');
+            } else {
+                // SIGNUP
                 let next = searchParams.get('next');
-                console.log('[LoginForm] Login success - next from URL:', next);
                 if (!next && typeof window !== 'undefined') {
                     next = localStorage.getItem('auth_redirect_next');
-                    console.log('[LoginForm] Login success - next from localStorage:', next);
                 }
-                if (next && typeof window !== 'undefined') {
-                    console.log('[LoginForm] Redirecting to:', next);
-                    localStorage.removeItem('auth_redirect_next');
-                    window.location.href = next;
+                const result = await signup(formData, next || undefined);
+                if (result.success) {
+                    setView('VERIFY');
+                    setResendTimer(60);
                 } else {
-                    console.log('[LoginForm] No next parameter, redirecting to home');
-                    router.push(`/${locale}`);
-                    router.refresh();
+                    // For signup, we might show "User already exists" or generic error
+                    setError(result.error || t('error_default'));
                 }
-            }
-        });
-    };
-
-    const onSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
-        const formData = new FormData();
-        formData.append('email', email);
-        formData.append('password', password);
-
-        startTransition(async () => {
-            let next = searchParams.get('next');
-            if (!next && typeof window !== 'undefined') {
-                next = localStorage.getItem('auth_redirect_next');
-            }
-            const result = await signup(formData, next || undefined);
-            if (result.success) {
-                setView('VERIFY');
-                setResendTimer(60);
-            } else {
-                setError(result.error || t('error_default'));
             }
         });
     };
@@ -187,14 +160,14 @@ export default function LoginForm() {
 
     const goBack = () => {
         setError(null);
-        if (view === 'LOGIN' || view === 'SIGNUP' || view === 'FORGOT') setView('EMAIL');
-        if (view === 'VERIFY') setView('SIGNUP');
+        if (view === 'FORGOT') setView('AUTH'); // Go back to login/signup
+        if (view === 'VERIFY') setView('AUTH');
         if (view === 'RESET_SENT') setView('FORGOT');
     };
 
     // Render helpers
     const renderHeader = (title: string, showBack = false) => (
-        <div className="relative mb-8 pt-2">
+        <div className="relative mb-6 pt-2">
             {showBack && (
                 <button
                     onClick={goBack}
@@ -219,14 +192,17 @@ export default function LoginForm() {
 
     return (
         <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800/50 shadow-2xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-zinc-700/50 rounded-3xl backdrop-blur-sm transition-all duration-500">
-            {/* EMAIL VIEW */}
-            {view === 'EMAIL' && (
+
+            {/* AUTH VIEW (LOGIN OR SIGNUP) */}
+            {view === 'AUTH' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
-                        {t('title')}
+                        {mode === 'LOGIN' ? (t('welcome_back') || 'Welcome Back') : (t('create_account') || 'Create Account')}
                     </h2>
 
-                    <form onSubmit={onContinue} className="space-y-4">
+                    {renderError()}
+
+                    <form onSubmit={onSubmit} className="space-y-4">
                         <div className="relative group">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                             <input
@@ -239,16 +215,47 @@ export default function LoginForm() {
                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
                             />
                         </div>
+
+                        <div className="relative group">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder={t('password_placeholder')}
+                                required
+                                className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+
+                        {mode === 'LOGIN' && (
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setView('FORGOT')}
+                                    className="text-xs text-blue-500 hover:underline font-medium"
+                                >
+                                    {t('forgot_password')}
+                                </button>
+                            </div>
+                        )}
+
                         <button
-                            disabled={isPending || !email}
+                            disabled={isPending || !email || password.length < 6}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
                         >
-                            {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : t('continue')}
-                            <ChevronRight className="w-4 h-4" />
+                            {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === 'LOGIN' ? (t('continue') || 'Log In') : (t('create_account_btn') || 'Sign Up'))}
                         </button>
                     </form>
 
-                    <div className="relative my-8">
+                    <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-gray-100 dark:border-zinc-700" />
                         </div>
@@ -277,109 +284,32 @@ export default function LoginForm() {
                         )}
                         Google
                     </button>
-                </div>
-            )}
 
-            {/* LOGIN VIEW */}
-            {view === 'LOGIN' && (
-                <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                    {renderHeader(t('welcome_back'), true)}
-                    {renderError()}
-                    <form onSubmit={onLogin} className="space-y-4">
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input
-                                type="email"
-                                value={email}
-                                readOnly
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-500 outline-none"
-                            />
-                        </div>
-
-                        <div className="relative group">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input
-                                ref={passwordInputRef}
-                                type={showPassword ? "text" : "password"}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder={t('password_placeholder')}
-                                required
-                                autoFocus
-                                className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                            >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                        </div>
-
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setView('FORGOT')}
-                                className="text-xs text-blue-500 hover:underline font-medium"
-                            >
-                                {t('forgot_password')}
-                            </button>
-                        </div>
-
-                        <button
-                            disabled={isPending || password.length < 6}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-50"
-                        >
-                            {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : t('continue')}
-                        </button>
-                    </form>
-                </div>
-            )}
-
-            {/* SIGNUP VIEW */}
-            {view === 'SIGNUP' && (
-                <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                    {renderHeader(t('welcome_back'), true)}
-                    {renderError()}
-                    <form onSubmit={onSignup} className="space-y-4">
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input
-                                type="email"
-                                value={email}
-                                readOnly
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-500 outline-none"
-                            />
-                        </div>
-
-                        <div className="relative group">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder={t('password_placeholder')}
-                                required
-                                autoFocus
-                                className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                            >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                        </div>
-
-                        <button
-                            disabled={isPending || password.length < 6}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
-                        >
-                            {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : t('continue')}
-                        </button>
-                    </form>
+                    <div className="mt-8 text-center animate-in fade-in slide-in-from-bottom-2 duration-700 delay-200">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                            {mode === 'LOGIN' ? (
+                                <>
+                                    {t('no_account') || "Don't have an account?"}{' '}
+                                    <button
+                                        onClick={() => { setMode('SIGNUP'); setError(null); }}
+                                        className="text-gray-900 dark:text-white font-semibold hover:underline ml-1"
+                                    >
+                                        {t('sign_up_link') || "Sign up"}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    {t('has_account') || "Already have an account?"}{' '}
+                                    <button
+                                        onClick={() => { setMode('LOGIN'); setError(null); }}
+                                        className="text-gray-900 dark:text-white font-semibold hover:underline ml-1"
+                                    >
+                                        {t('login_link') || "Log in"}
+                                    </button>
+                                </>
+                            )}
+                        </p>
+                    </div>
                 </div>
             )}
 
@@ -463,7 +393,7 @@ export default function LoginForm() {
                         {t('reset_link_sent_desc')}
                     </p>
                     <button
-                        onClick={() => setView('LOGIN')}
+                        onClick={() => { setView('AUTH'); setMode('LOGIN'); }}
                         className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-all"
                     >
                         {t('back')}

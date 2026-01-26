@@ -48,6 +48,7 @@
         "continue": "Continue",
         "welcome_back": "Please enter password",
         "create_account": "Create account",
+        "create_account_btn": "Create account",
         "or": "Or",
         "back": "Back",
         "forgot_password": "Forgot password?",
@@ -63,7 +64,11 @@
         "error_user_not_found": "User not found",
         "error_invalid_credentials": "Invalid email or password",
         "error_email_not_confirmed": "Email not confirmed. Please check your inbox.",
-        "error_default": "Authentication failed, please try again"
+        "error_default": "Authentication failed, please try again",
+        "login_link": "Log in",
+        "sign_up_link": "Sign up",
+        "no_account": "Don't have an account?",
+        "has_account": "Already have an account?"
     },
     "Profile": {
         "title": "My Profile",

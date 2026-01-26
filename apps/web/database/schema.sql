@@ -7,35 +7,51 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. 车型表 (基础车型数据)
+-- 1. 车型表 (基础车型数据)
 CREATE TABLE IF NOT EXISTS wrap_models (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   slug VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(100) NOT NULL,
   name_en VARCHAR(100),
+  manufacturer VARCHAR(50) DEFAULT 'Tesla', -- [NEW]
   model_3d_url TEXT NOT NULL,
+  thumb_url TEXT,                         -- [NEW] 缩略图
+  uv_note TEXT,                           -- [NEW] UV 展开说明
   is_active BOOLEAN DEFAULT TRUE,
   sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- [NEW]
 );
 
 -- 2. 贴图方案表 (统一作品表：包含官方与用户生成)
 CREATE TABLE IF NOT EXISTS wraps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- 关联 Profiles 以便进行 Join
-  slug VARCHAR(100) UNIQUE,               -- 官方作品标识 (用户生成作品可为空)
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- 权威作者ID
+  slug VARCHAR(100) UNIQUE,               -- 官方作品标识
   name VARCHAR(200) NOT NULL,             -- 作品名称
   name_en VARCHAR(200),                   -- 英文名称
-  description TEXT,                       -- 作品描述
+  description TEXT,                       -- 作品描述 (Recovered)
   description_en TEXT,                    -- 英文描述
   prompt TEXT,                            -- AI 生成提示词
   model_slug TEXT,                        -- 车型标识
-  texture_url TEXT NOT NULL,              -- 贴图地址
+  texture_url TEXT NOT NULL,              -- 贴图地址 (原图)
   preview_url TEXT NOT NULL,              -- 预览图地址
-  category VARCHAR(50),                   -- 分类: official(官方), ai_generated(AI设计), diy(用户图片)
+  
+  -- 冗余/历史字段 (保留以兼容)
+  thumb_url TEXT,                         -- [DEPRECATED] 曾用于缩略图
+  thumbnail_url TEXT,                     -- [DEPRECATED] 曾用于缩略图
+  author_id UUID,                         -- [DEPRECATED] 旧 User ID
+  author_name TEXT,                       -- 快照作者名
+  
+  category VARCHAR(50),                   -- official, ai_generated, diy
+  tags TEXT[],                            -- [NEW] 标签
+  source TEXT,                            -- [NEW] 来源
+  attribution TEXT,                       -- [NEW] 归属
+  
   download_count INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,           -- [NEW]
   is_public BOOLEAN DEFAULT TRUE,         -- 是否公开
   is_active BOOLEAN DEFAULT TRUE,         -- 是否激活
-  author_name TEXT,                       -- 作者名 (冗余备份)
   reference_images TEXT[],                -- AI 参考图列表
   deleted_at TIMESTAMP WITH TIME ZONE,    -- 软删除标记
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -44,9 +60,12 @@ CREATE TABLE IF NOT EXISTS wraps (
 
 -- 3. 车型-贴图关联表
 CREATE TABLE IF NOT EXISTS wrap_model_map (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- [NEW] 代理主键
   model_id UUID REFERENCES wrap_models(id) ON DELETE CASCADE,
   wrap_id UUID REFERENCES wraps(id) ON DELETE CASCADE,
-  PRIMARY KEY (model_id, wrap_id)
+  is_default BOOLEAN DEFAULT FALSE,       -- [NEW]
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(model_id, wrap_id)               -- [NEW] 唯一约束
 );
 
 -- 4. 用户资料表 (关联 Supabase Auth)
@@ -83,7 +102,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   credits_spent INTEGER DEFAULT 5,
   error_message TEXT,
   idempotency_key UUID UNIQUE,              -- 防止重复提交的唯一键
-  steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪 (e.g. [{"step": "mask_fetched", "ts": "..."}])
+  steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -93,10 +112,10 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   task_id UUID REFERENCES generation_tasks(id) ON DELETE SET NULL,
-  amount INTEGER NOT NULL,                  -- 负s为扣减，正数为增加/退款
-  type VARCHAR(50) NOT NULL,                -- 'generation', 'refund', 'top-up', 'adjustment'
-  description TEXT,                         -- 变动说明
-  metadata JSONB,                           -- 额外上下文 (e.g. {admin_id: "...", reason: "..."})
+  amount INTEGER NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  description TEXT,
+  metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -113,18 +132,23 @@ CREATE TABLE IF NOT EXISTS banners (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT,
   image_url TEXT NOT NULL,
-  link_url TEXT,
+  target_path TEXT,                       -- [UPDATED] from link_url
   sort_order INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 9. 音频素材表 (如果需要)
+-- 9. 音频素材表 (完整定义)
 CREATE TABLE IF NOT EXISTS audios (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  audio_url TEXT NOT NULL,
-  category TEXT,
+  title TEXT NOT NULL,
+  album TEXT,
+  file_url TEXT NOT NULL,
+  cover_url TEXT,
+  duration NUMERIC,
+  tags TEXT[],
+  play_count INTEGER DEFAULT 0,
+  download_count INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
