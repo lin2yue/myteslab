@@ -42,7 +42,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
                     {wrap.preview_image_url ? (
                         <ResponsiveOSSImage
                             src={wrap.preview_image_url}
-                            alt={name}
+                            alt={`${name} Tesla ${modelDisplay} wrap design skin`}
                             fill
                             className="object-cover scale-[1.01] group-hover:scale-110 transition-transform duration-500 ease-out"
                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

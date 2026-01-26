@@ -1,4 +1,5 @@
 import { getWraps, getModels } from '@/lib/api'
+import { getOptimizedImageUrl } from '@/lib/images'
 
 const baseUrl = 'https://myteslab.com'
 const locales = ['en', 'zh']
@@ -10,7 +11,7 @@ export async function GET(
 ) {
     const { slug } = await params
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
 
     // 1. Static Pages
     if (slug === 'static.xml') {
@@ -80,6 +81,12 @@ export async function GET(
                     const url = `${baseUrl}/${locale}/wraps/${wrap.slug}`
                     const date = wrap.updated_at || wrap.created_at || new Date().toISOString()
                     const isoDate = new Date(date).toISOString()
+                    const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200 })
+                    const absoluteImgUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`
+                    const modelName = wrap.model_slug?.replace(/-/g, ' ') || ''
+                    const imgTitle = `${wrap.name} Tesla ${modelName} wrap design`
+                    const imgCaption = `Premium ${wrap.name} wrap pattern for Tesla ${modelName}. Free high-quality vinyl wrap design template.`
+
                     xml += `  <url>
     <loc>${url}</loc>
     <lastmod>${isoDate}</lastmod>
@@ -87,6 +94,11 @@ export async function GET(
     <priority>0.6</priority>
     <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/wraps/${wrap.slug}"/>
     <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh/wraps/${wrap.slug}"/>
+    <image:image>
+      <image:loc>${absoluteImgUrl}</image:loc>
+      <image:title>${imgTitle}</image:title>
+      <image:caption>${imgCaption}</image:caption>
+    </image:image>
   </url>\n`
                 }
             }

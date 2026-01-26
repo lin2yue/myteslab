@@ -198,7 +198,7 @@ export default async function WrapDetailPage({
                                 <div className="w-full bg-white rounded-lg overflow-hidden relative group shadow-inner">
                                     <ResponsiveOSSImage
                                         src={wrap.texture_url}
-                                        alt={`${name} Tesla ${modelName || ''} wrap texture pattern preview`}
+                                        alt={`${name} Tesla ${modelName || ''} wrap design texture pattern`}
                                         width={600}
                                         height={450}
                                         className="w-full h-auto max-h-[180px] object-contain mx-auto"
@@ -266,7 +266,18 @@ export default async function WrapDetailPage({
                         '@type': 'Product',
                         name: `${name} - Tesla ${modelName || ''} Wrap Design`,
                         description: description || `Premium Tesla wrap design - ${name}`,
-                        image: absoluteImageUrl,
+                        image: {
+                            '@type': 'ImageObject',
+                            url: absoluteImageUrl,
+                            name: `${name} Tesla ${modelName || ''} wrap design premium texture`,
+                            caption: `Free high-resolution download of ${name} wrap design for Tesla ${modelName || ''}. Visualize your next custom Tesla skin in 3D.`,
+                            license: 'https://myteslab.com/terms',
+                            acquireLicensePage: 'https://myteslab.com/terms',
+                            creator: {
+                                '@type': 'Organization',
+                                name: 'MyTesLab'
+                            }
+                        },
                         brand: {
                             '@type': 'Brand',
                             name: 'MyTesLab',
