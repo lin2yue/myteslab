@@ -41,7 +41,7 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale }: DownloadB
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div>
             <button
                 onClick={handleDownload}
                 disabled={isDownloading}
