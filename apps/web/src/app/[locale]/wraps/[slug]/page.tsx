@@ -190,8 +190,8 @@ export default async function WrapDetailPage({
 
                     {/* 右侧: 详情信息栏 */}
                     <div className="flex flex-col gap-4">
-                        {/* 核心信息与下载卡片 */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-6">
+                        {/* 核心信息与下载区域 (简约化：移除了背景卡片) */}
+                        <div className="flex flex-col gap-8">
                             {/* 标题，标签与作者 */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
