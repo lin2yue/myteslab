@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { getDownloadUrl } from '@/lib/oss'
 
 export async function GET(
     request: Request,
@@ -25,6 +26,7 @@ export async function GET(
             slug: wrap.slug || `wrap-${id.substring(0, 8)}`
         };
         const fileNamePrefix = wrapData.slug;
+        const downloadFilename = `${fileNamePrefix}.png`;
 
         if (!wrapData || !wrapData.url) {
             return NextResponse.json(
@@ -49,7 +51,7 @@ export async function GET(
             });
         }
 
-        // 3. 优化下载逻辑：使用 302 重定向直连 OSS
+        // 3. 优化下载逻辑：生成带 Response-Content-Disposition 的签名 URL
         if (wrapData.url.startsWith('data:')) {
             // 兼容 Base64 DataURL (虽然线上实际上全是 OSS URL)
             const matches = wrapData.url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
@@ -61,25 +63,16 @@ export async function GET(
 
             return new NextResponse(fileBuffer as any, {
                 headers: {
-                    'Content-Disposition': `attachment; filename="${fileNamePrefix}.png"`,
+                    'Content-Disposition': `attachment; filename="${downloadFilename}"`,
                     'Content-Type': contentType,
                 },
             });
         } else {
-            // 构建 OSS 下载 URL
-            const downloadUrl = new URL(wrapData.url);
+            // 获取带签名且强制触发下载的 URL (不消耗 Vercel 流量)
+            const signedDownloadUrl = await getDownloadUrl(wrapData.url, downloadFilename);
 
-            // 添加/追加 response-content-disposition 参数以强制浏览器下载而不是预览
-            // 注意：阿里云 OSS 的参数格式是 ?x-oss-process=...
-            // 但 response-content-disposition 是标准 HTTP 查询参数，可以并存
-            downloadUrl.searchParams.set(
-                'response-content-disposition',
-                `attachment; filename="${fileNamePrefix}.png"`
-            );
-
-            // 返回 302 重定向，让用户直接从 OSS/CDN 下载
-            // 极快，且不消耗 Vercel 流量
-            return NextResponse.redirect(downloadUrl.toString());
+            // 返回 302 重定向
+            return NextResponse.redirect(signedDownloadUrl);
         }
 
     } catch (error) {

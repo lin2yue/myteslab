@@ -2,6 +2,13 @@
  * OSS Client utility (Server-side only)
  */
 
+const getOSSConfig = () => ({
+    region: process.env.OSS_REGION || 'oss-cn-beijing',
+    accessKeyId: process.env.OSS_ACCESS_KEY_ID!,
+    accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET!,
+    bucket: process.env.OSS_BUCKET || 'lock-sounds',
+});
+
 /**
  * Upload a buffer to Alibaba Cloud OSS
  * @param buffer The image buffer to upload
@@ -16,13 +23,7 @@ export async function uploadToOSS(
 ): Promise<string> {
     // Avoid top-level require to prevent issues during build/initialization
     const OSS = require('ali-oss');
-
-    const config = {
-        region: process.env.OSS_REGION || 'oss-cn-beijing',
-        accessKeyId: process.env.OSS_ACCESS_KEY_ID!,
-        accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET!,
-        bucket: process.env.OSS_BUCKET || 'lock-sounds',
-    };
+    const config = getOSSConfig();
 
     // Debug identifying which keys are missing without exposing them
     console.log('[OSS-DEBUG] Checking env vars:', {
@@ -65,19 +66,16 @@ export async function getSignedUrl(
     folder: string = 'wraps/previews'
 ): Promise<{ url: string; key: string }> {
     const OSS = require('ali-oss');
-    const config = {
-        region: process.env.OSS_REGION || 'oss-cn-beijing',
-        accessKeyId: process.env.OSS_ACCESS_KEY_ID!,
-        accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET!,
-        bucket: process.env.OSS_BUCKET || 'lock-sounds',
+    const config = getOSSConfig();
+    const client = new OSS({
+        ...config,
         secure: true // 强制使用 HTTPS
-    };
+    });
 
     if (!config.accessKeyId || !config.accessKeySecret) {
         throw new Error('OSS credentials missing');
     }
 
-    const client = new OSS(config);
     const ossKey = `${folder}/${filename}`;
 
     // 生成 2 分钟有效的 PUT 签名连接
@@ -88,4 +86,37 @@ export async function getSignedUrl(
     });
 
     return { url, key: ossKey };
+}
+
+/**
+ * Generate a signed download URL that forces browser download
+ */
+export async function getDownloadUrl(
+    url: string,
+    downloadFilename: string
+): Promise<string> {
+    const OSS = require('ali-oss');
+
+    // Parse the key from the URL
+    let key = '';
+    try {
+        const urlObj = new URL(url);
+        key = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname;
+    } catch (e) {
+        // Fallback for relative paths
+        key = url.startsWith('/') ? url.substring(1) : url;
+    }
+
+    const client = new OSS({
+        ...getOSSConfig(),
+        secure: true
+    });
+
+    // Generate signed URL with response-content-disposition
+    return client.signatureUrl(key, {
+        expires: 3600, // 1 hour
+        response: {
+            'content-disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`
+        }
+    });
 }

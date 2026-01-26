@@ -2,8 +2,7 @@ import { Link } from '@/i18n/routing';
 import { getTranslations } from 'next-intl/server';
 
 export default async function NotFound() {
-    const t = await getTranslations('Index');
-    const tCommon = await getTranslations('Common');
+    const t = await getTranslations('NotFound');
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
@@ -19,10 +18,10 @@ export default async function NotFound() {
             </div>
 
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
-                Design Not Found
+                {t('title')}
             </h1>
             <p className="text-gray-500 dark:text-zinc-400 max-w-md mx-auto mb-10 leading-relaxed font-medium">
-                The Tesla wrap design you're looking for might have been moved or unpublished. But don't worry, there are plenty more to explore!
+                {t('desc')}
             </p>
 
             <Link
@@ -32,7 +31,7 @@ export default async function NotFound() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
-                Explore Latest Designs
+                {t('explore_btn')}
             </Link>
         </div>
     );
