@@ -90,7 +90,11 @@ export default async function ModelPage({
         <div className="flex flex-col">
             <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
                 {/* 增加页面标题，对 SEO 有利 */}
-                {/* Header section removed per user request */}
+                <h1 className="sr-only">
+                    {locale === 'en'
+                        ? `Free Tesla ${currentModel.name_en || currentModel.name} Wrap Designs and 3D Visualization`
+                        : `特斯拉 ${currentModel.name} 车身贴膜设计免费下载与 3D 预览`}
+                </h1>
 
                 <FilterBarWrapper models={models} sortBy={sortBy}>
                     <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} />

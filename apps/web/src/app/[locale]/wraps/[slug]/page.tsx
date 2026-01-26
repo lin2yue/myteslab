@@ -129,15 +129,32 @@ export default async function WrapDetailPage({
         <div className="flex flex-col min-h-screen">
             {/* Main Content */}
             <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
-                <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors mb-6 text-sm font-medium"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    {t('back_to_home')}
-                </Link>
+                <div className="flex flex-col gap-4 mb-8">
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm font-medium"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        {t('back_to_home')}
+                    </Link>
+
+                    {/* Visible Breadcrumbs for SEO and UX */}
+                    <nav className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                        <Link href="/" className="hover:text-blue-600 transition-colors">{locale === 'en' ? 'Home' : '首页'}</Link>
+                        <span>/</span>
+                        {wrap.model_slug && (
+                            <>
+                                <Link href={`/models/${wrap.model_slug}`} className="hover:text-blue-600 transition-colors">
+                                    {modelName}
+                                </Link>
+                                <span>/</span>
+                            </>
+                        )}
+                        <span className="text-gray-900 dark:text-gray-100 truncate max-w-[200px]">{name}</span>
+                    </nav>
+                </div>
                 <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10 items-start">
                     {/* 左侧: 3D 预览 */}
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
@@ -330,6 +347,47 @@ export default async function WrapDetailPage({
                                 name: name,
                                 item: `https://myteslab.com/${locale}/wraps/${slug}`,
                             },
+                        ],
+                    }),
+                }}
+            />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        '@context': 'https://schema.org',
+                        '@type': 'FAQPage',
+                        mainEntity: [
+                            {
+                                '@type': 'Question',
+                                name: locale === 'en' ? 'How do I download and use this Tesla wrap design?' : '如何下载并使用此特斯拉贴膜设计？',
+                                acceptedAnswer: {
+                                    '@type': 'Answer',
+                                    text: locale === 'en'
+                                        ? 'You can download the high-resolution texture file directly by clicking the "Download" button. Once downloaded, you can provide this file to your local professional wrap shop for installation.'
+                                        : '您可以点击“下载”按钮直接获取高分辨率纹理文件。下载后，您可以将此文件提供给当地专业的专业贴膜店进行施工安装。',
+                                },
+                            },
+                            {
+                                '@type': 'Question',
+                                name: locale === 'en' ? 'Is this Tesla wrap design free to use?' : '这个特斯拉贴膜设计是免费的吗？',
+                                acceptedAnswer: {
+                                    '@type': 'Answer',
+                                    text: locale === 'en'
+                                        ? 'Yes, all designs in our community and official gallery are free to download and use for your personal Tesla customization.'
+                                        : '是的，我们社区和官方库中的所有设计均可免费下载并用于您的个人特斯拉定制。',
+                                },
+                            },
+                            {
+                                '@type': 'Question',
+                                name: locale === 'en' ? 'Which Tesla models are supported?' : '支持哪些特斯拉车型？',
+                                acceptedAnswer: {
+                                    '@type': 'Answer',
+                                    text: locale === 'en'
+                                        ? 'We support major Tesla models including Model 3, Model Y, Cybertruck, Model S, and Model X with specialized 3D visualization.'
+                                        : '我们支持主要的特斯拉车型，包括 Model 3、Model Y、Cybertruck、Model S 和 Model X，并提供专门的 3D 可视化预览。',
+                                },
+                            }
                         ],
                     }),
                 }}

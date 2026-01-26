@@ -64,6 +64,14 @@ export default async function HomePage({
               ? 'Visualize your next look: The ultimate studio for custom Tesla wrap designs.'
               : '为您的特斯拉可视化下一个造型：终极定制车身贴图设计工作室。',
             inLanguage: locale === 'zh' ? 'zh-CN' : 'en-US',
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: {
+                '@type': 'EntryPoint',
+                urlTemplate: `https://myteslab.com/${locale}?model={search_term_string}`
+              },
+              'query-input': 'required name=search_term_string'
+            }
           }),
         }}
       />
