@@ -85,8 +85,15 @@ export async function GET(
                     const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200 })
                     const absoluteImgUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`
                     const modelName = wrap.model_slug?.replace(/-/g, ' ') || ''
-                    const imgTitle = `${wrap.name} Tesla ${modelName} wrap design`
-                    const imgCaption = `Premium ${wrap.name} wrap pattern for Tesla ${modelName}. Free high-quality vinyl wrap design template.`
+
+                    // 动态增强图片 SEO 描述
+                    const imgTitle = locale === 'en'
+                        ? `${wrap.name} - Tesla ${modelName} wrap design preview`
+                        : `${wrap.name} - 特斯拉 ${modelName} 贴膜预览`
+
+                    const imgCaption = locale === 'en'
+                        ? `Premium ${wrap.name} vinyl wrap pattern for Tesla ${modelName}. High-quality custom skin design template with 3D visualization. Free download available.`
+                        : `适用于特斯拉 ${modelName} 的高端 ${wrap.name} 车身贴膜设计图。专业级定制纹理模板，支持 3D 可视化预览，提供免费高清下载。`
 
                     xml += `  <url>
     <loc>${url}</loc>

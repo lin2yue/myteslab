@@ -37,9 +37,27 @@ export async function generateMetadata({
         ? (locale === 'en' ? `${name} Tesla ${modelName} Wrap Design - Free Download | MyTesLab` : `${name} - 特斯拉 ${modelName} 车身贴膜设计免费下载 | MyTesLab`)
         : (locale === 'en' ? `${name} Tesla Wrap Design - Free Download | MyTesLab` : `${name} - 特斯拉车身贴膜设计免费下载 | MyTesLab`)
 
-    const description = locale === 'en'
-        ? wrap.description_en || wrap.description || `Download and preview the ${name} wrap design for your Tesla ${modelName || ''} for free. Professional 3D visualization and high-quality free textures.`
-        : wrap.description || `免费下载并预览适用于特斯拉 ${modelName || ''} 的 ${name} 贴图设计。专业 3D 可视化与高质量免费纹理文件。`
+    // 动态生成语意化描述以增强 SEO
+    const getDynamicDescription = () => {
+        if (locale === 'en') {
+            if (wrap.description_en) return wrap.description_en;
+            if (wrap.description) return wrap.description;
+
+            const base = `Download the ${name} wrap design for your Tesla ${modelName || ''} for free.`
+            const features = wrap.prompt ? ` Features ${wrap.prompt.split(',').slice(0, 3).join(', ')} aesthetic.` : ''
+            const intent = ` High-quality 4K texture files with professional 3D visualization and preview.`
+            return `${base}${features}${intent} Perfect for professional vinyl wrap customization.`
+        } else {
+            if (wrap.description) return wrap.description;
+
+            const base = `免费下载并预览适用于特斯拉 ${modelName || ''} 的 ${name} 车身贴膜设计方案。`
+            const features = wrap.prompt ? `包含 ${wrap.prompt.split(',').slice(0, 3).join('、')} 等风格元素。` : ''
+            const intent = `提供高质量原图下载与实时 3D 效果预览，是您定制爱车外观的理想模板方案。`
+            return `${base}${features}${intent} 专业级车身改色设计，一键获取贴图纹理。`
+        }
+    }
+
+    const description = getDynamicDescription()
 
     const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200, quality: 85 })
     const absoluteImageUrl = imageUrl.startsWith('http')
@@ -205,8 +223,23 @@ export default async function WrapDetailPage({
                                             </div>
                                         )}
                                     </div>
-                                    <p className="font-bold text-gray-500 text-sm">@{wrap.author_name || 'Anonymous'}</p>
+                                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">@{wrap.author_name || 'Anonymous'}</div>
                                 </div>
+                            </div>
+
+                            {/* Dynamic SEO Description Section */}
+                            <div className="bg-gray-50/50 dark:bg-zinc-800/50 rounded-2xl p-6 border border-gray-100 dark:border-zinc-800">
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {locale === 'en' ? 'About this Design' : '关于此设计'}
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
+                                    {locale === 'en'
+                                        ? wrap.description_en || wrap.description || `This custom Tesla ${modelName || ''} wrap design, named "${name}", is available for free download. It provides a unique aesthetic for your vehicle with high-precision 4K texture patterns. Preview it in real-time using our 3D visualization studio before applying it to your car.`
+                                        : wrap.description || `这款名为“${name}”的定制特斯拉 ${modelName || ''} 车身贴膜设计现在可以免费下载。它通过高精度 4K 纹理图案为您提供独特的外观方案。在正式施工前，您可以使用我们的 3D 可视化工作室进行实时效果预览。`}
+                                </p>
                             </div>
 
                             {/* 贴图预览 (完整展示，不裁切) */}
