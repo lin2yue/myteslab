@@ -19,6 +19,9 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import crypto from 'crypto';
 
+// Allow longer execution time for AI generation (Vercel Pro: 60s, Hobby: 10s capped)
+export const maxDuration = 60;
+
 // Model slug to display name mapping
 const MODEL_NAMES: Record<string, string> = {
     'cybertruck': 'Cybertruck',
@@ -33,16 +36,31 @@ export async function POST(request: NextRequest) {
     let taskId: string | undefined;
     const supabase = await createClient();
 
+    const requestId = crypto.randomUUID();
+    console.log(`[AI-GEN] [${requestId}] Request received. Content-Length: ${request.headers.get('content-length')}`);
+
     try {
         // 1. 身份验证 (Authentication)
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        if (!user) {
+        if (authError || !user) {
+            console.warn(`[AI-GEN] [${requestId}] Unauthorized:`, authError);
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
+        console.log(`[AI-GEN] [${requestId}] User authenticated: ${user.id}`);
+
+        let body;
+        try {
+            body = await request.json();
+        } catch (e: any) {
+            console.error(`[AI-GEN] [${requestId}] Failed to parse JSON body:`, e);
+            return NextResponse.json({ success: false, error: 'Invalid JSON body. Payload might be too large.' }, { status: 400 });
+        }
+
         const { modelSlug, prompt, referenceImages, idempotencyKey } = body;
+
+        console.log(`[AI-GEN] [${requestId}] Payload parsed. Model: ${modelSlug}, Prompt len: ${prompt?.length}, Refs: ${referenceImages?.length}`);
 
         // 2. 参数校验
         if (!modelSlug || !prompt) {

@@ -111,19 +111,15 @@ export async function generateWrapTexture(
 ): Promise<GenerateWrapResult> {
     const { modelSlug, modelName, prompt, maskImageBase64, referenceImagesBase64 } = params;
 
-    // Get mask configuration
-    const maskDimensions = getMaskDimensions(modelSlug); // Keeping original function name as getMaskDimensions
-
+    const maskDimensions = getMaskDimensions(modelSlug);
     let textPrompt = '';
+
     try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY is not defined');
         }
 
-        // Build the prompt
-        // Use simplified editing prompt if mask is provided (Image Editing Mode)
-        // Otherwise use full generation prompt (though mask is currently required)
         textPrompt = maskImageBase64
             ? buildEditingPrompt(prompt, modelName)
             : buildWrapPrompt(modelName, prompt);
@@ -132,10 +128,7 @@ export async function generateWrapTexture(
             { text: textPrompt }
         ];
 
-        // Add mask image if provided (Image Editing Mode)
-        // CRITICAL: In Image Editing, the mask is the first image part
         if (maskImageBase64) {
-            // Check if mask has data URI prefix and remove it
             const cleanMaskBase64 = maskImageBase64.includes('base64,')
                 ? maskImageBase64.split('base64,')[1]
                 : maskImageBase64;
@@ -148,98 +141,91 @@ export async function generateWrapTexture(
             });
         }
 
-        // Add reference images
         if (referenceImagesBase64 && referenceImagesBase64.length > 0) {
             referenceImagesBase64.forEach((base64: string) => {
                 parts.push({
                     inlineData: {
-                        mimeType: 'image/jpeg', // Assuming refs are JPEGs, adapt if needed
+                        mimeType: 'image/jpeg',
                         data: base64
                     }
                 });
             });
         }
 
-        // Call Gemini API
-        // Note: Using a direct fetch here to have full control over the request structure
-        // The vertex-ai or google-generative-ai SDKs can be used, but REST is often simpler for edge cases
-
-        // Model: gemini-3-pro-image-preview (experimental) or gemini-2.5-flash-image
-        // We use gemini-3-pro-image-preview for best quality
-        const MODEL = 'gemini-3-pro-image-preview'; // Or 'gemini-2.5-flash-image'
+        const MODEL = 'gemini-3-pro-image-preview';
         const currentGeminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-        const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts
-                    }
-                ],
-                generationConfig: {
-                    responseModalities: ['Image'],  // Only return image, no text
-                    imageConfig: {
-                        aspectRatio: maskDimensions.aspectRatio,  // Dynamic: 4:3 for Cybertruck, 1:1 for Model 3/Y
-                        // imageSize removed - will use default resolution matching aspect ratio
-                    }
+        try {
+            const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-            }),
-        });
+                body: JSON.stringify({
+                    contents: [{ parts }],
+                    generationConfig: {
+                        responseModalities: ['Image'],
+                        imageConfig: {
+                            aspectRatio: maskDimensions.aspectRatio,
+                        }
+                    },
+                }),
+                signal: controller.signal,
+            });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
-        }
+            clearTimeout(timeoutId);
 
-        const content = await response.json();
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+            }
 
-        // Extract usage metadata if available
-        const usageMetadata = content.usageMetadata;
+            const content = await response.json();
+            const usageMetadata = content.usageMetadata;
 
-        // Parse response to get image
-        // Gemini returns image as inlineData in parts
-        if (content.candidates && content.candidates.length > 0) {
-            const part = content.candidates[0].content.parts[0];
-            if (part && part.inlineData) {
-                const mimeType = part.inlineData.mimeType || 'image/png';
-                const base64 = part.inlineData.data;
+            if (content.candidates && content.candidates.length > 0) {
+                const part = content.candidates[0].content.parts[0];
+                if (part && part.inlineData) {
+                    const mimeType = part.inlineData.mimeType || 'image/png';
+                    const base64 = part.inlineData.data;
 
+                    return {
+                        success: true,
+                        imageBase64: base64,
+                        dataUrl: `data:${mimeType};base64,${base64}`,
+                        mimeType: mimeType,
+                        usage: usageMetadata,
+                        finalPrompt: textPrompt
+                    };
+                }
+            }
+
+            const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
+            if (textPart) {
                 return {
-                    success: true,
-                    imageBase64: base64,
-                    dataUrl: `data:${mimeType};base64,${base64}`,
-                    mimeType: mimeType,
-                    usage: usageMetadata,
-                    finalPrompt: textPrompt // Include the prompt in success response
+                    success: false,
+                    error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
                 };
             }
-        }
 
-        // If not successful at this point, look for text error or return generic error
-        const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
-        if (textPart) {
-            return {
-                success: false,
-                error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
-            };
-        }
+            return { success: false, error: 'No image found in response' };
 
-        return {
-            success: false,
-            error: 'No image found in response'
-        };
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                throw new Error('AI 生成超时 (超过 60 秒)，请重试');
+            }
+            throw error;
+        }
 
     } catch (error) {
         console.error('Error calling Gemini API:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            finalPrompt: textPrompt // Still return the prompt even on catch
+            finalPrompt: textPrompt
         };
     }
 }

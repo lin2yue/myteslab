@@ -8,8 +8,8 @@ export function generateOrganizationSchema() {
         '@context': 'https://schema.org',
         '@type': 'Organization',
         name: 'MyTesLab',
-        url: 'https://myteslab.com',
-        logo: 'https://myteslab.com/og-image.png',
+        url: 'https://www.myteslab.com',
+        logo: 'https://www.myteslab.com/og-image.png',
         description: 'The ultimate studio for custom Tesla wrap designs',
         sameAs: [
             // 后续可以添加社交媒体链接
@@ -27,7 +27,7 @@ export function generateWebSiteSchema(locale: string) {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'MyTesLab',
-        url: `https://myteslab.com/${locale}`,
+        url: `https://www.myteslab.com/${locale}`,
         description: locale === 'en'
             ? 'Visualize your next look: The ultimate studio for custom Tesla wrap designs.'
             : '为您的特斯拉可视化下一个造型：终极定制车身贴图设计工作室。',
@@ -36,7 +36,7 @@ export function generateWebSiteSchema(locale: string) {
             '@type': 'SearchAction',
             target: {
                 '@type': 'EntryPoint',
-                urlTemplate: `https://myteslab.com/${locale}?search={search_term_string}`,
+                urlTemplate: `https://www.myteslab.com/${locale}?search={search_term_string}`,
             },
             'query-input': 'required name=search_term_string',
         },
@@ -68,7 +68,7 @@ export function generateProductSchema(wrap: Wrap, locale: string) {
             price: '0',
             priceCurrency: 'USD',
             availability: 'https://schema.org/InStock',
-            url: `https://myteslab.com/${locale}/wraps/${wrap.slug}`,
+            url: `https://www.myteslab.com/${locale}/wraps/${wrap.slug}`,
         },
         aggregateRating: wrap.download_count > 0 ? {
             '@type': 'AggregateRating',

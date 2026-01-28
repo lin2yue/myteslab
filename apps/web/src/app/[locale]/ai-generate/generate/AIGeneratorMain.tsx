@@ -200,15 +200,43 @@ export default function AIGeneratorMain({
 
         setIsGenerating(true)
         try {
+            // Check payload size estimate
+            const payload = JSON.stringify({
+                modelSlug: selectedModel,
+                prompt: prompt.trim(),
+                referenceImages: referenceImages
+            });
+
+            if (payload.length > 4 * 1024 * 1024) { // 4MB safety limit
+                throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`);
+            }
+
+            console.log(`[AI-GEN] Requesting with payload size: ${(payload.length / 1024).toFixed(2)} KB`);
+
             const res = await fetch('/api/wrap/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    modelSlug: selectedModel,
-                    prompt: prompt.trim(),
-                    referenceImages: referenceImages
-                })
+                body: payload
             })
+
+            if (!res.ok) {
+                if (res.status === 413) {
+                    throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`);
+                }
+                if (res.status === 504) {
+                    throw new Error('服务器超时，任务可能在后台继续执行，请稍后刷新历史记录查看结果');
+                }
+
+                let errorMessage = `请求失败 (${res.status})`;
+                try {
+                    const errorData = await res.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (e) {
+                    const text = await res.text();
+                    if (text) errorMessage = `${errorMessage}: ${text.substring(0, 50)}`;
+                }
+                throw new Error(errorMessage);
+            }
 
             const data = await res.json()
             if (!data.success) throw new Error(data.error)
@@ -390,7 +418,7 @@ export default function AIGeneratorMain({
         }
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
             if (typeof window !== 'undefined') {
@@ -402,16 +430,29 @@ export default function AIGeneratorMain({
         const files = e.target.files
         if (!files) return
 
-        const remainingSlots = 5 - referenceImages.length
+        const maxImages = 5
+        const remainingSlots = maxImages - referenceImages.length
+
+        if (remainingSlots <= 0) {
+            alert.warning(`最多上传 ${maxImages} 张参考图`);
+            return;
+        }
+
         const filesToProcess = Array.from(files).slice(0, remainingSlots)
 
-        filesToProcess.forEach(file => {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setReferenceImages(prev => [...prev, reader.result as string])
-            }
-            reader.readAsDataURL(file)
-        })
+        try {
+            // Dynamically import utility to avoid server-side issues
+            const { compressImage } = await import('@/utils/image');
+
+            const newImages = await Promise.all(
+                filesToProcess.map(file => compressImage(file, 1024, 0.8))
+            );
+
+            setReferenceImages(prev => [...prev, ...newImages]);
+        } catch (err) {
+            console.error('Image processing failed:', err);
+            alert.error('图片处理失败，请重试');
+        }
 
         // Reset input
         if (fileInputRef.current) fileInputRef.current.value = ''

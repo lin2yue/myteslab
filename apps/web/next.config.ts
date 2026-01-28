@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'www.myteslab.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'myteslab.com',
         pathname: '/**',
       },
@@ -34,8 +39,39 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  async headers() {
+  async redirects() {
     return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'myteslab.com' }],
+        destination: 'https://www.myteslab.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
+  async headers() {
+    const cspHeader = `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: blob: https://cdn.tewan.club https://www.googletagmanager.com https://www.google-analytics.com https://www.myteslab.com https://myteslab.com;
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://*.supabase.co https://vitals.vercel-insights.com https://*.paddle.com;
+      frame-ancestors 'self';
+      upgrade-insecure-requests;
+    `.replace(/\s{2,}/g, ' ').trim();
+
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy-Report-Only', value: cspHeader },
+        ],
+      },
       {
         source: '/models/:path*',
         headers: [
@@ -53,9 +89,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Origin', value: 'https://www.myteslab.com' },
           { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+          { key: 'Vary', value: 'Origin' },
         ],
       },
     ];

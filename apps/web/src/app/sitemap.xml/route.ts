@@ -1,6 +1,6 @@
 import { getWraps } from '@/lib/api'
 
-const baseUrl = 'https://myteslab.com'
+const baseUrl = 'https://www.myteslab.com'
 const WRAPS_PER_PAGE = 5000
 
 export async function GET() {

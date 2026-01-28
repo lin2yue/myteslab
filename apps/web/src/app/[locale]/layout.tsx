@@ -40,7 +40,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    metadataBase: new URL('https://myteslab.com'),
+    metadataBase: new URL('https://www.myteslab.com'),
     alternates: {
       canonical: `/${locale}`,
       languages: {
@@ -52,7 +52,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      url: `https://myteslab.com/${locale}`,
+      url: `https://www.myteslab.com/${locale}`,
       siteName: 'MyTesLab',
       images: [
         {

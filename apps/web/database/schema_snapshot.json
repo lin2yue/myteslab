@@ -1,0 +1,295 @@
+🚀 Starting Schema Analysis...
+
+Checking table: wrap_models...
+✅ Table wrap_models exists. Columns found: 12
+Checking table: wraps...
+✅ Table wraps exists. Columns found: 26
+Checking table: wrap_model_map...
+✅ Table wrap_model_map exists. Columns found: 5
+Checking table: profiles...
+✅ Table profiles exists. Columns found: 6
+Checking table: user_credits...
+✅ Table user_credits exists. Columns found: 5
+Checking table: generation_tasks...
+✅ Table generation_tasks exists. Columns found: 10
+Checking table: credit_ledger...
+✅ Table credit_ledger exists. Columns found: 8
+Checking table: user_downloads...
+✅ Table user_downloads exists. Columns found: 4
+Checking table: banners...
+✅ Table banners exists. Columns found: 7
+Checking table: audios...
+✅ Table audios exists. Columns found: 10
+
+ --- Detailed Snapshot --- 
+
+{
+  "wrap_models": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "name",
+      "thumb_url",
+      "uv_note",
+      "created_at",
+      "is_active",
+      "slug",
+      "manufacturer",
+      "sort_order",
+      "updated_at",
+      "model_3d_url",
+      "name_en"
+    ],
+    "example_row": {
+      "id": "075e052d-a356-4610-bf92-8b9e0641083c",
+      "name": "Cybertruck",
+      "thumb_url": null,
+      "uv_note": null,
+      "created_at": "2026-01-14T09:18:15.343875+00:00",
+      "is_active": true,
+      "slug": "cybertruck",
+      "manufacturer": "Tesla",
+      "sort_order": 0,
+      "updated_at": "2026-01-14T09:18:15.343875+00:00",
+      "model_3d_url": "https://cdn.tewan.club/models/wraps/cybertruck/model_v1.glb",
+      "name_en": "Cybertruck"
+    }
+  },
+  "wraps": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "name",
+      "category",
+      "thumb_url",
+      "tags",
+      "is_active",
+      "created_at",
+      "slug",
+      "thumbnail_url",
+      "source",
+      "attribution",
+      "sort_order",
+      "updated_at",
+      "name_en",
+      "description_en",
+      "author_id",
+      "user_id",
+      "model_slug",
+      "is_public",
+      "prompt",
+      "download_count",
+      "texture_url",
+      "preview_url",
+      "deleted_at",
+      "author_name",
+      "reference_images"
+    ],
+    "example_row": {
+      "id": "029cae81-3331-46a2-a542-a70d1ef62558",
+      "name": "变异鲨鱼",
+      "category": "ai_generated",
+      "thumb_url": null,
+      "tags": null,
+      "is_active": true,
+      "created_at": "2026-01-22T01:57:14.026321+00:00",
+      "slug": "7b6b0d2c61a9",
+      "thumbnail_url": null,
+      "source": null,
+      "attribution": null,
+      "sort_order": 0,
+      "updated_at": "2026-01-22T01:57:14.026321+00:00",
+      "name_en": "MutaShark",
+      "description_en": "Aggressive biomorphic strain. Ultimate oceanic predator.",
+      "author_id": null,
+      "user_id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
+      "model_slug": "model-y-pre-2025",
+      "is_public": true,
+      "prompt": "变异鲨鱼",
+      "download_count": 0,
+      "texture_url": "https://cdn.tewan.club/wraps/ai-generated/wrap-5b633b08-1769047031325.png",
+      "preview_url": "https://cdn.tewan.club/wraps/previews/preview-029cae81-1769189783516.png",
+      "deleted_at": null,
+      "author_name": null,
+      "reference_images": []
+    }
+  },
+  "wrap_model_map": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "model_id",
+      "wrap_id",
+      "is_default",
+      "created_at"
+    ],
+    "example_row": {
+      "id": "31b09fc2-d4ea-4146-b3e4-b813d3d24a41",
+      "model_id": "c8e08153-ed7c-4a8c-a4df-c221a18d91cd",
+      "wrap_id": "a6240827-5ae2-43f2-ac86-9a95f683ec35",
+      "is_default": false,
+      "created_at": "2026-01-17T17:52:49.541466+00:00"
+    }
+  },
+  "profiles": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "email",
+      "display_name",
+      "avatar_url",
+      "created_at",
+      "updated_at"
+    ],
+    "example_row": {
+      "id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
+      "email": "lin2yue@gmail.com",
+      "display_name": "Link Lin",
+      "avatar_url": null,
+      "created_at": "2026-01-20T13:19:22.201478+00:00",
+      "updated_at": "2026-01-20T13:19:22.201478+00:00"
+    }
+  },
+  "user_credits": {
+    "status": "exists",
+    "columns": [
+      "user_id",
+      "balance",
+      "total_earned",
+      "total_spent",
+      "updated_at"
+    ],
+    "example_row": {
+      "user_id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
+      "balance": 60,
+      "total_earned": 0,
+      "total_spent": 280,
+      "updated_at": "2026-01-26T12:29:42.429243+00:00"
+    }
+  },
+  "generation_tasks": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "user_id",
+      "prompt",
+      "status",
+      "credits_spent",
+      "error_message",
+      "created_at",
+      "updated_at",
+      "idempotency_key",
+      "steps"
+    ],
+    "example_row": {
+      "id": "6804eda4-284b-4fb7-acfe-2e89bbbbe3fa",
+      "user_id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
+      "prompt": "草莓主题",
+      "status": "failed_refunded",
+      "credits_spent": 5,
+      "error_message": "OSS upload failed",
+      "created_at": "2026-01-25T06:52:56.50328",
+      "updated_at": "2026-01-25T06:54:17.407415",
+      "idempotency_key": null,
+      "steps": [
+        {
+          "ts": "2026-01-25T06:52:56.50328+00:00",
+          "step": "deducted"
+        },
+        {
+          "ts": "2026-01-25T06:54:17.407415+00:00",
+          "step": "refunded",
+          "reason": "OSS upload failed"
+        }
+      ]
+    }
+  },
+  "credit_ledger": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "user_id",
+      "task_id",
+      "amount",
+      "type",
+      "description",
+      "metadata",
+      "created_at"
+    ],
+    "example_row": {
+      "id": "b1d44028-0b05-4ae2-b4cd-099154a25c5e",
+      "user_id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
+      "task_id": "41f61621-d044-4826-8058-a47a3d3da3da",
+      "amount": -5,
+      "type": "generation",
+      "description": "AI Wrap Generation: 生化危机车辆涂装",
+      "metadata": null,
+      "created_at": "2026-01-25T06:07:25.453311+00:00"
+    }
+  },
+  "user_downloads": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "user_id",
+      "wrap_id",
+      "downloaded_at"
+    ],
+    "example_row": {
+      "id": "e0627875-3c08-44a8-a791-dd88982acd5e",
+      "user_id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
+      "wrap_id": "c3902aad-45e1-40d7-a14f-2448caf40c8e",
+      "downloaded_at": "2026-01-21T17:54:03.934422+00:00"
+    }
+  },
+  "banners": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "created_at",
+      "title",
+      "image_url",
+      "target_path",
+      "is_active",
+      "sort_order"
+    ],
+    "example_row": {
+      "id": 1,
+      "created_at": "2026-01-12T09:30:28.198951+00:00",
+      "title": "🔥 热门：超级玛丽",
+      "image_url": "https://cdn.tewan.club/audios/%E8%B6%85%E7%BA%A7%E7%8E%9B%E4%B8%BD/cover.jpg",
+      "target_path": "/pages/album-detail/index?album=%E8%B6%85%E7%BA%A7%E7%8E%9B%E4%B8%BD",
+      "is_active": true,
+      "sort_order": 1
+    }
+  },
+  "audios": {
+    "status": "exists",
+    "columns": [
+      "id",
+      "created_at",
+      "title",
+      "file_url",
+      "duration",
+      "cover_url",
+      "album",
+      "tags",
+      "play_count",
+      "download_count"
+    ],
+    "example_row": {
+      "id": 260,
+      "created_at": "2026-01-12T04:07:06.900961+00:00",
+      "title": "跳跃",
+      "file_url": "https://cdn.tewan.club/audios/%E8%B6%85%E7%BA%A7%E7%8E%9B%E4%B8%BD/%E8%B7%B3%E8%B7%83.wav",
+      "duration": 1,
+      "cover_url": "https://cdn.tewan.club/audios/%E8%B6%85%E7%BA%A7%E7%8E%9B%E4%B8%BD/cover.v2.jpg?v=2",
+      "album": "超级玛丽",
+      "tags": [
+        "超级玛丽"
+      ],
+      "play_count": 0,
+      "download_count": 0
+    }
+  }
+}

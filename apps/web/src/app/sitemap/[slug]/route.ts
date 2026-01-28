@@ -1,7 +1,7 @@
 import { getWraps, getModels } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
 
-const baseUrl = 'https://myteslab.com'
+const baseUrl = 'https://www.myteslab.com'
 const locales = ['en', 'zh']
 const WRAPS_PER_PAGE = 5000 // Each file can hold 50k, but 5k is safer for memory/speed during generation
 
