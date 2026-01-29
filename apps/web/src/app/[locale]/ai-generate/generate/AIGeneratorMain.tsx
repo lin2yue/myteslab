@@ -16,6 +16,7 @@ import { useRouter } from '@/i18n/routing'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import PublishModal from '@/components/publish/PublishModal'
 import { useAlert } from '@/components/alert/AlertProvider'
+import { ServiceType, getServiceCost } from '@/lib/constants/credits'
 
 interface GenerationHistory {
     id: string
@@ -212,8 +213,11 @@ export default function AIGeneratorMain({
             return
         }
         if (!prompt.trim() || isGenerating) return
-        if (balance <= 0) {
-            alert.warning('积分不足，请先购买生成包')
+
+        const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
+        if (balance < requiredCredits) {
+            alert.warning(`积分不足，需要 ${requiredCredits} 积分，当前余额 ${balance}`)
+            setShowPricing(true)
             return
         }
 

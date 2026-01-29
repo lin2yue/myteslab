@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   prompt TEXT NOT NULL,
   status generation_status DEFAULT 'pending',
-  credits_spent INTEGER DEFAULT 5,
+  credits_spent INTEGER DEFAULT 10,
   error_message TEXT,
   idempotency_key UUID UNIQUE,              -- 防止重复提交的唯一键
   steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪
@@ -209,7 +209,7 @@ $$ LANGUAGE plpgsql;
 -- 2. 原子扣费生成函数 (增强版)
 CREATE OR REPLACE FUNCTION deduct_credits_for_generation(
   p_prompt TEXT,
-  p_amount INTEGER DEFAULT 5,
+  p_amount INTEGER DEFAULT 10,
   p_idempotency_key UUID DEFAULT NULL
 )
 RETURNS TABLE (
