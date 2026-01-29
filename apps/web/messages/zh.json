@@ -33,7 +33,8 @@
         "model_error": "模型加载失败,请检查模型文件",
         "nav": {
             "gallery": "发现",
-            "ai_generator": "AI 设计"
+            "ai_generator": "AI 设计",
+            "pricing": "定价"
         }
     },
     "Login": {
@@ -157,6 +158,7 @@
         "links": {
             "explore": "发现",
             "ai_generator": "AI 设计",
+            "pricing": "定价",
             "terms": "服务条款",
             "privacy": "隐私政策",
             "refund": "退款政策"
@@ -166,7 +168,7 @@
         "tos": {
             "title": "服务条款",
             "s1_title": "1. 协议接受",
-            "s1_content": "访问或使用 MyTeslaLab（以下简称“本平台”），即表示您同意受本服务条款约束。本平台由 MyTeslaLab 运营，旨在为 Tesla 车主提供 AI 驱动的数字创意工具。",
+            "s1_content": "访问或使用 MyTesLab（以下简称\"本平台\"），即表示您同意受本服务条款约束。本平台由北京蓝壶科技有限公司 (Beijing Lanhu Technology Co., Ltd.) 运营，旨在为 Tesla 车主提供 AI 驱动的数字创意工具。",
             "s2_title": "2. 服务内容",
             "s2_content": "本平台提供 AIGC（生成式人工智能）技术，允许用户生成、上传、预览并下载数字贴纸设计样图。所有产品均为数字资产，不涉及任何物理实体的交付。",
             "s3_title": "3. 知识产权与用户内容",
@@ -233,7 +235,27 @@
         "credits_desc": "通用账户余额",
         "generations": "次 AI 贴纸设计",
         "generations_desc": "基于 5 积分/次 估算",
-        "secure_payment_desc": "支付由 Paddle 安全处理。一次性付费，无自动续费。"
+        "secure_payment_desc": "支付由 Paddle 安全处理。一次性付费，无自动续费。",
+        "page_title": "定价方案 - 选择最适合您的套餐",
+        "page_description": "购买 AI 生成积分，创作定制特斯拉贴图设计。灵活定价方案，低至 $4.99 起。",
+        "features_title": "您将获得",
+        "feature_1_title": "AI 生成积分",
+        "feature_1_desc": "积分永不过期，随时可用于生成定制特斯拉贴图设计",
+        "feature_2_title": "高清文件下载",
+        "feature_2_desc": "支持贴图文件下载，用于特斯拉车机显示",
+        "feature_3_title": "实时 3D 预览",
+        "feature_3_desc": "在精确的特斯拉车辆 3D 模型上实时预览您的设计效果",
+        "feature_4_title": "社区发布",
+        "feature_4_desc": "可选择将您的创作分享至全球 MyTesLab 社区",
+        "faq_title": "常见问题",
+        "faq_1_q": "积分如何使用？",
+        "faq_1_a": "每次 AI 生成消耗 5 积分。购买后积分立即到账，永不过期。",
+        "faq_2_q": "生成后我能得到什么？",
+        "faq_2_a": "您将获得高分辨率 PNG 格式的定制贴图设计文件，可下载并用于特斯拉车机显示。",
+        "faq_3_q": "可以退款吗？",
+        "faq_3_a": "由于数字积分的即时性，积分消耗后通常无法退款。但如遇技术问题，请在 72 小时内联系 support@myteslab.com。",
+        "faq_4_q": "这是订阅服务吗？",
+        "faq_4_a": "不是，所有购买均为一次性付费，无循环扣费或订阅。"
     },
     "Models": {
         "model-3": {

@@ -39,13 +39,11 @@ export default function Footer() {
                                     {t('links.explore')}
                                 </Link>
                             </li>
-                            {/* 
                             <li>
-                                <Link href="/ai-generate/generate" className="text-sm text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                                    {t('links.ai_generator')}
+                                <Link href="/pricing" className="text-sm text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                                    {t('links.pricing')}
                                 </Link>
                             </li>
-                            */}
                         </ul>
                     </div>
 
