@@ -190,16 +190,46 @@ export async function getModels(): Promise<Model[]> {
     try {
         return await unstable_cache(
             async () => {
-                const { data, error } = await publicSupabase.from('wrap_models').select('*').eq('is_active', true).order('sort_order', { ascending: true })
-                const models = error ? [] : (data || [])
-                return models
+                console.log('[getModels] Fetching from database...')
+
+                try {
+                    const { data, error } = await publicSupabase
+                        .from('wrap_models')
+                        .select('*')
+                        .eq('is_active', true)
+                        .order('sort_order', { ascending: true })
+
+                    if (error) {
+                        console.error('[getModels] Supabase error:', error)
+                        throw error
+                    }
+
+                    const models = data || []
+                    console.log(`[getModels] Retrieved ${models.length} models from database`)
+
+                    if (models.length === 0) {
+                        console.warn('[getModels] WARNING: Database returned 0 models, using fallback')
+                        // Import fallback config
+                        const { DEFAULT_MODELS } = await import('@/config/models')
+                        return DEFAULT_MODELS as Model[]
+                    }
+
+                    return models
+                } catch (dbError) {
+                    console.error('[getModels] Database query failed, using fallback:', dbError)
+                    // Import fallback config
+                    const { DEFAULT_MODELS } = await import('@/config/models')
+                    return DEFAULT_MODELS as Model[]
+                }
             },
-            ['models-v6'],
+            ['models-v7'], // Incremented version to force cache refresh
             { revalidate: 3600 }
         )()
     } catch (error) {
-        console.error('getModels error:', error)
-        return []
+        console.error('[getModels] Fatal error, using fallback:', error)
+        // Last resort fallback
+        const { DEFAULT_MODELS } = await import('@/config/models')
+        return DEFAULT_MODELS as Model[]
     }
 }
 

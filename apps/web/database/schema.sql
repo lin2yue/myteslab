@@ -375,9 +375,9 @@ CREATE POLICY "Update Own Tasks" ON generation_tasks FOR UPDATE USING (auth.uid(
 -- 初始数据索引加载
 -- ============================================
 INSERT INTO wrap_models (slug, name, model_3d_url, sort_order) VALUES
-  ('cybertruck', 'Cybertruck', 'https://cdn.tewan.club/models/Cybertruck/cybertruck.glb', 1),
-  ('model-3', 'Model 3', 'https://cdn.tewan.club/models/Model-3/model.glb', 2),
-  ('model-3-2024-plus', 'Model 3 2024+', 'https://cdn.tewan.club/models/Model-3-2024-Plus/model.glb', 3),
-  ('model-y-pre-2025', 'Model Y', 'https://cdn.tewan.club/models/Model-Y-Pre-2025/model.glb', 4),
-  ('model-y-2025-plus', 'Model Y 2025+', 'https://cdn.tewan.club/models/Model-Y-2025-Plus/model.glb', 5)
+  ('cybertruck', 'Cybertruck', 'https://cdn.tewan.club/models/wraps/cybertruck/model_v1.glb', 1),
+  ('model-3', 'Model 3 (经典款)', 'https://cdn.tewan.club/models/wraps/model-3/model_v1.glb', 2),
+  ('model-3-2024-plus', 'Model 3 (焕新版)', 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v2.glb', 3),
+  ('model-y-2025-plus', 'Model Y (2025+)', 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v5.glb', 4),
+  ('model-y-pre-2025', 'Model Y (经典款)', 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb', 5)
 ON CONFLICT (slug) DO NOTHING;
