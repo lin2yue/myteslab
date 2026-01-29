@@ -7,6 +7,7 @@ import viewerConfig from '@/config/viewer-config.json'
 
 interface ModelViewerProps {
     modelUrl: string
+    wheelUrl?: string
     textureUrl?: string
     modelSlug?: string
     className?: string
@@ -26,6 +27,7 @@ export interface ModelViewerRef {
 
 export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     modelUrl,
+    wheelUrl,
     textureUrl,
     modelSlug,
     className = '',
@@ -183,6 +185,82 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             return sceneSymbol ? viewer[sceneSymbol] : null
         } catch {
             return null
+        }
+    }
+
+    // 动态注入轮毂模型
+    const injectWheels = async (viewer: any, wheelUrl: string) => {
+        if (!viewer || !wheelUrl) return
+
+        try {
+            const scene = getThreeScene(viewer)
+            if (!scene) {
+                console.warn('[ModelViewer] Could not find Three.js scene for wheel injection')
+                return
+            }
+
+            console.log('[ModelViewer] Injecting modular wheels:', wheelUrl)
+
+            // 动态导入 Three.js 必须的加载器
+            const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader')
+            const { SkeletonUtils } = await import('three/examples/jsm/utils/SkeletonUtils')
+            const loader = new GLTFLoader()
+
+            // 1. 加载轮毂母本
+            const gltf = await loader.loadAsync(wheelUrl)
+            const wheelMaster = gltf.scene
+
+            // 2. 寻找车身中的轮毂挂载点 (锚点)
+            // 根据分析，精确名称为: Wheel_LF_Spatial, Wheel_RF_Spatial, Wheel_RL_Spatial, Wheel_RR_Spatial
+            // 兼容性逻辑：查找包含 'Wheel' 且包含 'LF', 'RF', 'RL', 'RR' 或 'Spatial' 的节点
+            const foundAnchors: any[] = []
+
+            scene.traverse((node: any) => {
+                const name = node.name.toUpperCase()
+                const isWheelAnchor = name.includes('WHEEL') && (
+                    name.includes('SPATIAL') ||
+                    name.includes('LF') || name.includes('RF') ||
+                    name.includes('RL') || name.includes('RR')
+                )
+
+                if (isWheelAnchor && !name.includes('STEERING')) { // 排除方向盘 (SteeringWheel)
+                    foundAnchors.push(node)
+                }
+            })
+
+            if (foundAnchors.length === 0) {
+                console.warn('[ModelViewer] No wheel anchors (LF, RF, RL, RR) found in the body model. Checked:', scene)
+                return
+            }
+
+            console.log(`[ModelViewer] Found ${foundAnchors.length} anchors:`, foundAnchors.map(a => a.name))
+
+            // 3. 克隆并挂载到每个点
+            foundAnchors.forEach((node) => {
+                // 清理可能存在的旧轮子
+                while (node.children.length > 0) {
+                    node.remove(node.children[0])
+                }
+
+                // 使用 SkeletonUtils.clone 确保骨骼和材质独立
+                const wheelInstance = SkeletonUtils.clone(wheelMaster)
+
+                // 镜像逻辑: 判断左侧还是右侧
+                const name = node.name.toUpperCase()
+                // 根据 Spatial 命名规则: LF (Left Front), RF (Right Front)
+                const isLeft = name.includes('LF') || name.includes('RL') || (name.includes('L') && !name.includes('RL'))
+
+                // 执行 180 度旋转以平衡内外侧
+                if (isLeft) {
+                    wheelInstance.rotation.y = Math.PI
+                }
+
+                node.add(wheelInstance)
+            })
+
+            console.log(`[ModelViewer] Successfully injected ${foundAnchors.length} wheels`)
+        } catch (err) {
+            console.error('[ModelViewer] Failed to inject wheels:', err)
         }
     }
 
@@ -377,6 +455,17 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     })
                 }
             }
+
+            // Handle modular wheel injection
+            if (wheelUrl) {
+                // Give a small delay to ensure the viewer scene graph is ready
+                setTimeout(async () => {
+                    await requestAnimationFrame(async () => {
+                        await injectWheels(viewer, wheelUrl)
+                    })
+                }, 100)
+            }
+
             // Once loaded, apply current texture if any
             if (textureUrl) {
                 applyTexture(viewer, textureUrl, modelSlug)
@@ -398,7 +487,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             viewer.removeEventListener('error', onError)
             viewer.remove()
         }
-    }, [modelUrl, id]) // Re-run only on core model identity change
+    }, [modelUrl, wheelUrl, id]) // Re-run only on core model identity change
 
     // Effect 2: Update model-viewer attributes that don't need reload
     useEffect(() => {
