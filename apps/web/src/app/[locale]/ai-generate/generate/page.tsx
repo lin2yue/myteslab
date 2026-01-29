@@ -102,7 +102,8 @@ export default async function GeneratePage({
     const models = modelsData.map((m: any) => ({
         slug: m.slug,
         name: m.name,
-        modelUrl: m.model_3d_url || undefined
+        modelUrl: m.model_3d_url || undefined,
+        wheelUrl: m.wheel_url || undefined
     }));
 
     return (

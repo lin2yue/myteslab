@@ -35,7 +35,7 @@ export default function AIGeneratorMain({
     isLoggedIn
 }: {
     initialCredits: number,
-    models: Array<{ slug: string; name: string; modelUrl?: string }>,
+    models: Array<{ slug: string; name: string; modelUrl?: string; wheelUrl?: string }>,
     locale: string,
     isLoggedIn: boolean
 }) {
@@ -521,6 +521,7 @@ export default function AIGeneratorMain({
                             ref={viewerRef}
                             id="ai-viewer"
                             modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
+                            wheelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.wheelUrl || '', { stable: true })}
                             textureUrl={currentTexture || undefined}
                             modelSlug={selectedModel}
                             backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
@@ -530,7 +531,7 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    <div className="flex flex-row overflow-x-auto lg:overflow-visible flex-nowrap lg:flex-nowrap gap-1.5 lg:gap-2 pb-2 lg:pb-0">
+                    < div className="flex flex-row overflow-x-auto lg:overflow-visible flex-nowrap lg:flex-nowrap gap-1.5 lg:gap-2 pb-2 lg:pb-0" >
                         <button
                             onClick={() => setIsNight(!isNight)}
                             className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-1.5 flex-shrink"
@@ -607,14 +608,14 @@ export default function AIGeneratorMain({
                                 )
                             )}
                         </button>
-                    </div>
-                </div>
+                    </div >
+                </div >
 
                 {/* Right Side: Controls (30%) */}
-                <div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 lg:pl-0 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden">
+                < div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 lg:pl-0 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden" >
 
                     {/* Mode Switcher Tabs */}
-                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200">
+                    < div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200" >
                         <button
                             onClick={() => {
                                 setActiveMode('ai');
@@ -635,10 +636,10 @@ export default function AIGeneratorMain({
                         >
                             {tGen('mode_diy')}
                         </button>
-                    </div>
+                    </div >
 
                     {/* Conditional Panels */}
-                    <div className="flex-1 overflow-hidden min-h-0">
+                    < div className="flex-1 overflow-hidden min-h-0" >
                         {activeMode === 'ai' ? (
                             <div className="flex flex-col h-full gap-4">
                                 {/* Model, Credits & Buy Area in One Row - Specific for AI */}
@@ -845,9 +846,9 @@ export default function AIGeneratorMain({
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
-            </div>
+                    </div >
+                </div >
+            </div >
 
             <PricingModal
                 isOpen={showPricing}
@@ -864,7 +865,7 @@ export default function AIGeneratorMain({
                 textureUrl={currentTexture || ''}
                 isPublishing={isPublishing}
             />
-        </div>
+        </div >
     );
 }
 

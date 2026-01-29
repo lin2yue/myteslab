@@ -2,25 +2,23 @@
 
 import { useState } from 'react'
 import { ModelViewerClient } from '@/components/ModelViewerClient'
+import { DEFAULT_MODELS } from '@/config/models'
 
 export default function TestModularPage() {
-    const [selectedModel, setSelectedModel] = useState('modely-2025-premium')
-    const [selectedWheel, setSelectedWheel] = useState('modely-2025-premium')
+    const [selectedModelSlug, setSelectedModelSlug] = useState(DEFAULT_MODELS[0].slug)
+    const [selectedWheelUrl, setSelectedWheelUrl] = useState(DEFAULT_MODELS[0].wheel_url)
 
-    const models = [
-        { id: 'modely-2025-premium', name: 'Model Y 2025 Premium' },
-        { id: 'model3-2024-base', name: 'Model 3 2024 Base' },
-        { id: 'cybertruck', name: 'Cybertruck' }
-    ]
+    // Extract unique wheels from config for the dropdown
+    const uniqueWheels = Array.from(new Set(DEFAULT_MODELS.map(m => m.wheel_url).filter(Boolean)))
+        .map(url => {
+            const model = DEFAULT_MODELS.find(m => m.wheel_url === url)
+            return {
+                url: url!,
+                name: model?.name + ' Wheels' || 'Unknown Wheels'
+            }
+        })
 
-    const wheels = [
-        { id: 'modely-2025-premium', name: 'Premium Wheels' },
-        { id: 'shared_wheels_induction', name: 'Induction Wheels (Shared)' },
-        { id: 'shared_wheels_stiletto', name: 'Stiletto Wheels (Shared)' }
-    ]
-
-    const bodyUrl = `/models-test/${selectedModel}/body.glb`
-    const wheelUrl = `/models-test/${selectedWheel}/${selectedWheel.includes('shared') ? 'body.glb' : 'wheels.glb'}`
+    const selectedModel = DEFAULT_MODELS.find(m => m.slug === selectedModelSlug) || DEFAULT_MODELS[0]
 
     return (
         <div className="p-8 max-w-4xl mx-auto">
@@ -31,36 +29,45 @@ export default function TestModularPage() {
                     <label className="block text-sm font-medium mb-1">Select Body</label>
                     <select
                         className="w-full p-2 border rounded"
-                        value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
+                        value={selectedModelSlug}
+                        onChange={(e) => {
+                            const newSlug = e.target.value
+                            setSelectedModelSlug(newSlug)
+                            // Auto-select corresponding wheel for convenience, but allow override
+                            const newModel = DEFAULT_MODELS.find(m => m.slug === newSlug)
+                            if (newModel?.wheel_url) {
+                                setSelectedWheelUrl(newModel.wheel_url)
+                            }
+                        }}
                     >
-                        {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        {DEFAULT_MODELS.map(m => <option key={m.slug} value={m.slug}>{m.name}</option>)}
                     </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium mb-1">Select Wheels</label>
                     <select
                         className="w-full p-2 border rounded"
-                        value={selectedWheel}
-                        onChange={(e) => setSelectedWheel(e.target.value)}
+                        value={selectedWheelUrl}
+                        onChange={(e) => setSelectedWheelUrl(e.target.value || undefined)}
                     >
-                        {wheels.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        {uniqueWheels.map(w => <option key={w.url} value={w.url}>{w.name}</option>)}
                     </select>
                 </div>
             </div>
 
             <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden border">
                 <ModelViewerClient
-                    modelUrl={bodyUrl}
-                    wheelUrl={wheelUrl}
+                    modelUrl={selectedModel.model_3d_url}
+                    wheelUrl={selectedWheelUrl}
+                    modelSlug={selectedModelSlug}
                     autoRotate
                     className="w-full h-full"
                 />
             </div>
 
             <div className="mt-4 p-4 bg-gray-50 rounded text-xs font-mono">
-                <p>Body URL: {bodyUrl}</p>
-                <p>Wheel URL: {wheelUrl}</p>
+                <p>Body URL: {selectedModel.model_3d_url}</p>
+                <p>Wheel URL: {selectedWheelUrl}</p>
             </div>
         </div>
     )
