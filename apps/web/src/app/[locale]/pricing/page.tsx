@@ -105,6 +105,12 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                                     </span>
                                     <span className="text-gray-500 dark:text-zinc-400 font-medium">/USD</span>
                                 </div>
+                                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-200 dark:border-blue-800">
+                                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                        {tier.credits} {t('credits')}
+                                    </span>
+                                </div>
                                 <p className="mt-3 text-sm text-gray-600 dark:text-zinc-400">
                                     {t('approx_cost', { cost: tier.costPerGen })}
                                 </p>

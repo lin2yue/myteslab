@@ -16,10 +16,23 @@ export async function GET(
     // 1. Static Pages
     if (slug === 'static.xml') {
         const staticPages = ['', 'terms', 'privacy', 'refund', 'ai-generate/generate']
+
+        // 为首页获取热门贴图用于图片 SEO
+        let homePageWraps: any[] = []
+        try {
+            const wraps = await getWraps()
+            homePageWraps = wraps
+                .filter(w => w.is_active !== false && w.is_public !== false)
+                .slice(0, 12) // 首页默认显示前 12 个
+        } catch (e) {
+            console.error('Failed to fetch wraps for homepage image sitemap:', e)
+        }
+
         for (const page of staticPages) {
             for (const locale of locales) {
                 const url = `${baseUrl}/${locale}${page ? `/${page}` : ''}`
                 const priority = page === '' ? '1.0' : page === 'ai-generate/generate' ? '0.9' : '0.5'
+
                 xml += `  <url>
     <loc>${url}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
@@ -27,7 +40,33 @@ export async function GET(
     <priority>${priority}</priority>
     <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en${page ? `/${page}` : ''}"/>
     <xhtml:link rel="alternate" hreflang="zh" href="${baseUrl}/zh${page ? `/${page}` : ''}"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${page ? `/${page}` : ''}"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${page ? `/${page}` : ''}"/>`
+
+                // 为首页添加图片信息
+                if (page === '' && homePageWraps.length > 0) {
+                    for (const wrap of homePageWraps) {
+                        const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200 })
+                        const absoluteImgUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`
+                        const modelName = wrap.model_slug?.replace(/-/g, ' ') || ''
+
+                        const imgTitle = locale === 'en'
+                            ? `${wrap.name} - Tesla ${modelName} wrap design`
+                            : `${wrap.name} - 特斯拉 ${modelName} 贴膜设计`
+
+                        const imgCaption = locale === 'en'
+                            ? `Premium ${wrap.name} vinyl wrap for Tesla ${modelName}. Free download available.`
+                            : `适用于特斯拉 ${modelName} 的 ${wrap.name} 车身贴膜设计，免费下载。`
+
+                        xml += `
+    <image:image>
+      <image:loc>${absoluteImgUrl}</image:loc>
+      <image:title>${imgTitle}</image:title>
+      <image:caption>${imgCaption}</image:caption>
+    </image:image>`
+                    }
+                }
+
+                xml += `
   </url>\n`
             }
         }

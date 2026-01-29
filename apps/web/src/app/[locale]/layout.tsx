@@ -30,12 +30,12 @@ export async function generateMetadata({
   const { locale } = await params
 
   const title = locale === 'en'
-    ? 'Free Tesla Wrap Designs & 3D Visualization Studio | Download & Customize | MyTesLab'
-    : 'MyTesLab - 特斯拉车身贴膜设计免费下载 & 3D 可视化预览'
+    ? 'Tesla Wrap Designs - Free AI Wrap Designer & 3D Preview | MyTesLab'
+    : '特斯拉贴膜设计 - 免费 AI 设计工具和 3D 预览 | MyTesLab'
 
   const description = locale === 'en'
-    ? 'Download 100+ free high-quality Tesla wrap designs. Instant 3D preview for Cybertruck, Model 3, Model Y, and more. Create and download your custom Tesla look for free.'
-    : '免费下载 100+ 高质量特斯拉车身贴图设计。实时 3D 预览 Cybertruck、Model 3、Model Y 等车型。免费创作并下载您的定制特斯拉外观。'
+    ? 'Browse 100+ free Tesla wrap designs for Model 3, Model Y, Cybertruck, Model S & Model X. Create custom wraps with AI designer. Real-time 3D preview before download. Free Tesla Toybox wraps.'
+    : '浏览 100+ 免费特斯拉贴膜设计，支持 Model 3、Model Y、Cybertruck、Model S 和 Model X。使用 AI 设计工具创建定制贴膜，下载前实时 3D 预览。免费 Tesla Toybox 贴膜。'
 
   return {
     title,
