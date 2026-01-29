@@ -73,8 +73,20 @@ export default function AIGeneratorMain({
 
     const supabase = useMemo(() => createClient(), [])
 
+    // 从 localStorage 读取上次选择的模型
+    const getInitialModel = () => {
+        if (typeof window === 'undefined') return models[0]?.slug || 'cybertruck'
+
+        const savedModel = localStorage.getItem('ai_generator_last_model')
+        // 验证保存的模型是否仍然存在于当前模型列表中
+        if (savedModel && models.some(m => m.slug === savedModel)) {
+            return savedModel
+        }
+        return models[0]?.slug || 'cybertruck'
+    }
+
     const [balance, setBalance] = useState(initialCredits)
-    const [selectedModel, setSelectedModel] = useState(models[0]?.slug || 'cybertruck')
+    const [selectedModel, setSelectedModel] = useState(getInitialModel())
     const [prompt, setPrompt] = useState('')
     const [activeMode, setActiveMode] = useState<'ai' | 'diy'>('ai')
     const [isGenerating, setIsGenerating] = useState(false)
@@ -95,6 +107,13 @@ export default function AIGeneratorMain({
     const viewerRef = useRef<ModelViewerRef>(null)
     const isFetchingRef = useRef(false)
     const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
+
+    // 当模型改变时保存到 localStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined' && selectedModel) {
+            localStorage.setItem('ai_generator_last_model', selectedModel)
+        }
+    }, [selectedModel])
 
     // Sync internal login state with prop
     useEffect(() => {
