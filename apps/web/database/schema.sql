@@ -7,7 +7,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. 车型表 (基础车型数据)
--- 1. 车型表 (基础车型数据)
 CREATE TABLE IF NOT EXISTS wrap_models (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   slug VARCHAR(50) UNIQUE NOT NULL,
@@ -23,7 +22,18 @@ CREATE TABLE IF NOT EXISTS wrap_models (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- [NEW]
 );
 
--- 2. 贴图方案表 (统一作品表：包含官方与用户生成)
+-- 2. 用户资料表 (关联 Supabase Auth)
+-- [CRITICAL] 必须在 wraps 表之前创建，因为 wraps 引用了 profiles
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. 贴图方案表 (统一作品表：包含官方与用户生成)
 CREATE TABLE IF NOT EXISTS wraps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- 权威作者ID
@@ -58,7 +68,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. 车型-贴图关联表
+-- 4. 车型-贴图关联表
 CREATE TABLE IF NOT EXISTS wrap_model_map (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- [NEW] 代理主键
   model_id UUID REFERENCES wrap_models(id) ON DELETE CASCADE,
@@ -66,16 +76,6 @@ CREATE TABLE IF NOT EXISTS wrap_model_map (
   is_default BOOLEAN DEFAULT FALSE,       -- [NEW]
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(model_id, wrap_id)               -- [NEW] 唯一约束
-);
-
--- 4. 用户资料表 (关联 Supabase Auth)
-CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  display_name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 5. 用户积分表 (核心钱包)
@@ -184,6 +184,9 @@ BEGIN
   -- 记录初始积分发放
   INSERT INTO public.credit_ledger (user_id, amount, type, description)
   VALUES (new.id, 3, 'top-up', 'New user registration reward');
+  
+  -- 记录调试日志
+  RAISE NOTICE 'New user created: %', new.id;
   
   RETURN new;
 END;
@@ -370,6 +373,10 @@ CREATE POLICY "Insert Downloads" ON user_downloads FOR INSERT WITH CHECK (auth.u
 ALTER TABLE generation_tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own Tasks" ON generation_tasks FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Update Own Tasks" ON generation_tasks FOR UPDATE USING (auth.uid() = user_id);
+
+-- 积分流水
+ALTER TABLE credit_ledger ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own Ledger" ON credit_ledger FOR SELECT USING (auth.uid() = user_id);
 
 -- ============================================
 -- 初始数据索引加载

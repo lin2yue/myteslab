@@ -78,3 +78,23 @@ All database changes must first be written/updated in the source of truth file:
 6.  Get API Keys from `myteslab-dev` -> Settings -> API.
 7.  Update your local `.env.local` to use these **Dev** keys.
 8.  **Result**: Your `npm run dev` now hits the Test DB. You can break it safely.
+
+## 5. Authentication Setup (Google Login)
+
+Since `auth.users` is isolated per project, you must configure authentication for the new `dev` project:
+
+1.  **Site URL Settings**:
+    *   Go to `myteslab-dev` -> Authentication -> URL Configuration.
+    *   Set **Site URL** to: `http://localhost:3000`
+    *   Add **Redirect URL**: `http://localhost:3000/auth/callback` (or your actual callback route).
+
+2.  **Google Provider**:
+    *   Go to Authentication -> Providers -> Google.
+    *   **Option A (Reuse)**: You can reuse the "Client ID" and "Secret" from Prod **IF** you add `http://localhost:3000/...` to the "Authorized redirect URIs" in your Google Cloud Console.
+    *   **Option B (New)**: Create a fresh Google Cloud Project for "MyTesLab Dev" to keep things clean.
+    *   Enable the provider in Supabase.
+
+3.  **Create Dev User**:
+    *   Localhost login will verify against the `myteslab-dev` database.
+    *   Since it's a new DB, you must **Sign Up** again (your Prod account does not exist here).
+    *   This will trigger the `handle_new_user` trigger and auto-create your Profile and Credits in the Dev DB.
