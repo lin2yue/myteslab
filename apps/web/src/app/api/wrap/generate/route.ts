@@ -32,7 +32,6 @@ const MODEL_NAMES: Record<string, string> = {
     'model-y-2025-plus': 'Model Y 2025+',
 };
 
-
 export async function POST(request: NextRequest) {
     let taskId: string | undefined;
     const supabase = await createClient();

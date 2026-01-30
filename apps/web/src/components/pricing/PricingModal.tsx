@@ -2,18 +2,20 @@
 
 import { X, Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PRICING_TIERS, type PricingTier } from '@/lib/constants/credits';
-
-
+import PricingTierCard from './PricingTierCard';
 
 interface PricingModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSelectTier: (tierId: string) => void;
+    onSelectTier?: (tierId: string) => void;
 }
 
-export default function PricingModal({ isOpen, onClose, onSelectTier }: PricingModalProps) {
+export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
     const t = useTranslations('Pricing');
+    const tiers = PRICING_TIERS;
 
     if (!isOpen) return null;
 
@@ -24,98 +26,32 @@ export default function PricingModal({ isOpen, onClose, onSelectTier }: PricingM
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 border border-gray-100 dark:border-zinc-800">
 
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <div>
-                        <h2 className="text-2xl font-black text-gray-900">{t('title')}</h2>
-                        <p className="text-gray-500 mt-1">{t('subtitle')}</p>
-                    </div>
+                <div className="flex flex-col items-center justify-center pt-12 pb-8 px-6 text-center">
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">{t('title')}</h2>
+                    <p className="text-gray-500 dark:text-zinc-400 max-w-lg leading-relaxed">{t('subtitle')}</p>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        className="absolute top-8 right-8 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
                     >
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto px-6 py-12 bg-gray-50/50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {PRICING_TIERS.map((tier) => (
-                            <div
-                                key={tier.id}
-                                className={`relative flex flex-col p-6 rounded-2xl border-2 transition-all duration-200 bg-white ${tier.popular
-                                    ? 'border-blue-500 shadow-xl shadow-blue-100 scale-105 md:-mt-4 md:mb-4 z-10'
-                                    : 'border-transparent shadow-sm hover:border-gray-200 hover:shadow-md'
-                                    }`}
-                            >
-                                {tier.popular && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm whitespace-nowrap">
-                                        {t('most_popular')}
-                                    </div>
-                                )}
-
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-bold text-gray-900">{t(`tiers.${tier.nameKey}`)}</h3>
-                                    <div className="mt-4 flex items-baseline">
-                                        <span className="text-4xl font-black text-gray-900">${tier.price}</span>
-                                        <span className="ml-1 text-gray-500 font-medium">/USD</span>
-                                    </div>
-                                    <p className="mt-2 text-sm text-gray-500">
-                                        {t('approx_cost', { cost: tier.costPerGen })}
-                                    </p>
-                                </div>
-
-                                <div className="flex-1 space-y-4 mb-8">
-                                    <div className="flex items-start gap-3">
-                                        <div className="p-1 rounded-full bg-blue-50 text-blue-600 shrink-0">
-                                            <Check className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <span className="block font-bold text-gray-900">~{tier.generations} {t('generations')}</span>
-                                            <span className="text-sm text-gray-500">{t('generations_desc')}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Benefit Description */}
-                                    <div className="flex items-start gap-3">
-                                        <div className="p-1 rounded-full bg-purple-50 text-purple-600 shrink-0">
-                                            <Check className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <span className="block text-sm text-gray-700 font-medium">{t(`benefits.${tier.nameKey}`)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Value Proposition */}
-                                    <div className="flex items-start gap-3">
-                                        <div className="p-1 rounded-full bg-green-50 text-green-600 shrink-0">
-                                            <Check className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <span className="block text-sm text-gray-700 font-medium">
-                                                {t(`values.${tier.nameKey}`, { cost: tier.costPerGen })}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button
-                                    disabled
-                                    className="w-full py-4 rounded-xl font-bold transition-all cursor-not-allowed flex items-center justify-center gap-2 bg-gray-100 text-gray-400"
-                                >
-                                    {t('coming_soon')}
-                                </button>
-                            </div>
+                <div className="flex-1 overflow-y-auto px-8 py-10 bg-gray-50/30 dark:bg-zinc-950/30">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-4xl mx-auto">
+                        {tiers.map((tier) => (
+                            <PricingTierCard key={tier.id} tier={tier} />
                         ))}
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                    <p className="text-xs text-gray-400">
+                <div className="p-6 bg-white dark:bg-zinc-900 text-center border-t border-gray-100 dark:border-zinc-800">
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 tracking-wide uppercase">
                         {t('secure_payment_desc')}
                     </p>
                 </div>

@@ -2,8 +2,8 @@
     "Index": {
         "title": "MyTesLab",
         "description": "探索并免费下载优质特斯拉车身贴膜设计。实时 3D 可视化工作室。",
-        "welcome": "特斯拉改色贴膜免费设计",
-        "welcome_desc": "实时 3D 预览高精度改色贴纸，免费下载您喜欢的款式。",
+        "welcome": "特斯拉改色设计库",
+        "welcome_desc": "探索海量免费贴膜方案，支持实时 3D 预览与下载。利用 AI 工具定制您的专属风格。",
         "explore": "探索免费设计",
         "loading": "加载中",
         "no_wraps": "未找到相关贴图方案",
@@ -185,7 +185,7 @@
             "s5_title": "5. 官方免责声明",
             "s5_content": "MyTeslaLab 是一个独立的第三方创意平台，与特斯拉公司 (Tesla, Inc.) 无任何官方关联、授权、背书或代理关系。平台内提及的“Tesla”及相关车型名称仅用于描述适用范围。",
             "s6_title": "6. 支付条款",
-            "s6_content": "本平台的支付由名义商户 Paddle (Paddle.com Market Ltd) 处理。Paddle 负责交易安全、税收合规及账单开具。"
+            "s6_content": "本平台的支付由名义商户 Polar (Polar.sh) 处理。Polar 负责交易安全、税收合规及账单开具。"
         },
         "privacy": {
             "title": "隐私政策",
@@ -217,25 +217,37 @@
             "explorer": "进阶创作包",
             "collector": "终极收藏包"
         },
-        "benefits": {
+        "descriptions": {
             "starter": "轻松开启新风格尝试",
             "explorer": "大多数特斯拉车主的最佳选择",
             "collector": "为硬核改装玩家和创意大师打造"
         },
-        "values": {
-            "starter": "单张仅需 ${cost}",
-            "explorer": "比体验包立省 20%",
-            "collector": "以最优价格释放无限创意"
+        "features": {
+            "starter": [
+                "{count} 次 AI 生成",
+                "积分永不过期",
+                "支持生成贴图下载"
+            ],
+            "explorer": [
+                "{count} 次 AI 生成",
+                "积分永不过期",
+                "支持生成贴图下载"
+            ],
+            "collector": [
+                "{count} 次 AI 生成",
+                "积分永不过期",
+                "支持生成贴图下载"
+            ]
         },
-        "choose_plan": "选择此方案",
-        "coming_soon": "即将推出",
+        "choose_plan": "立即购买",
+        "buy_now": "立即充值",
         "approx_cost": "单张成本仅 ${cost}",
         "save_percent": "立省 {percent}%",
         "credits": "积分",
         "credits_desc": "通用账户余额",
         "generations": "次 AI 贴纸设计",
         "generations_desc": "基于 10 积分/次 估算",
-        "secure_payment_desc": "支付由 Paddle 安全处理。一次性付费，无自动续费。",
+        "secure_payment_desc": "支付由 Polar.sh 安全处理。一次性付费，无自动续费。",
         "page_title": "定价方案 - 选择最适合您的套餐",
         "page_description": "购买 AI 生成积分，创作定制特斯拉贴图设计。灵活定价方案，低至 $4.99 起。",
         "features_title": "您将获得",
@@ -307,5 +319,11 @@
         "title": "未找到该设计",
         "desc": "您寻找的特斯拉贴膜设计可能已被移动或下线。别担心，还有更多精彩设计等你探索！",
         "explore_btn": "探索最新设计"
+    },
+    "Checkout": {
+        "success_title": "支付成功",
+        "success_desc": "感谢您的支持！您的积分正在处理中，通常会在几秒钟内到账。",
+        "back_to_generator": "返回开始创作",
+        "view_balance": "查看余额"
     }
 }

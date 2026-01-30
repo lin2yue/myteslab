@@ -2,8 +2,8 @@
     "Index": {
         "title": "MyTesLab",
         "description": "Discover and download premium free Tesla wrap designs. Instant 3D visualization studio.",
-        "welcome": "Free Tesla Wrap Designs",
-        "welcome_desc": "Real-time 3D preview of high-precision wrap designs. Download your favorite styles for free.",
+        "welcome": "Tesla Wrap Design Library",
+        "welcome_desc": "Explore premium free wrap designs with real-time 3D preview. Create custom styles with our AI tools.",
         "explore": "Explore Free Designs",
         "loading": "Loading",
         "no_wraps": "No wrap designs found",
@@ -185,14 +185,14 @@
             "s5_title": "5. Official Disclaimer",
             "s5_content": "MyTeslaLab is an independent third-party platform and is not affiliated with, associated with, endorsed by, or in any way officially connected with Tesla, Inc. References to \"Tesla\" and vehicle models are solely for descriptive purposes.",
             "s6_title": "6. Payment Processing",
-            "s6_content": "Payments on this platform are processed by Paddle (Paddle.com Market Ltd), acting as our Merchant of Record. Paddle is responsible for transaction security, tax compliance, and billing."
+            "s6_content": "Payments on this platform are processed by Polar (Polar.sh), acting as our Merchant of Record. Polar is responsible for transaction security, tax compliance, and billing."
         },
         "privacy": {
             "title": "Privacy Policy",
             "s1_title": "1. Data Collection",
             "s1_content": "We collect your email for account management and uploaded images for AI model inference.",
             "s2_title": "2. Payment Security",
-            "s2_content": "Your payment information (e.g., credit card numbers) is handled directly by Paddle. We do not store any sensitive financial data.",
+            "s2_content": "Your payment information (e.g., credit card numbers) is handled directly by Polar.sh. We do not store any sensitive financial data.",
             "s3_title": "3. Data Sharing",
             "s3_content": "We do not sell your personal data to third parties, except as required by law or necessary for service provision (e.g., payment processing).",
             "s4_title": "4. User Rights",
@@ -217,25 +217,37 @@
             "explorer": "Pro Pack",
             "collector": "Ultimate Pack"
         },
-        "benefits": {
+        "descriptions": {
             "starter": "Perfect for trying out new styles.",
             "explorer": "The best choice for most Tesla owners.",
             "collector": "For hardcore modders and creative minds."
         },
-        "values": {
-            "starter": "Only ${cost} per design",
-            "explorer": "Save 20% compared to Lite",
-            "collector": "Unrestricted creativity at the best price"
+        "features": {
+            "starter": [
+                "{count} AI generations",
+                "Credits never expire",
+                "Support wrap downloads"
+            ],
+            "explorer": [
+                "{count} AI generations",
+                "Credits never expire",
+                "Support wrap downloads"
+            ],
+            "collector": [
+                "{count} AI generations",
+                "Credits never expire",
+                "Support wrap downloads"
+            ]
         },
-        "choose_plan": "Choose Plan",
-        "coming_soon": "Coming Soon",
+        "choose_plan": "Buy Now",
+        "buy_now": "Buy Credits",
         "approx_cost": "Only ${cost} per image",
         "save_percent": "Save {percent}%",
         "credits": "Credits",
         "credits_desc": "Standard general balance",
         "generations": "AI Wrap Designs",
         "generations_desc": "Estimated (10 credits/gen)",
-        "secure_payment_desc": "Secure payment processed by Paddle. One-time purchase, no subscription.",
+        "secure_payment_desc": "Secure payment processed by Polar.sh. One-time purchase, no subscription.",
         "page_title": "Pricing - Choose Your Perfect Plan",
         "page_description": "Purchase AI generation credits to create custom Tesla wrap designs. Choose from flexible pricing plans starting at $4.99.",
         "features_title": "What You Get",
@@ -278,5 +290,11 @@
         "title": "Design Not Found",
         "desc": "The Tesla wrap design you're looking for might have been moved or unpublished. But don't worry, there are plenty more to explore!",
         "explore_btn": "Explore Latest Designs"
+    },
+    "Checkout": {
+        "success_title": "Payment Successful",
+        "success_desc": "Thank you for your support! Your credits are being processed and will usually arrive within a few seconds.",
+        "back_to_generator": "Back to Generator",
+        "view_balance": "View Balance"
     }
 }

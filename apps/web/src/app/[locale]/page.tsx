@@ -32,8 +32,8 @@ export default async function HomePage({
       {/* SEO H1 - Hidden but accessible */}
       <h1 className="sr-only">
         {locale === 'en'
-          ? 'Free Tesla Wrap Designs for Model 3, Model Y, Cybertruck, Model S, Model X - AI Wrap Designer & 3D Preview'
-          : '免费特斯拉贴膜设计 - Model 3、Model Y、Cybertruck、Model S、Model X - AI 设计工具和 3D 预览'
+          ? 'Tesla Wrap Design Library - Free AI Designer & 3D Preview'
+          : '特斯拉改色设计库 - 免费 AI 设计工具与 3D 预览'
         }
       </h1>
 
@@ -42,16 +42,10 @@ export default async function HomePage({
         {/* SEO Hero Section */}
         <section className="mb-8 text-center">
           <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
-            {locale === 'en'
-              ? 'Tesla Wrap Gallery - Free Designs for All Models'
-              : '特斯拉贴膜库 - 所有车型的免费设计'
-            }
+            {t('welcome')}
           </h2>
           <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
-            {locale === 'en'
-              ? 'Browse our collection of free Tesla wrap designs for Model 3, Model Y, Cybertruck, Model S, and Model X. Use our AI-powered wrap designer to create custom designs, or download ready-to-use wraps. Preview every design in real-time 3D before downloading. Perfect for Tesla Toybox Paint Shop.'
-              : '浏览我们的免费特斯拉贴膜设计合集，支持 Model 3、Model Y、Cybertruck、Model S 和 Model X。使用我们的 AI 驱动贴膜设计工具创建定制设计，或下载即用型贴膜。下载前实时 3D 预览每个设计。完美适配 Tesla Toybox Paint Shop。'
-            }
+            {t('welcome_desc')}
           </p>
         </section>
 
@@ -107,8 +101,8 @@ export default async function HomePage({
             '@type': 'ItemList',
             name: locale === 'en' ? 'Tesla Wrap Designs' : '特斯拉贴膜设计',
             description: locale === 'en'
-              ? 'Collection of premium Tesla wrap designs available for free download'
-              : '精选特斯拉车身贴膜设计合集，免费下载',
+              ? 'Premium Tesla wrap designs library, available for free download'
+              : '精选特斯拉车身改色设计库，支持免费下载',
             itemListElement: wraps.slice(0, 12).map((wrap, index) => ({
               '@type': 'ListItem',
               position: index + 1,

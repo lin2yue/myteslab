@@ -1,6 +1,7 @@
 import { Check, Sparkles, Download, Eye, Share2 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { PRICING_TIERS, type PricingTier } from '@/lib/constants/credits';
+import PricingTierCard from '@/components/pricing/PricingTierCard';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
     const { locale } = await params;
@@ -33,7 +34,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-6">
                         {t('title')}
                     </h1>
-                    <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-2xl mx-auto">
+                    <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
                         {t('subtitle')}
                     </p>
                 </div>
@@ -43,88 +44,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-6">
                     {PRICING_TIERS.map((tier) => (
-                        <div
-                            key={tier.id}
-                            className={`relative flex flex-col p-8 rounded-3xl border-2 transition-all duration-200 bg-white dark:bg-zinc-900 ${tier.popular
-                                ? 'border-blue-500 shadow-2xl shadow-blue-100 dark:shadow-blue-900/20 scale-105 md:-mt-4 md:mb-4 z-10'
-                                : 'border-gray-200 dark:border-zinc-800 shadow-lg hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-xl'
-                                }`}
-                        >
-                            {tier.popular && (
-                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider shadow-lg whitespace-nowrap">
-                                    {t('most_popular')}
-                                </div>
-                            )}
-
-                            {/* Tier Header */}
-                            <div className="mb-8">
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                                    {t(`tiers.${tier.nameKey}`)}
-                                </h3>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-5xl font-black text-gray-900 dark:text-white">
-                                        ${tier.price}
-                                    </span>
-                                    <span className="text-gray-500 dark:text-zinc-400 font-medium">/USD</span>
-                                </div>
-                                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-200 dark:border-blue-800">
-                                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                        {tier.credits} {t('credits')}
-                                    </span>
-                                </div>
-                                <p className="mt-3 text-sm text-gray-600 dark:text-zinc-400">
-                                    {t('approx_cost', { cost: tier.costPerGen })}
-                                </p>
-                            </div>
-
-                            {/* Features */}
-                            <div className="flex-1 space-y-5 mb-8">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
-                                        <Check className="w-5 h-5" strokeWidth={3} />
-                                    </div>
-                                    <div>
-                                        <span className="block font-bold text-gray-900 dark:text-white">
-                                            ~{tier.generations} {t('generations')}
-                                        </span>
-                                        <span className="text-sm text-gray-500 dark:text-zinc-400">
-                                            {t('generations_desc')}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <div className="p-1.5 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5">
-                                        <Check className="w-5 h-5" strokeWidth={3} />
-                                    </div>
-                                    <div>
-                                        <span className="block text-sm text-gray-700 dark:text-zinc-300 font-medium">
-                                            {t(`benefits.${tier.nameKey}`)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <div className="p-1.5 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 shrink-0 mt-0.5">
-                                        <Check className="w-5 h-5" strokeWidth={3} />
-                                    </div>
-                                    <div>
-                                        <span className="block text-sm text-gray-700 dark:text-zinc-300 font-medium">
-                                            {t(`values.${tier.nameKey}`, { cost: tier.costPerGen })}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* CTA Button */}
-                            <button
-                                disabled
-                                className="w-full py-4 rounded-xl font-bold transition-all cursor-not-allowed flex items-center justify-center gap-2 bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500"
-                            >
-                                {t('coming_soon')}
-                            </button>
-                        </div>
+                        <PricingTierCard key={tier.id} tier={tier} />
                     ))}
                 </div>
 
