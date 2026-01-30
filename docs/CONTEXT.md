@@ -67,6 +67,7 @@
 ## 6. Where to Find Knowledge
 - **Architecture Analysis:** `docs/architecture/monorepo_analysis.md`
 - **Development Best Practices:** `docs/guides/development_principles.md` (Contains 3D capture and Texture Orientation details)
+- **3D Asset Workflow:** `docs/MODEL_WORKFLOW.md` (Shadows, Compression, Wheel Injection)
 - **DB Schema:** `apps/web/database/schema.sql`
 - **Deployment Status:** `docs/reports/mvp_status_report.md`
 - **3D Preview Standard (Source of Truth):** 

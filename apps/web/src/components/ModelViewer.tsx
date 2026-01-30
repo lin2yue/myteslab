@@ -234,11 +234,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         const objectsToRemove: any[] = []
         scene.traverse((node: any) => {
             const name = (node.name || '').toUpperCase()
-            if (node.isLight || node.isCamera ||
-                name.includes('FLOOR') ||
-                name.includes('GROUND') ||
-                name.includes('SHADOW') ||
-                name.includes('PLANE')) {
+            // 恢复极致安全模式：只移除明确命名为地板/地面的物体
+            // 既然用户决定手动在 Blender 处理，我们在这里不做任何基于尺寸的猜测
+            if (name.includes('FLOOR') || name.includes('GROUND')) {
                 objectsToRemove.push(node)
             }
         })
@@ -431,57 +429,41 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         try {
                             if (material.pbrMetallicRoughness.baseColorTexture) {
                                 material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
+                            } else {
+                                // Fallback: try to create a default texture if it lacks one
+                                material.pbrMetallicRoughness.baseColorTexture = { texture }
+                            }
+
+                            // 关键：恢复并应用镜像/缩放/旋转参数
+                            const threeTexture = (texture as any).source?.texture || (texture as any).texture
+                            if (threeTexture) {
+                                threeTexture.flipY = false
+                                threeTexture.center.set(0.5, 0.5)
+
+                                // 应用配置中的旋转
+                                threeTexture.rotation = (config.rotation || 0) * (Math.PI / 180)
+
+                                // 应用缩放和镜像逻辑
+                                const scaleX = config.mirror ? -(config.scale || 1) : (config.scale || 1)
+                                const scaleY = config.scale || 1
+                                threeTexture.repeat.set(scaleX, scaleY)
+
+                                // 修正侧面平移 (镜像时需要偏移 1.0)
+                                if (config.mirror) {
+                                    threeTexture.offset.set(1, 0)
+                                } else {
+                                    threeTexture.offset.set(0, 0)
+                                }
+
+                                threeTexture.wrapS = 1000 // RepeatWrapping
+                                threeTexture.wrapT = 1000 // RepeatWrapping
+                                threeTexture.needsUpdate = true
                             }
                         } catch (e) {
                             console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
                         }
                     }
                 })
-
-                // 2. Through Three.js adjustment
-                const threeTexture = (texture as any).source?.texture || (texture as any).texture
-                if (threeTexture) {
-                    threeTexture.center.set(0.5, 0.5)
-
-                    // Standardize dynamic texture application:
-                    // Trust that provided textureUrl (AI/DIY) is already standardized (Heading Up/Left) 
-                    // and skip legacy model-specific rotation offsets from config.
-                    threeTexture.rotation = 0
-                    threeTexture.repeat.set(1, 1)
-
-                    threeTexture.wrapS = 1000 // RepeatWrapping
-                    threeTexture.wrapT = 1000 // RepeatWrapping
-                    threeTexture.flipY = false
-                    threeTexture.needsUpdate = true
-                }
-
-                // 3. Three.js fallback
-                const scene = getThreeScene(viewer)
-                if (scene) {
-                    scene.traverse((node: any) => {
-                        if (node.isMesh && node.material) {
-                            const mats = Array.isArray(node.material) ? node.material : [node.material]
-                            mats.forEach((m: any) => {
-                                const name = m.name?.toLowerCase() || ''
-                                const isBody = name === '' ||
-                                    name.includes('paint') ||
-                                    name.includes('body') ||
-                                    name.includes('exterior') ||
-                                    name.includes('stainless') ||
-                                    name === 'ext_body'
-
-                                if (isBody) {
-                                    if (threeTexture) {
-                                        m.map = threeTexture
-                                        m.color.setRGB(1, 1, 1)
-                                    }
-                                    m.side = 2
-                                    m.needsUpdate = true
-                                }
-                            })
-                        }
-                    })
-                }
 
                 console.log(`[ModelViewer] Texture loaded successfully on attempt ${attempt}`)
                 setTextureLoading(false)
@@ -560,14 +542,50 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
 
         const onLoad = async () => {
-            // NOTE: Do NOT set setLoading(false) here yet.
-            // We want to wait until scene graph is cleaned and adjusted.
-
             modelLoadedRef.current = true
-            // UV Map logic (can run safely, invisible changes)
+
+            // UV Map 修复：处理左右对称贴图问题 (还原之前的稳健方案)
             const scene = getThreeScene(viewer)
             if (scene) {
-                // ... same UV logic ...
+                let availableUVs = ['uv']
+                scene.traverse((node: any) => {
+                    if (node.isMesh && node.geometry) {
+                        if (node.geometry.attributes.uv1 && !availableUVs.includes('uv1')) {
+                            availableUVs.push('uv1')
+                        }
+                    }
+                })
+
+                console.log(`[ModelViewer] Available UV sets: ${availableUVs.join(', ')}`)
+
+                // 优先使用配置，如果没有配置则自动检测 uv1
+                const targetUV = config.uvSet === 'uv1' || (config.uvSet === undefined && availableUVs.includes('uv1')) ? 'uvSet' : 'uv'
+
+                // 注意：这里使用的是三维层面的属性替换，而不是材质层面的通道切换
+                if (targetUV !== 'uv' || config.uvSet === 'uv1') {
+                    const actualTarget = availableUVs.includes('uv1') ? 'uv1' : (availableUVs.includes('uv2') ? 'uv2' : 'uv')
+
+                    if (actualTarget !== 'uv') {
+                        scene.traverse((node: any) => {
+                            if (node.isMesh && node.geometry) {
+                                const geom = node.geometry
+                                const name = (node.name || '').toLowerCase()
+                                const matName = (node.material?.name || '').toLowerCase()
+                                const isBody = name.includes('paint') || name.includes('body') || name.includes('exterior') ||
+                                    matName.includes('paint') || matName.includes('body') || matName.includes('exterior')
+
+                                if (isBody && geom.attributes[actualTarget]) {
+                                    if (!geom.userData.originalUV) {
+                                        geom.userData.originalUV = geom.attributes.uv
+                                    }
+                                    console.log(`[ModelViewer] Swapping UV to ${actualTarget} for mesh: ${node.name}`)
+                                    geom.attributes.uv = geom.attributes[actualTarget]
+                                    geom.attributes.uv.needsUpdate = true
+                                }
+                            }
+                        })
+                    }
+                }
             }
 
             // Always attempt to clean scene, even if no wheels (e.g. just removing floor)
@@ -665,11 +683,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             viewer.setAttribute('environment-image', finalEnv)
         }
 
-        // Apply exposure based on day/night or config
-        // If background is dark (night mode), reduce exposure
-        const isNightMode = propBackgroundColor === '#1F1F1F'
-        const exposureBalance = isNightMode ? 0.6 : (config.exposure || 1.0)
-        viewer.setAttribute('exposure', exposureBalance.toString())
+        // Apply exposure from config directly (don't change for day/night)
+        viewer.setAttribute('exposure', (config.exposure || 1.0).toString())
+
+        // Apply shadow settings from config
+        viewer.setAttribute('shadow-intensity', (config.shadowIntensity ?? 1).toString())
+        viewer.setAttribute('shadow-softness', (config.shadowSoftness ?? 1).toString())
 
     }, [propBackgroundColor, environment, modelSlug])
 
