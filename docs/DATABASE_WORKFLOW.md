@@ -89,10 +89,19 @@ Since `auth.users` is isolated per project, you must configure authentication fo
     *   Add **Redirect URL**: `http://localhost:3000/auth/callback` (or your actual callback route).
 
 2.  **Google Provider**:
-    *   Go to Authentication -> Providers -> Google.
-    *   **Option A (Reuse)**: You can reuse the "Client ID" and "Secret" from Prod **IF** you add `http://localhost:3000/...` to the "Authorized redirect URIs" in your Google Cloud Console.
-    *   **Option B (New)**: Create a fresh Google Cloud Project for "MyTesLab Dev" to keep things clean.
-    *   Enable the provider in Supabase.
+    *   **Step A: Get Dev Callback URL**:
+        *   In your **Supabase Dev Dashboard**, go to Authentication -> Providers -> Google.
+        *   Copy the **Callback URL** (format: `https://<dev-project-ref>.supabase.co/auth/v1/callback`).
+    *   **Step B: Configure Google Cloud Console**:
+        *   Log in to [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
+        *   Select your existing Production project.
+        *   Under "OAuth 2.0 Client IDs", click the **Edit (Pencil)** icon on your Web Client.
+        *   Scroll to **"Authorized redirect URIs"**.
+        *   Click **"ADD URI"** and paste the **Supabase Dev Callback URL** you copied in Step A.
+        *   Click **Save**.
+    *   **Step C: Enable in Supabase Dev**:
+        *   Back in Supabase Dev Dashboard, paste the same **Client ID** and **Client Secret** (visible in the Google Console) into the fields.
+        *   Click **Save**.
 
 3.  **Create Dev User**:
     *   Localhost login will verify against the `myteslab-dev` database.
