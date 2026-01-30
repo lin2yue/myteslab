@@ -58,3 +58,37 @@ When updating a model (e.g., `model3-2024-base`):
 4. [Terminal] Run `npx gltf-pipeline -i exported.glb -o final.glb -d --keepUnusedElements`
 5. [Code] Place `final.glb` in `apps/web/public/models/<model-name>/body.glb`.
 6. [Preview] Verify wheels appear and shadows are round/dynamic (not rectangular).
+
+## 5. Repository Structure & Source of Truth
+
+To avoid confusion with legacy files or database URLs, we strictly follow this centralized structure:
+
+### A. Asset Locations (Web)
+All 3D assets for the web application live in `apps/web/public/models/`.
+
+```
+apps/web/public/models/
+├── cybertruck/
+│   └── body.glb       <-- Compressed Base Model
+├── model3-2024-base/
+│   └── body.glb       <-- Compressed Base Model
+├── ...
+└── wheels/            <-- Shared Wheel Library
+    ├── induction.glb
+    ├── stiletto.glb
+    └── ...
+```
+
+### B. Configuration Priority
+The application determines which model to load based on the following hierarchy, handled in `apps/web/src/lib/api.ts`:
+
+1.  **Primary (Local Config):** `apps/web/src/config/models.ts`
+    *   This is the **Master Definition**. It maps slugs (e.g., `model-3-2024-plus`) to local file paths (e.g., `/models/model3-2024-base/body.glb`).
+    *   **Action:** When adding a new model, ALWAYS update this file first.
+2.  **Fallback (Database):** `Supabase -> wrap_models`
+    *   Used for legacy compatibility or metadata (names, sorting).
+    *   If `models.ts` has an entry for the slug, the file path there **OVERRULES** the database URL.
+
+### C. Deprecated / Ignored Locations
+- `apps/miniprogram/uploads/...`: Legacy storage for the WeChat Mini Program. Do NOT use for the Web App.
+- `assets/models/...`: Old monorepo root folder. Deprecated.
