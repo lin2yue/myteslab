@@ -3,7 +3,7 @@
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, History, Wallet, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, History, Wallet, RefreshCcw, ShieldCheck, Users } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -21,6 +21,11 @@ export default function AdminLayout({
     const pathname = usePathname();
 
     const navItems = [
+        {
+            name: 'Users',
+            href: `/${locale}/admin/users`,
+            icon: Users,
+        },
         {
             name: 'AI Tasks',
             href: `/${locale}/admin/tasks`,
