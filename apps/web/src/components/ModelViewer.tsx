@@ -226,6 +226,18 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
     }
 
+    // 辅助：检查是否为轮毂锚点
+    const isWheelAnchorNode = (name: string): boolean => {
+        const n = name.toUpperCase()
+        return n.includes('WHEEL') && (
+            n.includes('SPATIAL') ||
+            n.includes('LF') || n.includes('RF') ||
+            n.includes('RL') || n.includes('RR') ||
+            n.includes('_F') || n.includes('_R') ||
+            n.includes('FL') || n.includes('FR')
+        )
+    }
+
     // 辅助：清理场景（移除地板、光源等）
     const cleanScene = (viewer: any) => {
         const scene = getThreeScene(viewer)
@@ -242,9 +254,11 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
             // 移除内置的轮毂（如果存在），防止与注入的轮毂重叠
             // 逻辑：如果名字包含 WHEEL 且是一个 Mesh，且不是我们要用的 Spatial 锚点，就删掉它
-            if (name.includes('WHEEL') && !name.includes('SPATIAL') && node.isMesh) {
+            // UPDATE: 如果它看起来像一个有效的锚点（比如 Wheel_FL），不要删除它！
+            // 留给 injectWheels 去处理（剥离几何体并挂载新轮毂）
+            if (name.includes('WHEEL') && node.isMesh && !isWheelAnchorNode(name)) {
                 // 特殊检查：有些模型直接把轮子挂在根部或者其他地方
-                console.log(`[ModelViewer] Found potential legacy wheel to remove: ${node.name}`)
+                console.log(`[ModelViewer] Found redundant wheel mesh to remove: ${node.name}`)
                 objectsToRemove.push(node)
             }
         })
@@ -329,15 +343,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
             scene.traverse((node: any) => {
                 const name = (node.name || '').toUpperCase()
-                const isWheelAnchor = name.includes('WHEEL') && (
-                    name.includes('SPATIAL') ||
-                    name.includes('LF') || name.includes('RF') ||
-                    name.includes('RL') || name.includes('RR') ||
-                    name.includes('_F') || name.includes('_R') ||
-                    name.includes('FL') || name.includes('FR')
-                )
-
-                if (isWheelAnchor && !name.includes('STEERING')) {
+                if (isWheelAnchorNode(name) && !name.includes('STEERING')) {
                     foundAnchors.push(node)
                 }
             })
@@ -357,6 +363,23 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
             // 3. 克隆并挂载
             foundAnchors.forEach((node) => {
+                // 如果锚点本身是一个 Mesh (标准 GLTF 导出结构)，我们需要“阉割”它：
+                // 移除它的几何体和材质，使其变成一个纯粹的 Transform 节点
+                // 这样即使原始轮毂没被 cleanScene 删除，也不会渲染出来
+                if (node.isMesh) {
+                    console.log(`[ModelViewer] Converting mesh anchor to container: ${node.name}`)
+                    if (node.geometry) node.geometry.dispose()
+                    if (node.material) {
+                        if (Array.isArray(node.material)) node.material.forEach((m: any) => m.dispose())
+                        else node.material.dispose()
+                    }
+                    node.geometry = undefined
+                    node.material = undefined
+                    node.isMesh = false
+                    node.type = 'Object3D'
+                }
+
+                // 清除子节点（防止重复添加）
                 while (node.children.length > 0) node.remove(node.children[0])
 
                 const wheelInstance = SkeletonUtils.clone(wheelMaster)
