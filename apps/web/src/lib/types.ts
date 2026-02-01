@@ -5,6 +5,7 @@ export interface Model {
     name: string
     name_en?: string
     model_3d_url: string // 统一后的字段名
+    wheel_url?: string   // 关联的轮毂 GLB 路径
     is_active: boolean
     sort_order?: number
     created_at: string

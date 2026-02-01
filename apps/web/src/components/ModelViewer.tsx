@@ -7,6 +7,7 @@ import viewerConfig from '@/config/viewer-config.json'
 
 interface ModelViewerProps {
     modelUrl: string
+    wheelUrl?: string
     textureUrl?: string
     modelSlug?: string
     className?: string
@@ -26,6 +27,7 @@ export interface ModelViewerRef {
 
 export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     modelUrl,
+    wheelUrl,
     textureUrl,
     modelSlug,
     className = '',
@@ -41,6 +43,11 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const containerRef = useRef<HTMLDivElement>(null)
     const viewerElementRef = useRef<any>(null)
     const [loading, setLoading] = useState(true)
+
+    const addLog = (msg: string) => {
+        console.log(msg)
+    }
+
     const [error, setError] = useState<string | null>(null)
     const [textureLoading, setTextureLoading] = useState(false)
 
@@ -164,8 +171,17 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 else viewer.removeAttribute('camera-orbit');
 
                 if (originalExposure) viewer.setAttribute('exposure', originalExposure);
-                else viewer.removeAttribute('exposure');
+                // Force model-viewer to recalculate bounds
+                if ((viewer as any).updateFraming) {
+                    (viewer as any).updateFraming()
+                } else if (viewer.updateBoundingBox) {
+                    viewer.updateBoundingBox()
+                }
 
+                // Trigger camera update to zoom in to new bounds
+                if (typeof viewer.jumpCameraToGoal === 'function') {
+                    viewer.jumpCameraToGoal()
+                }
                 // Restore Style
                 viewer.style.backgroundColor = originalBG;
 
@@ -176,13 +192,205 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
     }));
 
-    // 获取 Three.js 场景的助手函数
+    // 获取 Three.js 场景的助手函数 (终极鲁棒版本)
     const getThreeScene = (viewer: any) => {
         try {
-            const sceneSymbol = Object.getOwnPropertySymbols(viewer).find((s) => s.description === 'scene')
-            return sceneSymbol ? viewer[sceneSymbol] : null
-        } catch {
+            // 1. 尝试直接查找带有 isScene 标志的属性 (Symbols)
+            // Three.js 的 Scene 对象都有 isScene = true 属性
+            const symbols = Object.getOwnPropertySymbols(viewer)
+            for (const sym of symbols) {
+                const val = viewer[sym]
+                if (val && (val.isScene || (val.scene && val.scene.isScene))) {
+                    return val.isScene ? val : val.scene
+                }
+            }
+
+            // 2. 尝试常见属性名
+            if (viewer.scene && viewer.scene.isScene) return viewer.scene
+            if (viewer.__scene && viewer.__scene.isScene) return viewer.__scene
+
+            // 3. 深度扫描（防止属性名混淆）
+            // 注意：这比较耗时，但仅在加载时运行一次
+            const keys = Object.getOwnPropertyNames(viewer)
+            for (const key of keys) {
+                const val = viewer[key]
+                if (val && (val.isScene || (val.scene && val.scene.isScene))) {
+                    return val.isScene ? val : val.scene
+                }
+            }
+
             return null
+        } catch (e) {
+            console.error('[ModelViewer] getThreeScene error:', e)
+            return null
+        }
+    }
+
+    // 辅助：清理场景（移除地板、光源等）
+    const cleanScene = (viewer: any) => {
+        const scene = getThreeScene(viewer)
+        if (!scene || typeof scene.traverse !== 'function') return
+
+        const objectsToRemove: any[] = []
+        scene.traverse((node: any) => {
+            const name = (node.name || '').toUpperCase()
+            // 恢复极致安全模式：只移除明确命名为地板/地面的物体
+            // 既然用户决定手动在 Blender 处理，我们在这里不做任何基于尺寸的猜测
+            if (name.includes('FLOOR') || name.includes('GROUND')) {
+                objectsToRemove.push(node)
+            }
+        })
+
+        if (objectsToRemove.length > 0) {
+            objectsToRemove.forEach((node: any) => {
+                if (node.parent) {
+                    try {
+                        node.parent.remove(node)
+                    } catch (e) {
+                        console.warn('Failed to remove node:', node.name)
+                    }
+                }
+            })
+            console.log(`[ModelViewer] Cleaned up ${objectsToRemove.length} nodes via cleanScene helper.`)
+
+            if (viewer.updateBoundingBox) viewer.updateBoundingBox()
+            if ((viewer as any).updateFraming) (viewer as any).updateFraming()
+        }
+    }
+
+    // 动态注入轮毂模型
+    const injectWheels = async (viewer: any, wheelUrl: string) => {
+        if (!viewer || !wheelUrl) return
+
+        try {
+            const scene = getThreeScene(viewer)
+            if (!scene || typeof scene.traverse !== 'function') {
+                return
+            }
+
+            // 执行场景清理
+            cleanScene(viewer)
+
+            addLog('[ModelViewer] Injecting modular wheels: ' + wheelUrl)
+
+            // 动态导入 Three.js 加载器
+            // 使用并行导入提高效率
+            let modules
+            try {
+                modules = await Promise.all([
+                    import('three/examples/jsm/loaders/GLTFLoader'),
+                    import('three/examples/jsm/loaders/DRACOLoader'),
+                    import('three/examples/jsm/utils/SkeletonUtils'),
+                    import('three')
+                ])
+            } catch (err) {
+                addLog(`[Error] Failed to import Three.js modules: ${err}`)
+                return
+            }
+
+            const [{ GLTFLoader }, { DRACOLoader }, SkeletonUtils, THREE] = modules
+
+            const loader = new GLTFLoader()
+
+            // 配置 DRACOLoader
+            const dracoLoader = new DRACOLoader()
+            // 使用与 model-viewer 相同的解码器路径 (Google CDN)
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
+            dracoLoader.setDecoderConfig({ type: 'js' }) // 强制使用 JS 版本以避免 WASM 兼容性问题 (可选)
+            loader.setDRACOLoader(dracoLoader)
+
+            // 1. 加载轮毂母本
+            let gltf
+            try {
+                gltf = await loader.loadAsync(wheelUrl)
+            } catch (err) {
+                addLog(`[Error] Failed to load wheel GLB: ${err}`)
+                return
+            }
+
+            const wheelMaster = gltf.scene
+            addLog('[Debug] Wheel GLB loaded.')
+
+            // 2. 寻找挂载点
+            const foundAnchors: any[] = []
+
+            if (!scene.traverse) {
+                addLog('[Error] Scene object does not have traverse method!')
+                return
+            }
+
+            scene.traverse((node: any) => {
+                const name = (node.name || '').toUpperCase()
+                const isWheelAnchor = name.includes('WHEEL') && (
+                    name.includes('SPATIAL') ||
+                    name.includes('LF') || name.includes('RF') ||
+                    name.includes('RL') || name.includes('RR') ||
+                    name.includes('_F') || name.includes('_R') ||
+                    name.includes('FL') || name.includes('FR')
+                )
+
+                if (isWheelAnchor && !name.includes('STEERING')) {
+                    foundAnchors.push(node)
+                }
+            })
+
+            if (foundAnchors.length === 0) {
+                // Retry finding anchors? Maybe they just loaded?
+                // But normally injecting wheels happens when base is ready.
+                addLog('[Warning] No wheel anchors found in scene!')
+                return
+            }
+
+            addLog(`[Debug] Found ${foundAnchors.length} anchors: ${foundAnchors.map(a => a.name).join(', ')}`)
+
+            // 3. 克隆并挂载
+            foundAnchors.forEach((node) => {
+                while (node.children.length > 0) node.remove(node.children[0])
+
+                const wheelInstance = SkeletonUtils.clone(wheelMaster)
+                const name = node.name.toUpperCase()
+
+                // 强制更新矩阵，确保世界坐标正确 calculation
+                try {
+                    addLog(`[Debug] Processing anchor: ${node.name} (Type: ${node.type})`)
+
+                    if (typeof node.updateMatrixWorld === 'function') {
+                        node.updateMatrixWorld(true)
+                    }
+
+                    // 强制重置锚点状态
+                    node.visible = true
+                    if (node.scale.length() < 0.1) node.scale.set(1, 1, 1)
+
+                    // 旋转判断：
+                    // 用户反馈右侧反了 (PI)，说明不需要旋转，跟随锚点即可。
+                    wheelInstance.rotation.y = 0
+
+                    wheelInstance.scale.set(1.0, 1.0, 1.0)
+
+                    wheelInstance.traverse((child: any) => {
+                        if (child.isMesh) {
+                            child.frustumCulled = false
+                            if (child.material) {
+                                child.material.visible = true
+                                child.material.side = 2
+                            }
+                        }
+                    })
+
+                    node.add(wheelInstance)
+
+                } catch (loopErr: any) {
+                    console.error(`Failed on ${name}:`, loopErr)
+                }
+            })
+
+
+            console.log(`[ModelViewer] Successfully injected wheels to ${foundAnchors.length} positions`)
+        } catch (err: any) {
+            const errMsg = `[ModelViewer] Failed to inject wheels: ${err.message}`
+            console.error(errMsg)
+            addLog(`[ERROR] ${errMsg}`)
         }
     }
 
@@ -221,57 +429,41 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         try {
                             if (material.pbrMetallicRoughness.baseColorTexture) {
                                 material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
+                            } else {
+                                // Fallback: try to create a default texture if it lacks one
+                                material.pbrMetallicRoughness.baseColorTexture = { texture }
+                            }
+
+                            // 关键：恢复并应用镜像/缩放/旋转参数
+                            const threeTexture = (texture as any).source?.texture || (texture as any).texture
+                            if (threeTexture) {
+                                threeTexture.flipY = false
+                                threeTexture.center.set(0.5, 0.5)
+
+                                // 应用配置中的旋转
+                                threeTexture.rotation = (config.rotation || 0) * (Math.PI / 180)
+
+                                // 应用缩放和镜像逻辑
+                                const scaleX = config.mirror ? -(config.scale || 1) : (config.scale || 1)
+                                const scaleY = config.scale || 1
+                                threeTexture.repeat.set(scaleX, scaleY)
+
+                                // 修正侧面平移 (镜像时需要偏移 1.0)
+                                if (config.mirror) {
+                                    threeTexture.offset.set(1, 0)
+                                } else {
+                                    threeTexture.offset.set(0, 0)
+                                }
+
+                                threeTexture.wrapS = 1000 // RepeatWrapping
+                                threeTexture.wrapT = 1000 // RepeatWrapping
+                                threeTexture.needsUpdate = true
                             }
                         } catch (e) {
                             console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
                         }
                     }
                 })
-
-                // 2. Through Three.js adjustment
-                const threeTexture = (texture as any).source?.texture || (texture as any).texture
-                if (threeTexture) {
-                    threeTexture.center.set(0.5, 0.5)
-
-                    // Standardize dynamic texture application:
-                    // Trust that provided textureUrl (AI/DIY) is already standardized (Heading Up/Left) 
-                    // and skip legacy model-specific rotation offsets from config.
-                    threeTexture.rotation = 0
-                    threeTexture.repeat.set(1, 1)
-
-                    threeTexture.wrapS = 1000 // RepeatWrapping
-                    threeTexture.wrapT = 1000 // RepeatWrapping
-                    threeTexture.flipY = false
-                    threeTexture.needsUpdate = true
-                }
-
-                // 3. Three.js fallback
-                const scene = getThreeScene(viewer)
-                if (scene) {
-                    scene.traverse((node: any) => {
-                        if (node.isMesh && node.material) {
-                            const mats = Array.isArray(node.material) ? node.material : [node.material]
-                            mats.forEach((m: any) => {
-                                const name = m.name?.toLowerCase() || ''
-                                const isBody = name === '' ||
-                                    name.includes('paint') ||
-                                    name.includes('body') ||
-                                    name.includes('exterior') ||
-                                    name.includes('stainless') ||
-                                    name === 'ext_body'
-
-                                if (isBody) {
-                                    if (threeTexture) {
-                                        m.map = threeTexture
-                                        m.color.setRGB(1, 1, 1)
-                                    }
-                                    m.side = 2
-                                    m.needsUpdate = true
-                                }
-                            })
-                        }
-                    })
-                }
 
                 console.log(`[ModelViewer] Texture loaded successfully on attempt ${attempt}`)
                 setTextureLoading(false)
@@ -350,9 +542,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
 
         const onLoad = async () => {
-            setLoading(false)
             modelLoadedRef.current = true
-            // UV Map logic
+
+            // UV Map 修复：处理左右对称贴图问题 (还原之前的稳健方案)
             const scene = getThreeScene(viewer)
             if (scene) {
                 let availableUVs = ['uv']
@@ -363,20 +555,79 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         }
                     }
                 })
-                const targetUV = config.uvSet === 'uv1' || (config.uvSet === undefined && availableUVs.includes('uv1')) ? 'uv1' : 'uv'
-                if (targetUV !== 'uv') {
-                    scene.traverse((node: any) => {
-                        if (node.isMesh && node.geometry) {
-                            const geom = node.geometry
-                            if (geom.attributes[targetUV]) {
-                                if (!geom.userData.originalUV) geom.userData.originalUV = geom.attributes.uv
-                                geom.attributes.uv = geom.attributes[targetUV]
-                                geom.attributes.uv.needsUpdate = true
+
+                console.log(`[ModelViewer] Available UV sets: ${availableUVs.join(', ')}`)
+
+                // 优先使用配置，如果没有配置则自动检测 uv1
+                const targetUV = config.uvSet === 'uv1' || (config.uvSet === undefined && availableUVs.includes('uv1')) ? 'uvSet' : 'uv'
+
+                // 注意：这里使用的是三维层面的属性替换，而不是材质层面的通道切换
+                if (targetUV !== 'uv' || config.uvSet === 'uv1') {
+                    const actualTarget = availableUVs.includes('uv1') ? 'uv1' : (availableUVs.includes('uv2') ? 'uv2' : 'uv')
+
+                    if (actualTarget !== 'uv') {
+                        scene.traverse((node: any) => {
+                            if (node.isMesh && node.geometry) {
+                                const geom = node.geometry
+                                const name = (node.name || '').toLowerCase()
+                                const matName = (node.material?.name || '').toLowerCase()
+                                const isBody = name.includes('paint') || name.includes('body') || name.includes('exterior') ||
+                                    matName.includes('paint') || matName.includes('body') || matName.includes('exterior')
+
+                                if (isBody && geom.attributes[actualTarget]) {
+                                    if (!geom.userData.originalUV) {
+                                        geom.userData.originalUV = geom.attributes.uv
+                                    }
+                                    console.log(`[ModelViewer] Swapping UV to ${actualTarget} for mesh: ${node.name}`)
+                                    geom.attributes.uv = geom.attributes[actualTarget]
+                                    geom.attributes.uv.needsUpdate = true
+                                }
                             }
-                        }
-                    })
+                        })
+                    }
                 }
             }
+
+            // Always attempt to clean scene, even if no wheels (e.g. just removing floor)
+            // But we need to be careful not to introduce race conditions.
+            // If wheelUrl is present, injectWheels handles cleanup.
+            // If NOT present, we should call cleanScene here.
+
+            if (wheelUrl) {
+                // Give a small delay to ensure the viewer scene graph is ready
+                // But keep loading spinner UP so user doesn't see the glitch.
+                setTimeout(async () => {
+                    await requestAnimationFrame(async () => {
+                        await injectWheels(viewer, wheelUrl)
+
+                        // Force update bounds and camera AFTER wheels and cleanup
+                        if ((viewer as any).updateFraming) {
+                            (viewer as any).updateFraming()
+                        } else if (viewer.updateBoundingBox) {
+                            viewer.updateBoundingBox()
+                        }
+
+                        if (typeof viewer.jumpCameraToGoal === 'function') viewer.jumpCameraToGoal()
+
+                        setLoading(false) // FINALLY reveal the scene
+                    })
+                }, 100)
+            } else {
+                // No wheels to inject, just clean scene + reveal
+                setTimeout(async () => {
+                    cleanScene(viewer)
+                    if ((viewer as any).updateFraming) {
+                        (viewer as any).updateFraming()
+                    } else if (viewer.updateBoundingBox) {
+                        viewer.updateBoundingBox()
+                    }
+
+                    if (typeof viewer.jumpCameraToGoal === 'function') viewer.jumpCameraToGoal()
+
+                    setLoading(false)
+                }, 50)
+            }
+
             // Once loaded, apply current texture if any
             if (textureUrl) {
                 applyTexture(viewer, textureUrl, modelSlug)
@@ -398,7 +649,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             viewer.removeEventListener('error', onError)
             viewer.remove()
         }
-    }, [modelUrl, id]) // Re-run only on core model identity change
+    }, [modelUrl, wheelUrl, id]) // Re-run only on core model identity change
 
     // Effect 2: Update model-viewer attributes that don't need reload
     useEffect(() => {
@@ -432,11 +683,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             viewer.setAttribute('environment-image', finalEnv)
         }
 
-        // Apply exposure based on day/night or config
-        // If background is dark (night mode), reduce exposure
-        const isNightMode = propBackgroundColor === '#1F1F1F'
-        const exposureBalance = isNightMode ? 0.6 : (config.exposure || 1.0)
-        viewer.setAttribute('exposure', exposureBalance.toString())
+        // Apply exposure from config directly (don't change for day/night)
+        viewer.setAttribute('exposure', (config.exposure || 1.0).toString())
+
+        // Apply shadow settings from config
+        viewer.setAttribute('shadow-intensity', (config.shadowIntensity ?? 1).toString())
+        viewer.setAttribute('shadow-softness', (config.shadowSoftness ?? 1).toString())
 
     }, [propBackgroundColor, environment, modelSlug])
 
@@ -455,6 +707,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     return (
         <div className={`relative ${className}`}>
             <div ref={containerRef} className="w-full h-full" />
+
 
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-50/50 backdrop-blur-sm rounded-lg z-20">
@@ -491,4 +744,3 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         </div>
     )
 })
-

@@ -1,5 +1,6 @@
 import { Check, Sparkles, Download, Eye, Share2 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { PRICING_TIERS, type PricingTier } from '@/lib/constants/credits';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
     const { locale } = await params;
@@ -18,46 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     };
 }
 
-interface PricingTier {
-    id: string;
-    nameKey: string;
-    price: string;
-    credits: number;
-    generations: number;
-    costPerGen: string;
-    popular?: boolean;
-    savings?: string;
-}
 
-const tiers: PricingTier[] = [
-    {
-        id: 'starter',
-        nameKey: 'starter',
-        price: '4.99',
-        credits: 50,
-        generations: 10,
-        costPerGen: '0.49',
-    },
-    {
-        id: 'explorer',
-        nameKey: 'explorer',
-        price: '9.99',
-        credits: 125,
-        generations: 25,
-        costPerGen: '0.39',
-        popular: true,
-        savings: '20',
-    },
-    {
-        id: 'collector',
-        nameKey: 'collector',
-        price: '19.99',
-        credits: 350,
-        generations: 70,
-        costPerGen: '0.28',
-        savings: '40',
-    },
-];
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
     const { locale } = await params;
@@ -80,7 +42,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             {/* Pricing Cards */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-6">
-                    {tiers.map((tier) => (
+                    {PRICING_TIERS.map((tier) => (
                         <div
                             key={tier.id}
                             className={`relative flex flex-col p-8 rounded-3xl border-2 transition-all duration-200 bg-white dark:bg-zinc-900 ${tier.popular

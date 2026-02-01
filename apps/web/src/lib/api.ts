@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Wrap, Model } from '@/lib/types'
+import { DEFAULT_MODELS } from '@/config/models'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -47,7 +48,7 @@ function normalizeWrap(w: any): Wrap {
         image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
         model_slug: w.model_slug,
         category: w.category || 'ai_generated', // Maintain a safe fallback for display
-        is_active: true,
+        is_active: w.is_active ?? true,
         author_name: profile?.display_name || (w.category === 'official' ? 'MyTesLab' : 'Anonymous'),
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
@@ -68,7 +69,7 @@ export async function getWraps(
     try {
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
-            ['wraps-v6', modelSlug || 'all', String(page), sortBy],
+            ['wraps-v7', modelSlug || 'all', String(page), sortBy],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -108,6 +109,7 @@ async function fetchWrapsInternal(
                 profiles(id, display_name, avatar_url)
             `)
             .eq('is_public', true)
+            .eq('is_active', true)
 
         if (modelSlug) query = query.eq('model_slug', modelSlug)
 
@@ -207,14 +209,31 @@ export async function getModels(): Promise<Model[]> {
                     const models = data || []
                     console.log(`[getModels] Retrieved ${models.length} models from database`)
 
-                    if (models.length === 0) {
-                        console.warn('[getModels] WARNING: Database returned 0 models, using fallback')
-                        // Import fallback config
-                        const { DEFAULT_MODELS } = await import('@/config/models')
-                        return DEFAULT_MODELS as Model[]
-                    }
+                    // Merge local config (specifically wheel_url which is missing in DB)
+                    const mergedModels = models.map((m: any) => {
+                        const localConfig = DEFAULT_MODELS.find(dm => dm.slug === m.slug)
+                        return {
+                            ...m,
+                            // Priority: local modular path > legacy database CDN path
+                            model_3d_url: localConfig?.model_3d_url || m.model_3d_url,
+                            wheel_url: m.wheel_url || localConfig?.wheel_url
+                        }
+                    })
 
-                    return models
+                    // Inject local-only models that are missing from DB
+                    // Questo ensures that new models added to code but not yet in DB (e.g. migrated ones) are visible
+                    const dbSlugs = new Set(models.map((m: any) => m.slug))
+                    const localOnlyModels = DEFAULT_MODELS.filter(dm => !dbSlugs.has(dm.slug)).map(dm => ({
+                        ...dm,
+                        id: dm.slug, // Mock ID for frontend keys
+                        created_at: new Date().toISOString()
+                    }))
+
+                    const finalModels = [...mergedModels, ...localOnlyModels]
+                        .filter((m: any) => m.is_active)
+                        .sort((a: any, b: any) => (a.sort_order || 99) - (b.sort_order || 99))
+
+                    return finalModels as Model[]
                 } catch (dbError) {
                     console.error('[getModels] Database query failed, using fallback:', dbError)
                     // Import fallback config

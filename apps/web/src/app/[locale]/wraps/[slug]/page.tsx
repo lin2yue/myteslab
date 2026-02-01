@@ -144,6 +144,12 @@ export default async function WrapDetailPage({
         ? (wrap.texture_url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(wrap.texture_url)}` : wrap.texture_url)
         : undefined
 
+    // 获取轮毂 URL
+    const rawWheelUrl = model?.wheel_url
+    const wheelUrl = rawWheelUrl
+        ? (rawWheelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawWheelUrl)}` : rawWheelUrl)
+        : undefined
+
     return (
         <div className="flex flex-col min-h-screen">
             {/* Main Content */}
@@ -182,6 +188,7 @@ export default async function WrapDetailPage({
                         <div className="relative w-full aspect-[4/3] lg:aspect-video bg-gray-50">
                             <ModelViewerClient
                                 modelUrl={proxiedModelUrl}
+                                wheelUrl={wheelUrl}
                                 textureUrl={textureUrl}
                                 modelSlug={wrap.model_slug}
                                 className="w-full h-full"

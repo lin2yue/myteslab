@@ -7,7 +7,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. 车型表 (基础车型数据)
--- 1. 车型表 (基础车型数据)
 CREATE TABLE IF NOT EXISTS wrap_models (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   slug VARCHAR(50) UNIQUE NOT NULL,
@@ -23,7 +22,18 @@ CREATE TABLE IF NOT EXISTS wrap_models (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- [NEW]
 );
 
--- 2. 贴图方案表 (统一作品表：包含官方与用户生成)
+-- 2. 用户资料表 (关联 Supabase Auth)
+-- [CRITICAL] 必须在 wraps 表之前创建，因为 wraps 引用了 profiles
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. 贴图方案表 (统一作品表：包含官方与用户生成)
 CREATE TABLE IF NOT EXISTS wraps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- 权威作者ID
@@ -58,7 +68,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. 车型-贴图关联表
+-- 4. 车型-贴图关联表
 CREATE TABLE IF NOT EXISTS wrap_model_map (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- [NEW] 代理主键
   model_id UUID REFERENCES wrap_models(id) ON DELETE CASCADE,
@@ -68,21 +78,11 @@ CREATE TABLE IF NOT EXISTS wrap_model_map (
   UNIQUE(model_id, wrap_id)               -- [NEW] 唯一约束
 );
 
--- 4. 用户资料表 (关联 Supabase Auth)
-CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  display_name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- 5. 用户积分表 (核心钱包)
 CREATE TABLE IF NOT EXISTS user_credits (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  balance INTEGER DEFAULT 3 NOT NULL,     -- 初始积分
-  total_earned INTEGER DEFAULT 3 NOT NULL,
+  balance INTEGER DEFAULT 30 NOT NULL,     -- 初始积分
+  total_earned INTEGER DEFAULT 30 NOT NULL,
   total_spent INTEGER DEFAULT 0 NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   prompt TEXT NOT NULL,
   status generation_status DEFAULT 'pending',
-  credits_spent INTEGER DEFAULT 5,
+  credits_spent INTEGER DEFAULT 10,
   error_message TEXT,
   idempotency_key UUID UNIQUE,              -- 防止重复提交的唯一键
   steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪
@@ -177,13 +177,16 @@ BEGIN
   INSERT INTO public.profiles (id, email, display_name)
   VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)));
   
-  -- 赋予 3 初始积分
+  -- 赋予 30 初始积分
   INSERT INTO public.user_credits (user_id, balance, total_earned)
-  VALUES (new.id, 3, 3);
+  VALUES (new.id, 30, 30);
   
   -- 记录初始积分发放
   INSERT INTO public.credit_ledger (user_id, amount, type, description)
-  VALUES (new.id, 3, 'top-up', 'New user registration reward');
+  VALUES (new.id, 30, 'top-up', 'New user registration reward');
+  
+  -- 记录调试日志
+  RAISE NOTICE 'New user created: %', new.id;
   
   RETURN new;
 END;
@@ -209,7 +212,7 @@ $$ LANGUAGE plpgsql;
 -- 2. 原子扣费生成函数 (增强版)
 CREATE OR REPLACE FUNCTION deduct_credits_for_generation(
   p_prompt TEXT,
-  p_amount INTEGER DEFAULT 5,
+  p_amount INTEGER DEFAULT 10,
   p_idempotency_key UUID DEFAULT NULL
 )
 RETURNS TABLE (
@@ -370,6 +373,10 @@ CREATE POLICY "Insert Downloads" ON user_downloads FOR INSERT WITH CHECK (auth.u
 ALTER TABLE generation_tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own Tasks" ON generation_tasks FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Update Own Tasks" ON generation_tasks FOR UPDATE USING (auth.uid() = user_id);
+
+-- 积分流水
+ALTER TABLE credit_ledger ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own Ledger" ON credit_ledger FOR SELECT USING (auth.uid() = user_id);
 
 -- ============================================
 -- 初始数据索引加载

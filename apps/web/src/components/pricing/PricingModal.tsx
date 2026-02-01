@@ -2,53 +2,15 @@
 
 import { X, Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { PRICING_TIERS, type PricingTier } from '@/lib/constants/credits';
 
-interface PricingTier {
-    id: string;
-    nameKey: string;
-    price: string;
-    credits: number;
-    generations: number;
-    costPerGen: string;
-    popular?: boolean;
-    savings?: string;
-}
+
 
 interface PricingModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSelectTier: (tierId: string) => void;
 }
-
-const tiers: PricingTier[] = [
-    {
-        id: 'starter',
-        nameKey: 'starter',
-        price: '4.99',
-        credits: 50,
-        generations: 10,
-        costPerGen: '0.49',
-    },
-    {
-        id: 'explorer',
-        nameKey: 'explorer',
-        price: '9.99',
-        credits: 125,
-        generations: 25,
-        costPerGen: '0.39',
-        popular: true,
-        savings: '20',
-    },
-    {
-        id: 'collector',
-        nameKey: 'collector',
-        price: '19.99',
-        credits: 350,
-        generations: 70,
-        costPerGen: '0.28',
-        savings: '40',
-    },
-];
 
 export default function PricingModal({ isOpen, onClose, onSelectTier }: PricingModalProps) {
     const t = useTranslations('Pricing');
@@ -81,7 +43,7 @@ export default function PricingModal({ isOpen, onClose, onSelectTier }: PricingM
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto px-6 py-12 bg-gray-50/50">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {tiers.map((tier) => (
+                        {PRICING_TIERS.map((tier) => (
                             <div
                                 key={tier.id}
                                 className={`relative flex flex-col p-6 rounded-2xl border-2 transition-all duration-200 bg-white ${tier.popular
