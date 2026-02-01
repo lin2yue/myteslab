@@ -14,6 +14,7 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { logTaskStep } from '@/lib/ai/task-logger';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
+import { ServiceType, getServiceCost } from '@/lib/constants/credits';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -73,9 +74,11 @@ export async function POST(request: NextRequest) {
         }
 
         // 3. 执行数据库原子扣费 RPC (带幂等支持)
+        const requiredCredits = getServiceCost(ServiceType.AI_GENERATION);
+
         const { data: deductResultRaw, error: rpcError } = await supabase.rpc('deduct_credits_for_generation', {
             p_prompt: prompt,
-            p_amount: 5,
+            p_amount: requiredCredits,
             p_idempotency_key: idempotencyKey || null
         });
 

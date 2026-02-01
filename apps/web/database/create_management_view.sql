@@ -1,20 +1,18 @@
--- ============================================
--- 创建管理视图：带邮箱的积分查看
--- ============================================
-
--- 创建一个视图，将积分表和个人资料表（包含邮箱）关联起来
--- 这样你就可以在 Table Editor 侧边栏的 Views 分组里直接看到谁有多少分
-CREATE OR REPLACE VIEW manager_user_view AS
+-- 创建或替换视图
+CREATE OR REPLACE VIEW user_credits_overview AS
 SELECT 
-    p.email,
-    c.user_id,
-    c.balance,
-    c.total_earned,
-    c.total_spent,
-    c.updated_at
-FROM user_credits c
-JOIN profiles p ON c.user_id = p.id;
+    profiles.id,
+    profiles.email,
+    profiles.display_name,
+    COALESCE(user_credits.balance, 0) AS balance,
+    COALESCE(user_credits.total_spent, 0) AS total_consumed,
+    profiles.created_at
+FROM 
+    profiles
+LEFT JOIN 
+    user_credits ON profiles.id = user_credits.user_id;
 
--- 如果你想在原来的 user_credits 表里直接看到（通过外键关联显示）
--- Supabase 表编辑器通常会自动识别 profiles 表的 email 作为 display column
--- 如果没有自动显示，建议直接查看上面创建的 manager_user_view
+-- 授予权限 (适配 Supabase Dashboard 使用)
+GRANT SELECT ON user_credits_overview TO authenticated;
+GRANT SELECT ON user_credits_overview TO service_role;
+GRANT SELECT ON user_credits_overview TO postgres;

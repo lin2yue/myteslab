@@ -213,6 +213,8 @@ export async function getModels(): Promise<Model[]> {
                         const localConfig = DEFAULT_MODELS.find(dm => dm.slug === m.slug)
                         return {
                             ...m,
+                            // Priority: local modular path > legacy database CDN path
+                            model_3d_url: localConfig?.model_3d_url || m.model_3d_url,
                             wheel_url: m.wheel_url || localConfig?.wheel_url
                         }
                     })
@@ -226,7 +228,9 @@ export async function getModels(): Promise<Model[]> {
                         created_at: new Date().toISOString()
                     }))
 
-                    const finalModels = [...mergedModels, ...localOnlyModels].sort((a: any, b: any) => (a.sort_order || 99) - (b.sort_order || 99))
+                    const finalModels = [...mergedModels, ...localOnlyModels]
+                        .filter((m: any) => m.is_active)
+                        .sort((a: any, b: any) => (a.sort_order || 99) - (b.sort_order || 99))
 
                     return finalModels as Model[]
                 } catch (dbError) {

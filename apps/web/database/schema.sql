@@ -81,8 +81,8 @@ CREATE TABLE IF NOT EXISTS wrap_model_map (
 -- 5. 用户积分表 (核心钱包)
 CREATE TABLE IF NOT EXISTS user_credits (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  balance INTEGER DEFAULT 3 NOT NULL,     -- 初始积分
-  total_earned INTEGER DEFAULT 3 NOT NULL,
+  balance INTEGER DEFAULT 30 NOT NULL,     -- 初始积分
+  total_earned INTEGER DEFAULT 30 NOT NULL,
   total_spent INTEGER DEFAULT 0 NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -177,13 +177,13 @@ BEGIN
   INSERT INTO public.profiles (id, email, display_name)
   VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)));
   
-  -- 赋予 3 初始积分
+  -- 赋予 30 初始积分
   INSERT INTO public.user_credits (user_id, balance, total_earned)
-  VALUES (new.id, 3, 3);
+  VALUES (new.id, 30, 30);
   
   -- 记录初始积分发放
   INSERT INTO public.credit_ledger (user_id, amount, type, description)
-  VALUES (new.id, 3, 'top-up', 'New user registration reward');
+  VALUES (new.id, 30, 'top-up', 'New user registration reward');
   
   -- 记录调试日志
   RAISE NOTICE 'New user created: %', new.id;
