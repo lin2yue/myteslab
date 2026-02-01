@@ -113,10 +113,36 @@ export async function getDownloadUrl(
     });
 
     // Generate signed URL with response-content-disposition
-    return client.signatureUrl(key, {
+    const options: any = {
         expires: 3600, // 1 hour
         response: {
             'content-disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`
         }
-    });
+    };
+
+    // Extract existing x-oss-process
+    let process = '';
+    try {
+        const urlObj = new URL(url);
+        process = urlObj.searchParams.get('x-oss-process') || '';
+    } catch (e) {
+        // ignore
+    }
+
+    // Append our strict requirements: PNG, Resize 1024x1024
+    // We add this indiscriminately to ensure the constraints are met.
+    // Constraints: PNG, 512-1024px, < 1MB.
+    // User Request: Keep resolution at 1024x1024 (Model 3/Y) and 1024x768 (Cybertruck).
+    // Strategy: m_lfit,w_1024,h_1024 ensures both 1:1 and 4:3 aspect ratios fit maximally within 1024x1024.
+    const strictParams = 'resize,m_lfit,w_1024,h_1024,limit_1/format,png';
+
+    if (process) {
+        // Append to existing process (e.g., 'image/rotate,90' -> 'image/rotate,90/resize...')
+        options.process = `${process}/${strictParams}`;
+    } else {
+        // New process
+        options.process = `image/${strictParams}`;
+    }
+
+    return client.signatureUrl(key, options);
 }
