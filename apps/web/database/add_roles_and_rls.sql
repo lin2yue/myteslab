@@ -40,11 +40,27 @@ FOR ALL TO authenticated
 USING ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') )
 WITH CHECK ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') );
 
--- 3.3 积分流水可见性：普通用户仅看自己，管理员看全部
--- 注意：这里需要考虑原有 Own Ledger 策略
+-- 3.3 积分流水/余额可见性：普通用户仅看自己，管理员看全部
 DROP POLICY IF EXISTS "Admin View All Ledgers" ON credit_ledger;
 CREATE POLICY "Admin View All Ledgers" ON credit_ledger 
 FOR SELECT TO authenticated 
+USING ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') );
+
+DROP POLICY IF EXISTS "Admin View All Credits" ON user_credits;
+CREATE POLICY "Admin View All Credits" ON user_credits 
+FOR ALL TO authenticated 
+USING ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') );
+
+-- 3.4 生成任务可见性：普通用户仅看自己，管理员看全部
+DROP POLICY IF EXISTS "Admin View All Tasks" ON generation_tasks;
+CREATE POLICY "Admin View All Tasks" ON generation_tasks 
+FOR ALL TO authenticated 
+USING ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') );
+
+-- 3.5 用户档可见性：管理员可更新角色
+DROP POLICY IF EXISTS "Admin Update Profiles" ON profiles;
+CREATE POLICY "Admin Update Profiles" ON profiles 
+FOR UPDATE TO authenticated 
 USING ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') );
 
 -- ============================================
