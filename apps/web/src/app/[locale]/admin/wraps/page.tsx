@@ -51,6 +51,7 @@ export default function AdminWrapsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'hidden'>('all');
+    const [publicFilter, setPublicFilter] = useState<'all' | 'public' | 'private'>('all');
     const [page, setPage] = useState(1);
     const pageSize = 12;
 
@@ -77,6 +78,12 @@ export default function AdminWrapsPage() {
             query = query.eq('is_active', false);
         }
 
+        if (publicFilter === 'public') {
+            query = query.eq('is_public', true);
+        } else if (publicFilter === 'private') {
+            query = query.eq('is_public', false);
+        }
+
         const { data, error, count } = await query
             .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -90,7 +97,7 @@ export default function AdminWrapsPage() {
 
     useEffect(() => {
         fetchWraps();
-    }, [page, categoryFilter, statusFilter]);
+    }, [page, categoryFilter, statusFilter, publicFilter]);
 
     const toggleStatus = async (wrapId: string, currentStatus: boolean) => {
         const { error } = await supabase
@@ -157,9 +164,19 @@ export default function AdminWrapsPage() {
                         value={statusFilter}
                         onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }}
                     >
-                        <option value="all">All Status</option>
+                        <option value="all">All Visibility</option>
                         <option value="active">Active Only</option>
                         <option value="hidden">Hidden Only</option>
+                    </select>
+
+                    <select
+                        className="px-4 py-2.5 bg-gray-50 dark:bg-zinc-800 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[140px]"
+                        value={publicFilter}
+                        onChange={(e) => { setPublicFilter(e.target.value as any); setPage(1); }}
+                    >
+                        <option value="all">All Public Status</option>
+                        <option value="public">Public Only</option>
+                        <option value="private">Private Only</option>
                     </select>
                 </div>
             </div>
@@ -191,12 +208,20 @@ export default function AdminWrapsPage() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                                 {/* Status Badge Overlay */}
-                                {!wrap.is_active && (
-                                    <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
-                                        <EyeOff size={12} />
-                                        Hidden
+                                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                                    {!wrap.is_active && (
+                                        <div className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg w-fit">
+                                            <EyeOff size={12} />
+                                            Hidden
+                                        </div>
+                                    )}
+                                    <div className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg w-fit",
+                                        wrap.is_public ? "bg-green-600 text-white" : "bg-gray-600 text-white"
+                                    )}>
+                                        {wrap.is_public ? "Public" : "Private"}
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             {/* Card Body */}
