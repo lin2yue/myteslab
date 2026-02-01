@@ -234,9 +234,17 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         const objectsToRemove: any[] = []
         scene.traverse((node: any) => {
             const name = (node.name || '').toUpperCase()
-            // 恢复极致安全模式：只移除明确命名为地板/地面的物体
-            // 既然用户决定手动在 Blender 处理，我们在这里不做任何基于尺寸的猜测
+            // 移除地板/地面
             if (name.includes('FLOOR') || name.includes('GROUND')) {
+                objectsToRemove.push(node)
+                return
+            }
+
+            // 移除内置的轮毂（如果存在），防止与注入的轮毂重叠
+            // 逻辑：如果名字包含 WHEEL 且是一个 Mesh，且不是我们要用的 Spatial 锚点，就删掉它
+            if (name.includes('WHEEL') && !name.includes('SPATIAL') && node.isMesh) {
+                // 特殊检查：有些模型直接把轮子挂在根部或者其他地方
+                console.log(`[ModelViewer] Found potential legacy wheel to remove: ${node.name}`)
                 objectsToRemove.push(node)
             }
         })
@@ -335,9 +343,13 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             })
 
             if (foundAnchors.length === 0) {
-                // Retry finding anchors? Maybe they just loaded?
-                // But normally injecting wheels happens when base is ready.
-                addLog('[Warning] No wheel anchors found in scene!')
+                console.warn('[ModelViewer] No wheel anchors found in scene! Available nodes:',
+                    (() => {
+                        const nodes: string[] = [];
+                        scene.traverse((n: any) => nodes.push(n.name));
+                        return nodes.slice(0, 50).join(', ') + (nodes.length > 50 ? '...' : '');
+                    })()
+                );
                 return
             }
 

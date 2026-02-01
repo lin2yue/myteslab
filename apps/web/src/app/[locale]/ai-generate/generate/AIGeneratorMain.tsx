@@ -36,7 +36,7 @@ export default function AIGeneratorMain({
     isLoggedIn
 }: {
     initialCredits: number,
-    models: Array<{ slug: string; name: string; modelUrl?: string; wheelUrl?: string }>,
+    models: Array<{ slug: string; name: string; name_en?: string; modelUrl?: string; wheelUrl?: string }>,
     locale: string,
     isLoggedIn: boolean
 }) {
@@ -616,7 +616,7 @@ export default function AIGeneratorMain({
                 </div >
 
                 {/* Right Side: Controls (30%) */}
-                < div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 lg:pl-0 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden" >
+                <div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden">
 
                     {/* Mode Switcher Tabs */}
                     < div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200" >
@@ -659,7 +659,9 @@ export default function AIGeneratorMain({
                                             className="w-full h-14 pl-4 pr-10 bg-white border border-gray-200 rounded-xl appearance-none font-medium focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                         >
                                             {models.map((m: any) => (
-                                                <option key={m.slug} value={m.slug}>{m.name}</option>
+                                                <option key={m.slug} value={m.slug}>
+                                                    {_locale === 'en' ? (m.name_en || m.name) : m.name}
+                                                </option>
                                             ))}
                                         </select>
                                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 w-4 h-4" />

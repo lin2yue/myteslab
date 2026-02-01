@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Wrap, Model } from '@/lib/types'
-import { DEFAULT_MODELS } from '@/config/models'
+
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -209,46 +209,18 @@ export async function getModels(): Promise<Model[]> {
                     const models = data || []
                     console.log(`[getModels] Retrieved ${models.length} models from database`)
 
-                    // Merge local config (specifically wheel_url which is missing in DB)
-                    const mergedModels = models.map((m: any) => {
-                        const localConfig = DEFAULT_MODELS.find(dm => dm.slug === m.slug)
-                        return {
-                            ...m,
-                            // Priority: local modular path > legacy database CDN path
-                            model_3d_url: localConfig?.model_3d_url || m.model_3d_url,
-                            wheel_url: m.wheel_url || localConfig?.wheel_url
-                        }
-                    })
-
-                    // Inject local-only models that are missing from DB
-                    // Questo ensures that new models added to code but not yet in DB (e.g. migrated ones) are visible
-                    const dbSlugs = new Set(models.map((m: any) => m.slug))
-                    const localOnlyModels = DEFAULT_MODELS.filter(dm => !dbSlugs.has(dm.slug)).map(dm => ({
-                        ...dm,
-                        id: dm.slug, // Mock ID for frontend keys
-                        created_at: new Date().toISOString()
-                    }))
-
-                    const finalModels = [...mergedModels, ...localOnlyModels]
-                        .filter((m: any) => m.is_active)
-                        .sort((a: any, b: any) => (a.sort_order || 99) - (b.sort_order || 99))
-
-                    return finalModels as Model[]
+                    return models as Model[]
                 } catch (dbError) {
-                    console.error('[getModels] Database query failed, using fallback:', dbError)
-                    // Import fallback config
-                    const { DEFAULT_MODELS } = await import('@/config/models')
-                    return DEFAULT_MODELS as Model[]
+                    console.error('[getModels] Database query failed:', dbError)
+                    return []
                 }
             },
-            ['models-v7'], // Incremented version to force cache refresh
+            ['models-v8'], // Incremented version to force cache refresh
             { revalidate: 3600 }
         )()
     } catch (error) {
-        console.error('[getModels] Fatal error, using fallback:', error)
-        // Last resort fallback
-        const { DEFAULT_MODELS } = await import('@/config/models')
-        return DEFAULT_MODELS as Model[]
+        console.error('[getModels] Fatal error:', error)
+        return []
     }
 }
 
