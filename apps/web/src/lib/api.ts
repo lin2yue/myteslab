@@ -209,37 +209,12 @@ export async function getModels(): Promise<Model[]> {
                     const models = data || []
                     console.log(`[getModels] Retrieved ${models.length} models from database`)
 
-                    // Merge local config (specifically wheel_url which is missing in DB)
-                    const mergedModels = models.map((m: any) => {
-                        const localConfig = DEFAULT_MODELS.find(dm => dm.slug === m.slug)
-                        return {
-                            ...m,
-                            // Priority: local modular path > legacy database CDN path
-                            model_3d_url: localConfig?.model_3d_url || m.model_3d_url,
-                            wheel_url: m.wheel_url || localConfig?.wheel_url,
-                            name_en: m.name_en || localConfig?.name_en
-                        }
-                    })
-
-                    // Inject local-only models that are missing from DB
-                    // Questo ensures that new models added to code but not yet in DB (e.g. migrated ones) are visible
-                    const dbSlugs = new Set(models.map((m: any) => m.slug))
-                    const localOnlyModels = DEFAULT_MODELS.filter(dm => !dbSlugs.has(dm.slug)).map(dm => ({
-                        ...dm,
-                        id: dm.slug, // Mock ID for frontend keys
-                        created_at: new Date().toISOString()
-                    }))
-
-                    const finalModels = [...mergedModels, ...localOnlyModels]
-                        .filter((m: any) => m.is_active)
-                        .sort((a: any, b: any) => (a.sort_order || 99) - (b.sort_order || 99))
-
-                    return finalModels as Model[]
+                    return models as Model[]
                 } catch (dbError) {
                     console.error('[getModels] Database query failed, using fallback:', dbError)
                     // Import fallback config
                     const { DEFAULT_MODELS } = await import('@/config/models')
-                    return DEFAULT_MODELS as Model[]
+                    return DEFAULT_MODELS.filter(m => m.is_active) as Model[]
                 }
             },
             ['models-v7'], // Incremented version to force cache refresh

@@ -616,7 +616,7 @@ export default function AIGeneratorMain({
                 </div >
 
                 {/* Right Side: Controls (30%) */}
-                < div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 lg:pl-0 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden" >
+                <div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden">
 
                     {/* Mode Switcher Tabs */}
                     < div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200" >
