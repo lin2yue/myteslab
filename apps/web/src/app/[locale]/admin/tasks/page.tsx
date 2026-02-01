@@ -12,7 +12,8 @@ import {
     Zap,
     ChevronDown,
     ChevronUp,
-    ExternalLink
+    ExternalLink,
+    Wallet
 } from 'lucide-react';
 import { useAlert } from '@/components/alert/AlertProvider';
 import { format } from 'date-fns';
@@ -174,152 +175,228 @@ export default function AdminTasksPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-end">
+        <div className="space-y-6 max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">{t('tasks_title')}</h1>
-                    <p className="text-gray-500 text-sm mt-1">{t('tasks_desc')}</p>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white flex items-center gap-3">
+                        <Zap className="w-8 h-8 text-blue-600" />
+                        AI Generation Tasks
+                    </h1>
+                    <p className="text-gray-500 mt-1">Monitor and manage all AI-powered wrap generation requests.</p>
                 </div>
                 <button
                     onClick={fetchTasks}
-                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
                 >
                     <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} />
                     {t('refresh')}
                 </button>
             </div>
 
+            {/* Stats (Inline for Tasks) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: 'Pending', count: tasks.filter(t => t.status === 'pending' || t.status === 'processing').length, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+                    { label: 'Completed', count: tasks.filter(t => t.status === 'completed').length, color: 'text-green-600', bg: 'bg-green-50' },
+                    { label: 'Failed', count: tasks.filter(t => t.status === 'failed').length, color: 'text-red-600', bg: 'bg-red-50' },
+                    { label: 'Refunded', count: tasks.filter(t => t.status === 'failed_refunded').length, color: 'text-blue-600', bg: 'bg-blue-50' },
+                ].map((stat, i) => (
+                    <div key={i} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{stat.label}</span>
+                            <div className={cn("w-2 h-2 rounded-full animate-pulse", stat.bg.replace('bg-', 'text-').replace('-50', '-500'))} style={{ backgroundColor: 'currentColor' }} />
+                        </div>
+                        <p className={cn("text-2xl font-black", stat.color)}>{stat.count}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Table */}
             <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 dark:bg-zinc-800/50 text-gray-400 text-xs uppercase font-bold tracking-wider">
-                        <tr>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4">{t('user')}</th>
-                            <th className="px-6 py-4">{t('prompt')}</th>
-                            <th className="px-6 py-4">{t('amount')}</th>
-                            <th className="px-6 py-4">{t('timestamp')}</th>
-                            <th className="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
-                        {loading && tasks.length === 0 ? (
-                            <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">Loading tasks...</td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50/50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">User</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Prompt Preview</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Cost</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Time</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                             </tr>
-                        ) : tasks.map((task) => (
-                            <React.Fragment key={task.id}>
-                                <tr className={cn(
-                                    "hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors group cursor-pointer",
-                                    expandedTaskId === task.id && "bg-blue-50/20 dark:bg-blue-900/5"
-                                )}>
-                                    <td className="px-6 py-4" onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}>
-                                        {getStatusBadge(task.status)}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-medium" onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}>
-                                        <div className="flex flex-col">
-                                            <span className="text-gray-900 dark:text-white truncate max-w-[150px]">
-                                                {task.profiles?.display_name || 'Unknown'}
-                                            </span>
-                                            <span className="text-xs text-gray-400 font-normal">{task.profiles?.email || task.user_id.substring(0, 8)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate" onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}>
-                                        {task.prompt}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-mono text-center" onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}>
-                                        -{task.credits_spent}
-                                    </td>
-                                    <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap" onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}>
-                                        {format(new Date(task.created_at), 'MM-dd HH:mm:ss')}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center gap-2 justify-end">
-                                            {task.status === 'failed' && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleRefund(task.id); }}
-                                                    disabled={refundingId === task.id}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                                                    title={t('refund_btn')}
-                                                >
-                                                    <RotateCcw className={cn("w-4 h-4", refundingId === task.id && "animate-spin")} />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
-                                                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-all"
-                                            >
-                                                {expandedTaskId === task.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                            </button>
-                                        </div>
-                                    </td>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+                            {loading && tasks.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">Connecting to task stream...</td>
                                 </tr>
-
-                                {/* Expanded Steps Detail */}
-                                {expandedTaskId === task.id && (
-                                    <tr className="bg-gray-50/50 dark:bg-zinc-900/50">
-                                        <td colSpan={6} className="px-10 py-6 border-l-4 border-blue-500">
-                                            <div className="grid grid-cols-2 gap-8">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">{t('steps_title')}</h4>
-                                                    <div className="space-y-4">
-                                                        {Array.isArray(task.steps) && task.steps.length > 0 ? (
-                                                            task.steps.map((step, idx) => (
-                                                                <div key={idx} className="flex gap-4 items-start relative pb-4">
-                                                                    {idx < task.steps.length - 1 && <div className="absolute left-[7px] top-4 bottom-0 w-[2px] bg-gray-200 dark:bg-zinc-800" />}
-                                                                    <div className={cn(
-                                                                        "w-4 h-4 rounded-full mt-1 shrink-0 border-2",
-                                                                        step.step === 'refunded' ? "bg-blue-500 border-blue-200" :
-                                                                            step.step === 'completed' ? "bg-green-500 border-green-200" :
-                                                                                "bg-gray-300 border-white"
-                                                                    )} />
-                                                                    <div className="flex-1">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="text-sm font-bold capitalize">{step.step.replace(/_/g, ' ')}</span>
-                                                                            <span className="text-[10px] font-mono text-gray-400">{format(new Date(step.ts), 'HH:mm:ss.SSS')}</span>
-                                                                        </div>
-                                                                        {step.reason && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/10 p-2 rounded mt-1 border border-red-100 dark:border-red-900/30">{step.reason}</p>}
-                                                                    </div>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <p className="text-xs text-gray-400 italic">No detailed steps recorded.</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">{t('context_title')}</h4>
-                                                    <div className="space-y-4 text-xs font-mono">
-                                                        <div className="bg-gray-100 dark:bg-zinc-800 p-3 rounded-lg overflow-auto max-h-[300px]">
-                                                            <p className="text-blue-600 dark:text-blue-400 mb-2">// Prompt</p>
-                                                            <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 mb-4">{task.prompt}</p>
-
-                                                            {task.error_message && (
-                                                                <>
-                                                                    <p className="text-red-500 mb-2">// Error Trace</p>
-                                                                    <p className="text-red-600 dark:text-red-400">{task.error_message}</p>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex justify-between items-center text-gray-400 px-2 font-sans">
-                                                            <span>Task ID: <span className="select-all">{task.id}</span></span>
-                                                        </div>
-                                                    </div>
+                            ) : tasks.map((task) => (
+                                <React.Fragment key={task.id}>
+                                    <tr
+                                        onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                                        className={cn(
+                                            "hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors group cursor-pointer relative",
+                                            expandedTaskId === task.id && "bg-blue-50/20 dark:bg-blue-900/5"
+                                        )}
+                                    >
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            {getStatusBadge(task.status)}
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px]">
+                                                    {task.profiles?.display_name || 'Anonymous User'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1 uppercase tracking-tighter">
+                                                    ID: {task.user_id.substring(0, 8)}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 min-w-[300px]">
+                                            <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1 italic font-medium leading-relaxed">
+                                                "{task.prompt}"
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-center">
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 text-xs font-bold">
+                                                <Wallet size={12} />
+                                                {task.credits_spent}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex flex-col text-right md:text-left">
+                                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                                    {format(new Date(task.created_at), 'HH:mm:ss')}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 uppercase font-black">
+                                                    {format(new Date(task.created_at), 'MMM dd')}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-right">
+                                            <div className="flex items-center gap-2 justify-end">
+                                                {task.status === 'failed' && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleRefund(task.id); }}
+                                                        disabled={refundingId === task.id}
+                                                        className="p-2 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all disabled:opacity-50 shadow-sm"
+                                                        title={t('refund_btn')}
+                                                    >
+                                                        <RotateCcw className={cn("w-4 h-4", refundingId === task.id && "animate-spin")} />
+                                                    </button>
+                                                )}
+                                                <div className={cn(
+                                                    "p-2 text-gray-400 group-hover:text-blue-500 transition-all",
+                                                    expandedTaskId === task.id && "text-blue-600 rotate-180"
+                                                )}>
+                                                    <ChevronDown size={20} />
                                                 </div>
                                             </div>
                                         </td>
                                     </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </tbody>
-                </table>
+
+                                    {/* Expanded Detail View */}
+                                    {expandedTaskId === task.id && (
+                                        <tr>
+                                            <td colSpan={6} className="p-0 border-b border-gray-100 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-900/30">
+                                                <div className="px-8 py-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                                        {/* Pipeline Tracking */}
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-6">
+                                                                <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                                                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">{t('steps_title')}</h4>
+                                                            </div>
+                                                            <div className="space-y-0 ml-3">
+                                                                {Array.isArray(task.steps) && task.steps.length > 0 ? (
+                                                                    task.steps.map((step, idx) => (
+                                                                        <div key={idx} className="flex gap-6 items-start relative pb-8 group/step">
+                                                                            {idx < task.steps.length - 1 && (
+                                                                                <div className="absolute left-[7px] top-6 bottom-0 w-[2.5px] bg-gradient-to-b from-blue-500/50 to-transparent" />
+                                                                            )}
+                                                                            <div className={cn(
+                                                                                "w-4 h-4 rounded-full mt-1 shrink-0 z-10 border-4 border-white dark:border-zinc-900 shadow-sm",
+                                                                                step.step === 'refunded' ? "bg-blue-500" :
+                                                                                    step.step === 'completed' ? "bg-green-500" :
+                                                                                        "bg-blue-400"
+                                                                            )} />
+                                                                            <div className="flex-1 -mt-0.5">
+                                                                                <div className="flex justify-between items-center mb-1.5">
+                                                                                    <span className="text-sm font-black text-gray-800 dark:text-gray-200 capitalize tracking-tight">
+                                                                                        {step.step.replace(/_/g, ' ')}
+                                                                                    </span>
+                                                                                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded uppercase font-bold">
+                                                                                        +{format(new Date(step.ts), 'HH:mm:ss')}
+                                                                                    </span>
+                                                                                </div>
+                                                                                {step.reason && (
+                                                                                    <div className="text-xs text-red-600 bg-red-50/50 dark:bg-red-900/10 p-3 rounded-xl border border-red-100 dark:border-red-900/20 font-medium">
+                                                                                        <AlertCircle size={14} className="inline mr-2 mb-0.5" />
+                                                                                        {step.reason}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : (
+                                                                    <p className="text-xs text-gray-400 italic">No granular pipeline data available for this task.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Request Metadata */}
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-6">
+                                                                <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
+                                                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">Task Metadata</h4>
+                                                            </div>
+                                                            <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 border border-gray-100 dark:border-zinc-800 shadow-inner">
+                                                                <div className="space-y-4">
+                                                                    <div>
+                                                                        <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Original Prompt</span>
+                                                                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed italic border-l-4 border-gray-100 dark:border-zinc-800 pl-4 py-1">
+                                                                            "{task.prompt}"
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {task.error_message && (
+                                                                        <div className="pt-2">
+                                                                            <span className="text-[10px] font-black text-red-400 uppercase mb-2 block tracking-widest">Stack Trace / Logs</span>
+                                                                            <div className="bg-red-50/30 dark:bg-red-900/5 p-4 rounded-xl border border-red-100 dark:border-red-900/20">
+                                                                                <pre className="text-[11px] font-mono text-red-600 dark:text-red-400 whitespace-pre-wrap leading-relaxed">
+                                                                                    {task.error_message}
+                                                                                </pre>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="pt-4 flex items-center justify-between border-t border-gray-50 dark:border-zinc-800">
+                                                                        <span className="text-[10px] font-black text-gray-400 uppercase">Internal Reference</span>
+                                                                        <code className="text-[10px] font-mono select-all bg-gray-50 dark:bg-zinc-800 px-2 py-1 rounded text-gray-500">{task.id}</code>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {tasks.length === 50 && (
-                <div className="text-center p-4">
-                    <p className="text-sm text-gray-400">Showing last 50 tasks. More filtering options coming soon.</p>
+            <div className="flex items-center justify-between px-2">
+                <p className="text-xs text-gray-400 font-medium">System showing real-time updates for latest 50 requests.</p>
+                <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-2" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Feed Active</span>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

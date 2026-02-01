@@ -1,6 +1,3 @@
-/**
- * 积分系统全局配置
- * Single Source of Truth for all credit-related constants
  */
 
 /**
@@ -18,7 +15,7 @@ export enum ServiceType {
  */
 export const CREDITS_CONFIG = {
     [ServiceType.AI_GENERATION]: {
-        baseAmount: 10,                    // 基础消耗积分
+        baseAmount: 10,                    // 基础消耗积分 (10 credits per generation)
         displayName: 'AI生成',
         displayNameEn: 'AI Generation',
         description: 'AI车贴生成服务',
@@ -36,6 +33,7 @@ interface PricingTierBase {
     credits: number;      // 赠送积分
     popular?: boolean;
     savings?: string;     // 节省百分比
+    polarProductId: string; // [NEW] Polar.sh product ID
 }
 
 /**
@@ -55,6 +53,7 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
         nameKey: 'starter',
         price: '4.99',
         credits: 100,
+        polarProductId: 'aff7eae1-e21c-42b6-9098-edcf80fff75d',
     },
     {
         id: 'explorer',
@@ -63,6 +62,7 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
         credits: 250,
         popular: true,
         savings: '20',
+        polarProductId: 'a63dc1a2-c791-408f-ad8c-e13969440c82',
     },
     {
         id: 'collector',
@@ -70,7 +70,8 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
         price: '19.99',
         credits: 700,
         savings: '40',
-    },
+        polarProductId: 'a144ca39-fa0d-4337-bcd8-b5aa2c6508c3',
+    }
 ];
 
 /**

@@ -73,22 +73,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Invalid model' }, { status: 400 });
         }
 
-        // 3. 前置余额检查，避免浪费下游资源
+        // 3. 执行数据库原子扣费 RPC (带幂等支持)
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION);
-        const { data: creditsData } = await supabase
-            .from('user_credits')
-            .select('balance')
-            .eq('user_id', user.id)
-            .single();
 
-        if (!creditsData || creditsData.balance < requiredCredits) {
-            return NextResponse.json({
-                success: false,
-                error: `Insufficient credits. Required: ${requiredCredits}, Available: ${creditsData?.balance || 0}`
-            }, { status: 402 });
-        }
-
-        // 4. 执行数据库原子扣费 RPC (带幂等支持)
         const { data: deductResultRaw, error: rpcError } = await supabase.rpc('deduct_credits_for_generation', {
             p_prompt: prompt,
             p_amount: requiredCredits,

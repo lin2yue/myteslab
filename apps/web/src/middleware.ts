@@ -48,13 +48,56 @@ export default async function middleware(request: NextRequest) {
     // 3. For other routes, run intl middleware
     const response = intlMiddleware(request);
 
-    // 4. IMPORTANT: Transfer cookies from supabaseResponse to the final response
+    // 4. Admin Protection
+    // Check if the route is an admin route (e.g., /en/admin, /zh/admin, /admin)
+    const isAdminRoute = pathname.match(/^\/(en|zh)\/admin/) || pathname.startsWith('/admin');
+
+    if (isAdminRoute) {
+        // We need a fresh client to check the user role accurately
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+        const { createServerClient } = await import('@supabase/ssr');
+        const supabase = createServerClient(supabaseUrl, supabaseKey, {
+            cookies: {
+                getAll() { return request.cookies.getAll() },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) => response.cookies.set(name, value))
+                },
+            },
+        });
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            // Not logged in, redirect to login
+            const locale = pathname.split('/')[1] || 'en';
+            const loginUrl = new URL(`/${locale}/login`, request.url);
+            loginUrl.searchParams.set('next', pathname);
+            return NextResponse.redirect(loginUrl);
+        }
+
+        // Check role in profiles table
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile || (profile.role !== 'admin' && profile.role !== 'super_admin')) {
+            // Logged in but not an admin, redirect to home
+            const locale = pathname.split('/')[1] || 'en';
+            return NextResponse.redirect(new URL(`/${locale}`, request.url));
+        }
+    }
+
+    // 5. IMPORTANT: Transfer cookies from supabaseResponse to the final response
     const supabaseCookies = supabaseResponse.cookies.getAll();
     supabaseCookies.forEach(cookie => {
         response.cookies.set(cookie.name, cookie.value, cookie);
     });
 
-    // 5. Add Vary: Accept-Language header for International SEO
+    // 6. Add Vary: Accept-Language header for International SEO
     response.headers.set('Vary', 'Accept-Language');
 
     return response;

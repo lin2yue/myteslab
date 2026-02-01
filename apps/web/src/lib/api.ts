@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Wrap, Model } from '@/lib/types'
+import { DEFAULT_MODELS } from '@/config/models'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -173,9 +174,17 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             console.log('[Debug] Wrap has no user_id:', wrapData.id)
         }
 
-        // 补齐模型预览链接
-        if (!wrapData.model_3d_url && wrapData.model_slug) {
-            const { data: model } = await supabaseClient.from('wrap_models').select('model_3d_url').eq('slug', wrapData.model_slug).single()
+        // 补齐并规范化模型配置 (优先使用代码中的模块化路径)
+        const modelSlug = wrapData.model_slug;
+        const localModelConfig = modelSlug ? DEFAULT_MODELS.find(dm => dm.slug === modelSlug) : null;
+
+        if (localModelConfig) {
+            // 强制优先使用代码中的模块化资源路径，确保 Vercel Preview 下即使数据库是旧的也能正常加载
+            wrapData.model_3d_url = localModelConfig.model_3d_url;
+            wrapData.wheel_url = localModelConfig.wheel_url;
+        } else if (!wrapData.model_3d_url && modelSlug) {
+            // 回退逻辑：如果本地没找到，再尝试从 DB 补齐
+            const { data: model } = await supabaseClient.from('wrap_models').select('model_3d_url').eq('slug', modelSlug).single()
             wrapData.model_3d_url = model?.model_3d_url
         }
 
@@ -207,14 +216,31 @@ export async function getModels(): Promise<Model[]> {
                     const models = data || []
                     console.log(`[getModels] Retrieved ${models.length} models from database`)
 
-                    if (models.length === 0) {
-                        console.warn('[getModels] WARNING: Database returned 0 models, using fallback')
-                        // Import fallback config
-                        const { DEFAULT_MODELS } = await import('@/config/models')
-                        return DEFAULT_MODELS as Model[]
-                    }
+                    // Merge local config (specifically wheel_url which is missing in DB)
+                    const mergedModels = models.map((m: any) => {
+                        const localConfig = DEFAULT_MODELS.find(dm => dm.slug === m.slug)
+                        return {
+                            ...m,
+                            // Priority: local modular path > legacy database CDN path
+                            model_3d_url: localConfig?.model_3d_url || m.model_3d_url,
+                            wheel_url: m.wheel_url || localConfig?.wheel_url
+                        }
+                    })
 
-                    return models
+                    // Inject local-only models that are missing from DB
+                    // Questo ensures that new models added to code but not yet in DB (e.g. migrated ones) are visible
+                    const dbSlugs = new Set(models.map((m: any) => m.slug))
+                    const localOnlyModels = DEFAULT_MODELS.filter(dm => !dbSlugs.has(dm.slug)).map(dm => ({
+                        ...dm,
+                        id: dm.slug, // Mock ID for frontend keys
+                        created_at: new Date().toISOString()
+                    }))
+
+                    const finalModels = [...mergedModels, ...localOnlyModels]
+                        .filter((m: any) => m.is_active)
+                        .sort((a: any, b: any) => (a.sort_order || 99) - (b.sort_order || 99))
+
+                    return finalModels as Model[]
                 } catch (dbError) {
                     console.error('[getModels] Database query failed, using fallback:', dbError)
                     // Import fallback config

@@ -51,29 +51,47 @@ export async function GET(
             });
         }
 
-        // 3. 优化下载逻辑：生成带 Response-Content-Disposition 的签名 URL
+        // 3. 优化下载逻辑：服务端压缩处理 (Server-Side Compression)
+        // 目标：保持 1024x1024 分辨率，但文件体积必须 < 1MB
+        // 方案：使用 sharp 进行 PNG 8-bit 色彩量化 (Palette Quantization)
+
+        let finalBuffer: Buffer;
+
         if (wrapData.url.startsWith('data:')) {
-            // 兼容 Base64 DataURL (虽然线上实际上全是 OSS URL)
+            // 兼容 Base64 DataURL
             const matches = wrapData.url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
             if (!matches || matches.length !== 3) {
                 return NextResponse.json({ error: '无效的贴图数据' }, { status: 500 });
             }
-            const contentType = matches[1];
-            const fileBuffer = Buffer.from(matches[2], 'base64');
+            const rawBuffer = Buffer.from(matches[2], 'base64');
 
-            return new NextResponse(fileBuffer as any, {
-                headers: {
-                    'Content-Disposition': `attachment; filename="${downloadFilename}"`,
-                    'Content-Type': contentType,
-                },
-            });
+            // 即使是 Base64，我们也统一过一遍 sharp 压缩，确保体积合规
+            finalBuffer = await compressImage(rawBuffer);
         } else {
-            // 获取带签名且强制触发下载的 URL (不消耗 Vercel 流量)
-            const signedDownloadUrl = await getDownloadUrl(wrapData.url, downloadFilename);
+            // 获取带签名且已在 OSS 端调整过尺寸 (1024px) 的 URL
+            const signedUrl = await getDownloadUrl(wrapData.url, downloadFilename);
 
-            // 返回 302 重定向
-            return NextResponse.redirect(signedDownloadUrl);
+            // 服务端拉取图片流
+            const response = await fetch(signedUrl);
+            if (!response.ok) {
+                console.error(`Fetch failed: ${response.statusText}`);
+                return NextResponse.json({ error: '获取贴图失败' }, { status: 502 });
+            }
+            const arrayBuffer = await response.arrayBuffer();
+
+            // 执行服务端强力压缩
+            finalBuffer = await compressImage(Buffer.from(arrayBuffer));
         }
+
+        // 返回文件流
+        return new NextResponse(finalBuffer as any, {
+            headers: {
+                'Content-Disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
+                'Content-Type': 'image/png',
+                'Content-Length': finalBuffer.length.toString(),
+                'Cache-Control': 'no-cache'
+            },
+        });
 
     } catch (error) {
         console.error('下载失败:', error)
@@ -82,5 +100,28 @@ export async function GET(
             { status: 500 }
         )
     }
+}
+
+/**
+ * 使用 Sharp 进行强力压缩
+ * 策略：PNG-8 (Palette) + 1024px 限制
+ */
+async function compressImage(input: Buffer): Promise<Buffer> {
+    const sharp = require('sharp');
+    return sharp(input)
+        // 再次确保尺寸（虽然 OSS 可能处理过，但 Sharp 再跑一次更稳妥，且 fit: inside 保持比例）
+        .resize(1024, 1024, {
+            fit: 'inside',
+            withoutEnlargement: true
+        })
+        .png({
+            // 关键：开启调色板模式 (索引色)，极大减小体积
+            palette: true,
+            quality: 80, // 在 palette 模式下，quality 影响抖动程度
+            compressionLevel: 9, // 最高压缩率
+            adaptiveFiltering: true,
+            force: true
+        })
+        .toBuffer();
 }
 
