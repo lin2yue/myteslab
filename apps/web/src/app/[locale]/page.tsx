@@ -43,14 +43,14 @@ export default async function HomePage({
         <section className="mb-8 text-center">
           <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
             {locale === 'en'
-              ? 'Tesla Wrap Gallery - Free Designs for All Models'
-              : '特斯拉贴膜库 - 所有车型的免费设计'
+              ? 'Tesla Wrap Gallery'
+              : '特斯拉贴膜设计库'
             }
           </h2>
           <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
             {locale === 'en'
-              ? 'Browse our collection of free Tesla wrap designs for Model 3, Model Y, Cybertruck, Model S, and Model X. Use our AI-powered wrap designer to create custom designs, or download ready-to-use wraps. Preview every design in real-time 3D before downloading. Perfect for Tesla Toybox Paint Shop.'
-              : '浏览我们的免费特斯拉贴膜设计合集，支持 Model 3、Model Y、Cybertruck、Model S 和 Model X。使用我们的 AI 驱动贴膜设计工具创建定制设计，或下载即用型贴膜。下载前实时 3D 预览每个设计。完美适配 Tesla Toybox Paint Shop。'
+              ? 'Explore free wrap designs for Model 3, Y, S, X & Cybertruck. Create custom looks with AI or download ready-to-use templates. Real-time 3D preview included.'
+              : '探索适配全系车型的免费贴膜设计。使用 AI 进行定制创作，或直接下载成品模版。支持实时 3D 预览。'
             }
           </p>
         </section>
