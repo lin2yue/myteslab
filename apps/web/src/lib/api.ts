@@ -69,7 +69,7 @@ export async function getWraps(
     try {
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
-            ['wraps-v6', modelSlug || 'all', String(page), sortBy],
+            ['wraps-v7', modelSlug || 'all', String(page), sortBy],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {

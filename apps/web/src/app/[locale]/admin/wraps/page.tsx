@@ -20,6 +20,7 @@ import { useAlert } from '@/components/alert/AlertProvider';
 import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { revalidateWraps } from '@/app/actions/revalidate';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -100,6 +101,7 @@ export default function AdminWrapsPage() {
         if (error) {
             alert.error(t('update_failed'));
         } else {
+            await revalidateWraps();
             alert.success(t('update_success'));
             setWraps(wraps.map(w => w.id === wrapId ? { ...w, is_active: !currentStatus } : w));
         }
