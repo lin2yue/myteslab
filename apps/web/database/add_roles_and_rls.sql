@@ -75,3 +75,20 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 3.6 作品管理 (Moderation)：管理员看全部，公共看 Active
+-- ============================================
+-- 覆盖原始 schema.sql 中的 Public Read Wraps 策略
+DROP POLICY IF EXISTS "Public Read Wraps" ON wraps;
+CREATE POLICY "Public Read Wraps" ON wraps FOR SELECT USING (
+  (is_active = true AND (is_public = true AND (deleted_at IS NULL OR category = 'official'))) 
+  OR auth.uid() = user_id
+  OR (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin')
+);
+
+-- 管理员全权管理 (覆盖原来的 Own policies)
+DROP POLICY IF EXISTS "Admin All Wraps" ON wraps;
+CREATE POLICY "Admin All Wraps" ON wraps 
+FOR ALL TO authenticated 
+USING ( (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'super_admin') );

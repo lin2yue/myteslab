@@ -32,6 +32,11 @@ export default function AdminLayout({
             icon: History,
         },
         {
+            name: 'Works',
+            href: `/${locale}/admin/wraps`,
+            icon: LayoutDashboard,
+        },
+        {
             name: 'Credit Ledger',
             href: `/${locale}/admin/credits`,
             icon: Wallet,
