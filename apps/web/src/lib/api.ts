@@ -48,7 +48,7 @@ function normalizeWrap(w: any): Wrap {
         image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
         model_slug: w.model_slug,
         category: w.category || 'ai_generated', // Maintain a safe fallback for display
-        is_active: true,
+        is_active: w.is_active ?? true,
         author_name: profile?.display_name || (w.category === 'official' ? 'MyTesLab' : 'Anonymous'),
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
@@ -109,6 +109,7 @@ async function fetchWrapsInternal(
                 profiles(id, display_name, avatar_url)
             `)
             .eq('is_public', true)
+            .eq('is_active', true)
 
         if (modelSlug) query = query.eq('model_slug', modelSlug)
 
