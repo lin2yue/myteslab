@@ -174,9 +174,17 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             console.log('[Debug] Wrap has no user_id:', wrapData.id)
         }
 
-        // 补齐模型预览链接
-        if (!wrapData.model_3d_url && wrapData.model_slug) {
-            const { data: model } = await supabaseClient.from('wrap_models').select('model_3d_url').eq('slug', wrapData.model_slug).single()
+        // 补齐并规范化模型配置 (优先使用代码中的模块化路径)
+        const modelSlug = wrapData.model_slug;
+        const localModelConfig = modelSlug ? DEFAULT_MODELS.find(dm => dm.slug === modelSlug) : null;
+
+        if (localModelConfig) {
+            // 强制优先使用代码中的模块化资源路径，确保 Vercel Preview 下即使数据库是旧的也能正常加载
+            wrapData.model_3d_url = localModelConfig.model_3d_url;
+            wrapData.wheel_url = localModelConfig.wheel_url;
+        } else if (!wrapData.model_3d_url && modelSlug) {
+            // 回退逻辑：如果本地没找到，再尝试从 DB 补齐
+            const { data: model } = await supabaseClient.from('wrap_models').select('model_3d_url').eq('slug', modelSlug).single()
             wrapData.model_3d_url = model?.model_3d_url
         }
 
