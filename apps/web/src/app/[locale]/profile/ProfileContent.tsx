@@ -60,6 +60,10 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
         return wrapModels.find(m => m.slug === slug)?.model_3d_url || '';
     };
 
+    const getWheelUrl = (slug: string) => {
+        return wrapModels.find(m => m.slug === slug)?.wheel_url || '';
+    };
+
     // Sync wraps with props (for server revalidation updates)
     useEffect(() => {
         setWraps(generatedWraps);
@@ -368,6 +372,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                     onConfirm={confirmPublish}
                     modelSlug={activePublishWrap.model_slug}
                     modelUrl={getModelUrl(activePublishWrap.model_slug)}
+                    wheelUrl={getWheelUrl(activePublishWrap.model_slug)}
                     textureUrl={activePublishWrap.texture_url}
                     isPublishing={isPublishing}
                 />

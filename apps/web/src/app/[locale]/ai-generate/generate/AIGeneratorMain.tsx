@@ -868,6 +868,7 @@ export default function AIGeneratorMain({
                 onConfirm={confirmPublish}
                 modelSlug={selectedModel}
                 modelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
+                wheelUrl={getProxyUrl(models.find(m => m.slug === selectedModel)?.wheelUrl || '', { stable: true })}
                 textureUrl={currentTexture || ''}
                 isPublishing={isPublishing}
             />

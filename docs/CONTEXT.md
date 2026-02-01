@@ -25,7 +25,7 @@
 ## 4. Key Architectural Decisions (ADRs)
 - **No Shared Code Package:** We deliberately kept `packages/shared` empty. Code sharing is done via copy-paste or parallel implementation until duplication becomes critical (Rule of 3).
 - **Direct Asset References:** Assets live in `assets/` but are uploaded to OSS. Web uses CDN URLs.
-- **Centralized AI Masks:** AI generation masks are stored in `assets/masks` (Monorepo root) and served via dynamic API routes to ensure consistency across the pipeline.
+- **Centralized AI Masks:** AI generation masks are stored in `assets/masks` (Monorepo root), named as `<model-slug>_mask.png`, uploaded to `https://cdn.tewan.club/masks/`, and wired via `apps/web/src/lib/ai/mask-config.ts`.
 - **i18n Strategy:** URL-based routing (`/en`, `/zh`) using `next-intl`.
 - **Responsive Image System:** Implemented a custom Next.js Loader for Aliyun OSS. Dynamically adjusts `w_` and `format` (webp) based on device DPR to balance 1024px quality and mobile performance. Managed via `ResponsiveOSSImage.tsx` to handle RSC serialization constraints.
 

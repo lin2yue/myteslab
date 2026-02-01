@@ -280,6 +280,37 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
     }
 
+    // Ground the model (not the whole scene) so its lowest point rests on Y=0
+    // This fixes "floating" shadows when wheels are injected after load
+    const groundModel = async (viewer: any) => {
+        const scene: any = getThreeScene(viewer)
+        const model = scene?.model
+        if (!scene || !model) return
+
+        try {
+            const { Box3 } = await import('three')
+            const box = new Box3().setFromObject(model)
+            if (!box.isEmpty()) {
+                const minY = box.min.y
+                if (Math.abs(minY) > 1e-4) {
+                    model.position.y -= minY
+                }
+            }
+
+            if (typeof scene.updateBoundingBox === 'function') {
+                scene.updateBoundingBox()
+            }
+            if (typeof scene.updateShadow === 'function') {
+                scene.updateShadow()
+            }
+            if (typeof scene.queueRender === 'function') {
+                scene.queueRender()
+            }
+        } catch (e) {
+            console.warn('[ModelViewer] groundModel failed:', e)
+        }
+    }
+
     // 动态注入轮毂模型
     const injectWheels = async (viewer: any, wheelUrl: string) => {
         if (!viewer || !wheelUrl) return
@@ -406,7 +437,11 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     wheelInstance.traverse((child: any) => {
                         if (child.isMesh) {
                             child.frustumCulled = false
+                            // Ensure injected wheels participate in model-viewer shadows
+                            child.castShadow = true
+                            child.receiveShadow = true
                             if (child.material) {
+                                child.material.needsUpdate = true
                                 child.material.visible = true
                                 child.material.side = 2
                             }
@@ -634,6 +669,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 setTimeout(async () => {
                     await requestAnimationFrame(async () => {
                         await injectWheels(viewer, wheelUrl)
+                        await groundModel(viewer)
 
                         // Force update bounds and camera AFTER wheels and cleanup
                         if ((viewer as any).updateFraming) {
@@ -643,6 +679,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         }
 
                         if (typeof viewer.jumpCameraToGoal === 'function') viewer.jumpCameraToGoal()
+                        if (typeof (viewer as any).requestRender === 'function') {
+                            (viewer as any).requestRender()
+                        }
 
                         setLoading(false) // FINALLY reveal the scene
                     })
@@ -651,6 +690,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 // No wheels to inject, just clean scene + reveal
                 setTimeout(async () => {
                     cleanScene(viewer)
+                    await groundModel(viewer)
                     if ((viewer as any).updateFraming) {
                         (viewer as any).updateFraming()
                     } else if (viewer.updateBoundingBox) {

@@ -11,6 +11,7 @@ interface PublishModalProps {
     onConfirm: (imageBase64: string) => Promise<void>
     modelSlug: string
     modelUrl: string
+    wheelUrl?: string
     textureUrl: string
     isPublishing: boolean
 }
@@ -21,6 +22,7 @@ export default function PublishModal({
     onConfirm,
     modelSlug,
     modelUrl,
+    wheelUrl,
     textureUrl,
     isPublishing
 }: PublishModalProps) {
@@ -94,6 +96,7 @@ export default function PublishModal({
                                 <ModelViewer
                                     ref={viewerRef}
                                     modelUrl={modelUrl}
+                                    wheelUrl={wheelUrl}
                                     textureUrl={textureUrl}
                                     modelSlug={modelSlug}
                                     backgroundColor="#1F1F1F"
@@ -216,6 +219,7 @@ export default function PublishModal({
                     <ModelViewer
                         ref={hiddenViewerRef}
                         modelUrl={modelUrl}
+                        wheelUrl={wheelUrl}
                         textureUrl={textureUrl}
                         modelSlug={modelSlug}
                         backgroundColor="#1F1F1F"

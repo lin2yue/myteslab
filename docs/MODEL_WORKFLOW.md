@@ -45,6 +45,23 @@ We have moved from "aggressive programmatic cleaning" to "safe cleaning" because
   - **No Size Heuristics:** We no longer try to guess if a mesh is a floor based on its size (e.g., >6m). This prevents accidental deletion of car parts (like the trunk or frunk).
   - **Shadows:** We rely 100% on `<model-viewer>`'s `shadow-intensity="1"` and `shadow-softness="1"` to generate shadows based on the car's actual geometry.
 
+### Wheel Shadows & Floating Shadow Fix (2026-02)
+When wheels are **injected at runtime** (see `injectWheels`), they are not part of the original GLB. This can cause:
+- **No wheel shadows** (injected meshes don't cast/receive by default).
+- **Shadow appears "floating" under the body** if the model is not grounded after injection.
+
+**Fixes applied in `ModelViewer.tsx`:**
+1. **Injected wheel meshes must set:**
+   - `castShadow = true`
+   - `receiveShadow = true`
+2. **Ground the model (not the whole scene):**
+   - After wheels are injected, compute bounding box of the **model** and shift `model.position.y` so the lowest point touches `Y=0`.
+   - Then call `scene.updateBoundingBox()` + `scene.updateShadow()` to realign the shadow plane.
+
+**Symptoms this resolves:**
+- Wheel shadows missing entirely.
+- Shadow plane looks “attached to the car body” instead of the ground.
+
 ### Exposure & Environment
 - **Consistent Lighting:** Exposure is **fixed** between Day and Night modes (usually `1.0` or `1.2` depending on model config).
 - **Reason:** Reducing exposure in night mode caused the car to look muddy. The dark background provides enough contrast naturally.
@@ -56,8 +73,37 @@ When updating a model (e.g., `model3-2024-base`):
 2. [Blender] Delete any `Plane` / `Shadow` / `Floor` meshes.
 3. [Blender] Verify `Wheel_XX_Spatial` nodes exist under ROOT.
 4. [Terminal] Run `npx gltf-pipeline -i exported.glb -o final.glb -d --keepUnusedElements`
-5. [Code] Place `final.glb` in `apps/web/public/models/<model-name>/body.glb`.
-6. [Preview] Verify wheels appear and shadows are round/dynamic (not rectangular).
+5. [Local] Replace the local file that maps to OSS (e.g. `assets/models/<model>/body.glb`).
+6. [Upload] Sync to OSS (path: `models/<model>/body.glb`) using existing scripts or OSS client.
+7. [DB] Update `wrap_models.model_3d_url` if needed (typically unchanged if path stays stable).
+8. [Preview] Verify wheels appear and shadows are grounded & round (not rectangular/floating).
+
+## 4.1 Compression + OSS Upload Rule (Mandatory)
+**Always compress before upload** using:
+```bash
+npx gltf-pipeline -i input.glb -o output.glb -d --keepUnusedElements
+```
+**Then upload the compressed file to OSS** at:
+```
+https://cdn.tewan.club/models/<model>/body.glb
+```
+Do **NOT** upload the raw Blender export.
+
+## 4.2 AI Mask Naming & Upload Rule
+AI 生成掩码统一放在 `assets/masks/`，命名必须与 **车型 slug** 对齐：
+```
+<model-slug>_mask.png
+```
+示例：
+- `model-3-2024-performance_mask.png`
+- `model-y-2025-premium_mask.png`
+- `modely-l_mask.png`
+
+上传到 OSS 目录：
+```
+https://cdn.tewan.club/masks/<model-slug>_mask.png
+```
+前端关联逻辑位于：`apps/web/src/lib/ai/mask-config.ts`
 
 ## 5. Repository Structure & Source of Truth
 

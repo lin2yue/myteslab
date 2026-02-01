@@ -3,8 +3,12 @@ export const MASK_DIMENSIONS: Record<string, { width: number; height: number; as
     'cybertruck': { width: 768, height: 1024, aspectRatio: '3:4' },
     'model-3': { width: 1024, height: 1024, aspectRatio: '1:1' },
     'model-3-2024-plus': { width: 1024, height: 1024, aspectRatio: '1:1' },
+    'model-3-2024-performance': { width: 1024, height: 1024, aspectRatio: '1:1' },
     'model-y-pre-2025': { width: 1024, height: 1024, aspectRatio: '1:1' },
     'model-y-2025-plus': { width: 1024, height: 1024, aspectRatio: '1:1' },
+    'model-y-2025-performance': { width: 1024, height: 1024, aspectRatio: '1:1' },
+    'model-y-2025-premium': { width: 1024, height: 1024, aspectRatio: '1:1' },
+    'modely-l': { width: 1024, height: 1024, aspectRatio: '1:1' },
 };
 
 /**
