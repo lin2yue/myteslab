@@ -86,6 +86,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
         sort_order: 5,
         is_active: true
     },
+
     {
         slug: 'modely-l',
         name: 'Model Y L',
@@ -93,6 +94,33 @@ export const DEFAULT_MODELS: ModelConfig[] = [
         model_3d_url: '/models/modely-l/body.glb',
         wheel_url: '/models/wheels/modely-l_wheels.glb',
         sort_order: 6,
+        is_active: true
+    },
+    {
+        slug: 'model-3-2024-performance',
+        name: 'Model 3 焕新版 (Performance)',
+        name_en: 'Model 3 Highland Performance',
+        model_3d_url: '/models/model3-2024-performance/body.glb',
+        wheel_url: '/models/wheels/induction.glb',
+        sort_order: 7,
+        is_active: true
+    },
+    {
+        slug: 'model-y-2025-performance',
+        name: 'Model Y 焕新版 (Performance)',
+        name_en: 'Model Y Juniper Performance',
+        model_3d_url: '/models/modely-2025-performance/body.glb',
+        wheel_url: '/models/wheels/induction.glb',
+        sort_order: 8,
+        is_active: true
+    },
+    {
+        slug: 'model-y-2025-premium',
+        name: 'Model Y 焕新版 (Premium)',
+        name_en: 'Model Y Juniper Premium',
+        model_3d_url: '/models/modely-2025-premium/body.glb',
+        wheel_url: '/models/wheels/induction.glb',
+        sort_order: 9,
         is_active: true
     }
 ]

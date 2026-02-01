@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Wrap, Model } from '@/lib/types'
-import { DEFAULT_MODELS } from '@/config/models'
+
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -211,20 +211,16 @@ export async function getModels(): Promise<Model[]> {
 
                     return models as Model[]
                 } catch (dbError) {
-                    console.error('[getModels] Database query failed, using fallback:', dbError)
-                    // Import fallback config
-                    const { DEFAULT_MODELS } = await import('@/config/models')
-                    return DEFAULT_MODELS.filter(m => m.is_active) as Model[]
+                    console.error('[getModels] Database query failed:', dbError)
+                    return []
                 }
             },
-            ['models-v7'], // Incremented version to force cache refresh
+            ['models-v8'], // Incremented version to force cache refresh
             { revalidate: 3600 }
         )()
     } catch (error) {
-        console.error('[getModels] Fatal error, using fallback:', error)
-        // Last resort fallback
-        const { DEFAULT_MODELS } = await import('@/config/models')
-        return DEFAULT_MODELS as Model[]
+        console.error('[getModels] Fatal error:', error)
+        return []
     }
 }
 
