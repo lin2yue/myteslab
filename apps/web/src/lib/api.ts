@@ -215,7 +215,7 @@ export async function getModels(): Promise<Model[]> {
                     return []
                 }
             },
-            ['models-v8'], // Incremented version to force cache refresh
+            ['models-v9'], // Incremented version to force cache refresh
             { revalidate: 3600 }
         )()
     } catch (error) {
