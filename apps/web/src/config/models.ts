@@ -34,7 +34,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     },
     {
         slug: 'model-3', // Canonical slug for DB/API
-        name: 'Model 3 (Classic)',
+        name: 'Model 3 (经典款)',
         name_en: 'Model 3 (Classic)',
         model_3d_url: '/models/model3/body.glb',
         wheel_url: '/models/wheels/stiletto.glb',
@@ -43,7 +43,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     },
     {
         slug: 'model3', // Alias for backward compatibility
-        name: 'Model 3 (Classic)',
+        name: 'Model 3 (经典款)',
         name_en: 'Model 3 (Classic)',
         model_3d_url: '/models/model3/body.glb',
         wheel_url: '/models/wheels/stiletto.glb',
@@ -52,7 +52,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     },
     {
         slug: 'model-3-2024-plus',
-        name: 'Model 3 Highland',
+        name: 'Model 3 焕新版',
         name_en: 'Model 3 Highland',
         model_3d_url: '/models/model3-2024-base/body.glb',
         wheel_url: '/models/wheels/induction.glb',
@@ -61,7 +61,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     },
     {
         slug: 'model-y-pre-2025',
-        name: 'Model Y (Classic)',
+        name: 'Model Y (经典款)',
         name_en: 'Model Y (Classic)',
         model_3d_url: '/models/modely/body.glb',
         wheel_url: '/models/wheels/induction.glb',
@@ -70,7 +70,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     },
     {
         slug: 'modely', // Alias for backward compatibility
-        name: 'Model Y (Classic)',
+        name: 'Model Y (经典款)',
         name_en: 'Model Y (Classic)',
         model_3d_url: '/models/modely/body.glb',
         wheel_url: '/models/wheels/induction.glb',
@@ -79,7 +79,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     },
     {
         slug: 'model-y-2025-plus',
-        name: 'Model Y Juniper',
+        name: 'Model Y 焕新版',
         name_en: 'Model Y Juniper',
         model_3d_url: '/models/modely-2025-base/body.glb',
         wheel_url: '/models/wheels/induction.glb',

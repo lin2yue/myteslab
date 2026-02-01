@@ -216,7 +216,8 @@ export async function getModels(): Promise<Model[]> {
                             ...m,
                             // Priority: local modular path > legacy database CDN path
                             model_3d_url: localConfig?.model_3d_url || m.model_3d_url,
-                            wheel_url: m.wheel_url || localConfig?.wheel_url
+                            wheel_url: m.wheel_url || localConfig?.wheel_url,
+                            name_en: m.name_en || localConfig?.name_en
                         }
                     })
 
