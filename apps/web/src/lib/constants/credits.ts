@@ -1,3 +1,7 @@
+/**
+ * 积分系统全局配置
+ * Single Source of Truth for all credit-related constants
+ * Migrated from feat-polar-integration branch
  */
 
 /**
