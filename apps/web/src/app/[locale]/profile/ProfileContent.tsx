@@ -26,6 +26,7 @@ interface Wrap {
 interface ModelConfig {
     slug: string;
     model_3d_url: string;
+    wheel_url?: string;
 }
 
 interface DownloadItem {
