@@ -10,7 +10,9 @@
     "analyze": "ANALYZE=true NEXT_DISABLE_TURBOPACK=1 next build"
   },
   "dependencies": {
-    "@google/model-viewer": "^3.5.0",
+    "@google/model-viewer": "^4.1.0",
+    "@polar-sh/nextjs": "^0.9.3",
+    "@polar-sh/sdk": "^0.42.5",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
     "ali-oss": "^6.23.0",
