@@ -37,7 +37,7 @@ export default function CreditHistoryModal({ isOpen, onClose, history }: CreditH
             />
 
             <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between p-6 border-b">
+                <div className="flex items-center justify-between p-6">
                     <h3 className="text-xl font-bold text-gray-900">{t('purchase_history')}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <X className="w-5 h-5 text-gray-400" />
@@ -80,7 +80,7 @@ export default function CreditHistoryModal({ isOpen, onClose, history }: CreditH
                     )}
                 </div>
 
-                <div className="p-4 bg-gray-50 border-t text-center">
+                <div className="p-4 bg-gray-50 text-center">
                     <p className="text-xs text-gray-400">
                         Only successful top-up records are shown.
                     </p>

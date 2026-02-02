@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useAlert } from '@/components/alert/AlertProvider';
+import PricingModal from '@/components/pricing/PricingModal';
 
 export default function AuthButton() {
     const t = useTranslations('Login');
@@ -20,6 +21,7 @@ export default function AuthButton() {
     const supabase = createClient();
 
     const [balance, setBalance] = useState<number | null>(null);
+    const [isPricingOpen, setIsPricingOpen] = useState(false);
 
     useEffect(() => {
         const getUser = async () => {
@@ -112,13 +114,13 @@ export default function AuthButton() {
         <div className="relative flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
             {/* Balance Display */}
             {balance !== null && (
-                <Link
-                    href="/profile"
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-colors"
+                <button
+                    onClick={() => setIsPricingOpen(true)}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-all hover:scale-105 active:scale-95 shadow-sm"
                 >
                     <span className="text-sm font-black text-blue-600 dark:text-blue-400">{balance}</span>
                     <span className="text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-tight">{tProfile('credits')}</span>
-                </Link>
+                </button>
             )}
 
             <button
@@ -171,6 +173,11 @@ export default function AuthButton() {
                     </div>
                 </div>
             )}
+
+            <PricingModal
+                isOpen={isPricingOpen}
+                onClose={() => setIsPricingOpen(false)}
+            />
         </div>
     ) : (
         <button
