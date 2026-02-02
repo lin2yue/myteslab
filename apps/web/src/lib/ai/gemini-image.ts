@@ -155,70 +155,101 @@ export async function generateWrapTexture(
         const MODEL = 'gemini-3-pro-image-preview';
         const currentGeminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+        const maxRetries = 2;
+        let lastError: any = null;
 
-        try {
-            const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{ parts }],
-                    generationConfig: {
-                        responseModalities: ['Image'],
-                        imageConfig: {
-                            aspectRatio: maskDimensions.aspectRatio,
-                        }
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+            try {
+                if (attempt > 0) {
+                    const delay = Math.pow(2, attempt) * 1000;
+                    console.warn(`[AI-GEN] [Retry] Attempt ${attempt + 1}/${maxRetries + 1} for Gemini API after ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+
+                const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
                     },
-                }),
-                signal: controller.signal,
-            });
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: textPrompt }, ...parts.slice(1)] }],
+                        generationConfig: {
+                            responseModalities: ['Image'],
+                            imageConfig: {
+                                aspectRatio: maskDimensions.aspectRatio,
+                            }
+                        },
+                    }),
+                    signal: controller.signal,
+                });
 
-            clearTimeout(timeoutId);
+                clearTimeout(timeoutId);
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
-            }
+                // Handle server errors that are worth retrying (503, 429)
+                if (response.status === 503 || response.status === 429 || response.status === 500) {
+                    const errorText = await response.text();
+                    console.warn(`[AI-GEN] [Retryable-Error] Gemini API returned ${response.status}: ${errorText}`);
+                    if (attempt < maxRetries) {
+                        lastError = new Error(`Gemini API Error (${response.status}): ${errorText}`);
+                        continue; // Retry
+                    }
+                }
 
-            const content = await response.json();
-            const usageMetadata = content.usageMetadata;
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+                }
 
-            if (content.candidates && content.candidates.length > 0) {
-                const part = content.candidates[0].content.parts[0];
-                if (part && part.inlineData) {
-                    const mimeType = part.inlineData.mimeType || 'image/png';
-                    const base64 = part.inlineData.data;
+                const content = await response.json();
+                const usageMetadata = content.usageMetadata;
 
+                if (content.candidates && content.candidates.length > 0) {
+                    const part = content.candidates[0].content.parts[0];
+                    if (part && part.inlineData) {
+                        const mimeType = part.inlineData.mimeType || 'image/png';
+                        const base64 = part.inlineData.data;
+
+                        return {
+                            success: true,
+                            imageBase64: base64,
+                            dataUrl: `data:${mimeType};base64,${base64}`,
+                            mimeType: mimeType,
+                            usage: usageMetadata,
+                            finalPrompt: textPrompt
+                        };
+                    }
+                }
+
+                const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
+                if (textPart) {
                     return {
-                        success: true,
-                        imageBase64: base64,
-                        dataUrl: `data:${mimeType};base64,${base64}`,
-                        mimeType: mimeType,
-                        usage: usageMetadata,
-                        finalPrompt: textPrompt
+                        success: false,
+                        error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
                     };
                 }
-            }
 
-            const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
-            if (textPart) {
-                return {
-                    success: false,
-                    error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
-                };
-            }
+                return { success: false, error: 'No image found in response' };
 
-            return { success: false, error: 'No image found in response' };
+            } catch (error: any) {
+                clearTimeout(timeoutId);
+                console.error(`[AI-GEN] [Error] Gemini API attempt ${attempt + 1} failed:`, error.message);
 
-        } catch (error: any) {
-            if (error.name === 'AbortError') {
-                throw new Error('AI 生成超时 (超过 60 秒)，请重试');
+                if (error.name === 'AbortError') {
+                    lastError = new Error('AI 生成超时 (超过 60 秒)');
+                } else {
+                    lastError = error;
+                }
+
+                if (attempt === maxRetries) {
+                    throw lastError;
+                }
             }
-            throw error;
         }
+
+        throw lastError || new Error('All retry attempts failed');
 
     } catch (error) {
         console.error('Error calling Gemini API:', error);
