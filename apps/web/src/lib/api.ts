@@ -15,6 +15,30 @@ const publicSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
 })
 
 /**
+ * 注入车型信息到作品对象中
+ */
+async function injectModelInfo(wraps: Wrap[]): Promise<Wrap[]> {
+    if (!wraps || wraps.length === 0) return wraps;
+    const models = await getModels();
+    const modelMap = new Map(models.map(m => [m.slug, m]));
+
+    return wraps.map(w => {
+        if (!w.model_slug) return w;
+        const model = modelMap.get(w.model_slug);
+        if (model) {
+            return {
+                ...w,
+                model_name: model.name,
+                model_name_en: model.name_en || model.name,
+                // 如果作品没有自带模型URL，使用车型的默认URL
+                model_3d_url: w.model_3d_url || model.model_3d_url
+            };
+        }
+        return w;
+    });
+}
+
+/**
  * 将数据库记录规范化为 Wrap 接口格式
  */
 function normalizeWrap(w: any): Wrap {
@@ -123,12 +147,15 @@ async function fetchWrapsInternal(
         if (error || !rawWraps) return []
 
         const normalized = rawWraps.map(w => normalizeWrap(w))
+        // 注入车型名称
+        const withModelInfo = await injectModelInfo(normalized)
+
         // 移除过多的调试日志输出，仅记录关键信息
-        const totalSize = Buffer.byteLength(JSON.stringify(normalized))
+        const totalSize = Buffer.byteLength(JSON.stringify(withModelInfo))
         if (totalSize > 1024 * 1024) {
             console.warn(`[WARN] fetchWrapsInternal result is still large: ${totalSize} bytes`)
         }
-        return normalized
+        return withModelInfo
 
     } catch (err) {
         console.error('fetchWrapsInternal error:', err)
@@ -181,7 +208,9 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             wrapData.model_3d_url = model?.model_3d_url
         }
 
-        return normalizeWrap({ ...wrapData, profiles })
+        const normalized = normalizeWrap({ ...wrapData, profiles })
+        const withModelInfo = await injectModelInfo([normalized])
+        return withModelInfo[0]
     } catch (error) {
         console.error('获取贴图详情异常:', error)
         return null

@@ -27,6 +27,8 @@ export interface Wrap {
     preview_url: string   // 3D/2D 预览图路径
 
     model_slug?: string    // 适配车型
+    model_name?: string    // [NEW] 车型显示名称
+    model_name_en?: string // [NEW] 车型英文显示名称
     model_3d_url?: string  // 关联车型的 GLB 路径
 
     user_id?: string       // 所属用户ID (Tesla Studio ID 为全零)

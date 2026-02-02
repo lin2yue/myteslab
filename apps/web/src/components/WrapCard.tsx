@@ -11,28 +11,10 @@ interface WrapCardProps {
 
 export function WrapCard({ wrap }: WrapCardProps) {
     const locale = useLocale()
-    const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
-
-    // 车型展示名称映射 (专业版)
-    const modelNameMap: Record<string, any> = {
-        'en': {
-            'cybertruck': 'Cybertruck',
-            'model-3': 'Model 3 (Legacy)',
-            'model-3-2024-plus': 'Model 3 (2024+)',
-            'model-y-pre-2025': 'Model Y (Legacy)',
-            'model-y-2025-plus': 'Model Y (New)',
-        },
-        'zh': {
-            'cybertruck': 'Cybertruck',
-            'model-3': 'Model 3 (经典款)',
-            'model-3-2024-plus': 'Model 3 (焕新版)',
-            'model-y-pre-2025': 'Model Y (经典款)',
-            'model-y-2025-plus': 'Model Y (2025+)',
-        }
-    }
-
-    const currentMap = modelNameMap[locale] || modelNameMap['en']
-    const modelDisplay = wrap.model_slug ? (currentMap[wrap.model_slug] || wrap.model_slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')) : (wrap.category === 'official' ? 'Official' : 'Custom')
+    const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name;
+    const modelDisplay = locale === 'en'
+        ? wrap.model_name_en || wrap.model_name || (wrap.category === 'official' ? 'Official' : 'Custom')
+        : wrap.model_name || (wrap.category === 'official' ? '官方作品' : '自定义');
 
     return (
         <Link href={`/wraps/${wrap.slug}`}>

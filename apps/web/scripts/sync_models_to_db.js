@@ -69,8 +69,8 @@ const DEFAULT_MODELS = [
     },
     {
         slug: 'model-y-2025-plus',
-        name: 'Model Y 焕新版',
-        name_en: 'Model Y Juniper',
+        name: 'Model Y 标准版',
+        name_en: 'Model Y (Standard)',
         model_3d_url: 'https://cdn.tewan.club/models/modely-2025-base/body.glb',
         wheel_url: 'https://cdn.tewan.club/models/wheels/induction.glb',
         sort_order: 5,
