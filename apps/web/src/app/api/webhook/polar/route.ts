@@ -1,5 +1,6 @@
 import { Webhooks } from '@polar-sh/nextjs';
 import { createAdminClient } from '@/utils/supabase/admin';
+import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export const POST = Webhooks({
     webhookSecret: process.env.POLAR_WEBHOOK_SECRET!,
@@ -17,18 +18,23 @@ export const POST = Webhooks({
             }
 
             let creditsToAdd = 0;
-            if (checkout.amount) {
-                // Mapping: approx $1 = 20 credits (or use a precise mapping)
-                // $4.99 -> 50 credits (~10/$)
-                // $9.99 -> 125 credits (~12.5/$)
-                // $19.99 -> 350 credits (~17.5/$)
 
-                // Simplified dynamic calculation based on tiers
+            // 1. 优先通过 productId 匹配套餐积分，这可以处理使用 100% 优惠券（金额为0）的情况
+            const matchedTier = PRICING_TIERS.find(t => t.polarProductId === productId);
+            if (matchedTier) {
+                creditsToAdd = matchedTier.credits;
+                console.log(`Webhook: Matched product ${productId} to tier ${matchedTier.id}, adding ${creditsToAdd} credits`);
+            }
+            // 2. 如果 productId 没匹配到，尝试通过金额兜底计算
+            else if (checkout.amount) {
                 const amountUsd = checkout.amount / 100;
-                if (amountUsd >= 19) creditsToAdd = 350;
-                else if (amountUsd >= 9) creditsToAdd = 125;
-                else if (amountUsd >= 4) creditsToAdd = 50;
-                else creditsToAdd = Math.floor(amountUsd * 10); // Fallback
+                // 同步最新的积分档位：700 / 250 / 100
+                if (amountUsd >= 19) creditsToAdd = 700;
+                else if (amountUsd >= 9) creditsToAdd = 250;
+                else if (amountUsd >= 4) creditsToAdd = 100;
+                else creditsToAdd = Math.floor(amountUsd * 20); // 兜底：$1 = 20 credits
+
+                console.log(`Webhook: Falling back to amount calculation for ${amountUsd} USD, adding ${creditsToAdd} credits`);
             }
 
             if (creditsToAdd > 0) {
