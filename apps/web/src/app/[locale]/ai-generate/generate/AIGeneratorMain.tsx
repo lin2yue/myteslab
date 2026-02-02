@@ -719,7 +719,7 @@ export default function AIGeneratorMain({
                                             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight whitespace-nowrap">
                                                 {tGen('reference_images', { count: referenceImages.length })}
                                             </div>
-                                            <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                                            <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar py-1 px-1">
                                                 {referenceImages.length < 3 && (
                                                     <button
                                                         onClick={() => {
@@ -733,26 +733,26 @@ export default function AIGeneratorMain({
                                                             }
                                                             fileInputRef.current?.click()
                                                         }}
-                                                        className="w-9 h-9 flex-shrink-0 border-2 border-dashed border-gray-100 rounded-lg flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-all bg-gray-50/30"
+                                                        className="w-12 h-12 flex-shrink-0 border-2 border-dashed border-gray-100 rounded-lg flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-all bg-gray-50/30"
                                                     >
-                                                        <Plus className="w-4 h-4" />
+                                                        <Plus className="w-5 h-5" />
                                                     </button>
                                                 )}
 
                                                 {referenceImages.map((img, index) => (
-                                                    <div key={index} className="relative w-9 h-9 flex-shrink-0 group">
+                                                    <div key={index} className="relative w-12 h-12 flex-shrink-0 group">
                                                         <Image
                                                             src={img}
                                                             alt="reference"
-                                                            width={36}
-                                                            height={36}
+                                                            width={48}
+                                                            height={48}
                                                             className="w-full h-full object-cover rounded-lg border border-gray-100"
                                                         />
                                                         <button
                                                             onClick={() => removeImage(index)}
-                                                            className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors"
+                                                            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-black text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110 z-10"
                                                         >
-                                                            <X className="w-2 h-2" />
+                                                            <X className="w-2.5 h-2.5" />
                                                         </button>
                                                     </div>
                                                 ))}
