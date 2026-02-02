@@ -155,85 +155,71 @@ export async function generateWrapTexture(
         const MODEL = 'gemini-3-pro-image-preview';
         const currentGeminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-        const maxRetries = 0; // Single long attempt is better than 2 short ones within 60s
-        let lastError: any = null;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
 
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            // Increase timeout to 55s to give AI enough time to finish
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 55000);
-
-            try {
-                const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+        try {
+            const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{ parts }],
+                    generationConfig: {
+                        responseModalities: ['Image'],
+                        imageConfig: {
+                            aspectRatio: maskDimensions.aspectRatio,
+                        }
                     },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: textPrompt }, ...parts.slice(1)] }],
-                        generationConfig: {
-                            responseModalities: ['Image'],
-                            imageConfig: {
-                                aspectRatio: maskDimensions.aspectRatio,
-                            }
-                        },
-                    }),
-                    signal: controller.signal,
-                });
+                }),
+                signal: controller.signal,
+            });
 
-                clearTimeout(timeoutId);
+            clearTimeout(timeoutId);
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    // If it's a 503 or 429, we still throw, but callers can handle it
-                    throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
-                }
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+            }
 
-                const content = await response.json();
-                const usageMetadata = content.usageMetadata;
+            const content = await response.json();
+            const usageMetadata = content.usageMetadata;
 
-                if (content.candidates && content.candidates.length > 0) {
-                    const part = content.candidates[0].content.parts[0];
-                    if (part && part.inlineData) {
-                        const mimeType = part.inlineData.mimeType || 'image/png';
-                        const base64 = part.inlineData.data;
+            if (content.candidates && content.candidates.length > 0) {
+                const part = content.candidates[0].content.parts[0];
+                if (part && part.inlineData) {
+                    const mimeType = part.inlineData.mimeType || 'image/png';
+                    const base64 = part.inlineData.data;
 
-                        return {
-                            success: true,
-                            imageBase64: base64,
-                            dataUrl: `data:${mimeType};base64,${base64}`,
-                            mimeType: mimeType,
-                            usage: usageMetadata,
-                            finalPrompt: textPrompt
-                        };
-                    }
-                }
-
-                const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
-                if (textPart) {
                     return {
-                        success: false,
-                        error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
+                        success: true,
+                        imageBase64: base64,
+                        dataUrl: `data:${mimeType};base64,${base64}`,
+                        mimeType: mimeType,
+                        usage: usageMetadata,
+                        finalPrompt: textPrompt
                     };
                 }
-
-                return { success: false, error: 'No image found in response' };
-
-            } catch (error: any) {
-                clearTimeout(timeoutId);
-                console.error(`[AI-GEN] Gemini API attempt failed:`, error.message);
-
-                if (error.name === 'AbortError') {
-                    lastError = new Error('AI 生成超时 (超过 55s)');
-                } else {
-                    lastError = error;
-                }
-
-                throw lastError;
             }
-        }
 
-        throw lastError || new Error('Generation failed');
+            const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
+            if (textPart) {
+                return {
+                    success: false,
+                    error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
+                };
+            }
+
+            return { success: false, error: 'No image found in response' };
+
+        } catch (error: any) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('AI 生成超时 (超过 45s)');
+            }
+            throw error;
+        }
 
     } catch (error) {
         console.error('Error calling Gemini API:', error);

@@ -175,22 +175,26 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 5. 调用 AI 生成
-        // 记录步骤：准备开始调用 AI
-        console.log(`[AI-GEN] Updating task status to processing for task ${taskId}...`);
+        // 5. 并行准备：开始生图的同时，也开始准备元数据
+        console.log(`[AI-GEN] Starting parallel tasks: Gemini image and bilingual metadata...`);
 
         const logStep = (step: string, status?: string, reason?: string) =>
             logTaskStep(taskId, step, status, reason, supabase);
 
         await logStep('ai_call_start', 'processing');
 
-        const result = await generateWrapTexture({
+        // 同时启动两个 AI 任务
+        const metadataPromise = generateBilingualMetadata(prompt, modelName);
+        const imageGenerationPromise = generateWrapTexture({
             modelSlug,
             modelName,
             prompt,
             maskImageBase64: maskImageBase64 || undefined,
             referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
         });
+
+        // 等待生图结果
+        const result = await imageGenerationPromise;
 
         // 6. 处理结果
         if (!result.success) {
@@ -233,7 +237,6 @@ export async function POST(request: NextRequest) {
                 // 核心逻辑：从 AI 视角(车头向下)转回 3D 视角
                 if (currentModelSlug.includes('cybertruck')) {
                     // Cybertruck: 顺时针旋转 90 度 -> 车头向左 (1024x768)
-                    // 注：AI 输出固定为车头向下 (Heading Down)，顺时针 90 度正好向左
                     savedUrl = `${rawUrl}?x-oss-process=image/rotate,90/resize,w_1024,h_768`;
                 } else {
                     // Model 3/Y: 旋转 180 度 -> 车头向上 (1024x1024)
@@ -259,8 +262,8 @@ export async function POST(request: NextRequest) {
         // 记录步骤：准备保存至作品表
         await logStep('database_save_start');
 
-        // 并行获取双语标题和描述
-        const metadata = await generateBilingualMetadata(prompt, modelName);
+        // 等待并获取元数据结果（元数据任务在后台可能已经跑完了）
+        const metadata = await metadataPromise;
 
         // 插入到统一的作品表 wraps
         const { data: wrapData, error: historyError } = await supabase.from('wraps').insert({
