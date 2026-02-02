@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function CheckoutSuccessPage() {
@@ -24,7 +24,7 @@ export default function CheckoutSuccessPage() {
 
                 <div className="space-y-4">
                     <Link
-                        href="/ai-generate"
+                        href="/ai-generate/generate"
                         className="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
                     >
                         {t('back_to_generator')}
