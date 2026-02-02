@@ -20,8 +20,8 @@ export default function Navbar() {
         <header className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 dark:border-zinc-800">
             <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between gap-4">
-                    {/* Left: Logo */}
-                    <div className="flex items-center gap-8">
+                    {/* Left: Logo & Navigation */}
+                    <div className="flex items-center gap-6 lg:gap-10">
                         <Link href="/" className="flex items-center gap-2 group">
                             <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
                                 <span className="text-white dark:text-black font-black text-xl">T</span>
@@ -30,40 +30,40 @@ export default function Navbar() {
                                 {t('title')}
                             </span>
                         </Link>
-                    </div>
 
-                    {/* Right: Navigation & Actions */}
-                    <div className="flex items-center gap-2 sm:gap-6">
-                        <nav className="hidden md:flex items-center gap-1 bg-gray-100/50 dark:bg-zinc-800/50 p-1 rounded-xl">
+                        <nav className="hidden md:flex items-center gap-6 lg:gap-8 border-l border-gray-100 dark:border-zinc-800 pl-6 lg:pl-10 ml-2">
                             <Link
                                 href="/"
-                                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${!isAiPage && !isPricingPage
-                                    ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                className={`text-base font-bold transition-all ${!isAiPage && !isPricingPage
+                                    ? 'text-gray-950 dark:text-white'
+                                    : 'text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300'
                                     }`}
                             >
                                 {tCommon('nav.gallery')}
                             </Link>
                             <Link
                                 href="/ai-generate/generate"
-                                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${isAiPage
-                                    ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                className={`text-base font-bold transition-all ${isAiPage
+                                    ? 'text-gray-950 dark:text-white'
+                                    : 'text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300'
                                     }`}
                             >
                                 {tCommon('nav.ai_generator')}
                             </Link>
                             <Link
                                 href="/pricing"
-                                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${isPricingPage
-                                    ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                className={`text-base font-bold transition-all ${isPricingPage
+                                    ? 'text-gray-950 dark:text-white'
+                                    : 'text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300'
                                     }`}
                             >
                                 {tCommon('nav.pricing')}
                             </Link>
                         </nav>
+                    </div>
 
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-2 sm:gap-6">
                         {/* Mobile Nav Links (Simple Icon) */}
                         <div className="flex md:hidden items-center gap-2">
                             <Link href="/" className={`p-2 rounded-lg ${!isAiPage && !isPricingPage ? 'text-blue-600 bg-blue-50' : 'text-gray-500'}`}>

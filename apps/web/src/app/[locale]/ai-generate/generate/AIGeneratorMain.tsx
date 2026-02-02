@@ -453,7 +453,7 @@ export default function AIGeneratorMain({
         const files = e.target.files
         if (!files) return
 
-        const maxImages = 5
+        const maxImages = 3
         const remainingSlots = maxImages - referenceImages.length
 
         if (remainingSlots <= 0) {
@@ -514,13 +514,13 @@ export default function AIGeneratorMain({
     }
 
     return (
-        <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-[#F4F4F4] overflow-y-auto lg:overflow-hidden">
+        <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-white overflow-y-auto lg:overflow-hidden">
             {/* Main Content Area */}
-            <div className="flex flex-col lg:flex-row flex-1 overflow-visible lg:overflow-hidden w-full max-w-[1600px] mx-auto">
+            <div className="flex flex-col lg:flex-row flex-1 overflow-visible lg:overflow-hidden w-full mx-auto border-t border-gray-100">
 
                 {/* Left Side: 3D Preview (65%) */}
-                <div className="flex-none lg:flex-[6.5] flex flex-col p-4 lg:p-6 gap-4 lg:gap-6 overflow-hidden">
-                    <div className="h-[50vh] lg:flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
+                <div className="flex-none lg:flex-[6.5] flex flex-col p-0 overflow-hidden bg-gray-50/30">
+                    <div className="h-[50vh] lg:flex-1 relative overflow-hidden">
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
@@ -535,10 +535,10 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    < div className="flex flex-row overflow-x-auto lg:overflow-visible flex-nowrap lg:flex-nowrap gap-1.5 lg:gap-2 pb-2 lg:pb-0" >
+                    <div className="flex flex-row items-center px-6 py-4 border-t border-gray-100 bg-white gap-2 overflow-x-auto" >
                         <button
                             onClick={() => setIsNight(!isNight)}
-                            className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-1.5 flex-shrink"
+                            className="px-4 py-2 bg-gray-50 rounded-lg font-medium hover:bg-gray-100 transition-all flex items-center gap-1.5 flex-shrink-0"
                         >
                             {isNight ? (
                                 <>
@@ -554,7 +554,7 @@ export default function AIGeneratorMain({
                         </button>
                         <button
                             onClick={() => setAutoRotate(!autoRotate)}
-                            className={`px-2.5 py-2 lg:px-4 lg:py-2.5 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-1.5 flex-shrink ${autoRotate ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-700'}`}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-1.5 flex-shrink-0 ${autoRotate ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
                         >
                             {autoRotate ? (
                                 <>
@@ -571,7 +571,7 @@ export default function AIGeneratorMain({
                         <div className="hidden lg:block lg:flex-1" />
                         <button
                             onClick={takeSnapshot}
-                            className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all flex items-center gap-1.5 flex-shrink"
+                            className="px-4 py-2 bg-gray-50 rounded-lg font-medium hover:bg-gray-100 transition-all flex items-center gap-1.5 flex-shrink-0"
                         >
                             <>
                                 <Camera className="w-5 h-5 lg:w-4 lg:h-4" />
@@ -581,7 +581,7 @@ export default function AIGeneratorMain({
                         <button
                             onClick={handleDownload}
                             disabled={!currentTexture}
-                            className="px-2.5 py-2 lg:px-4 lg:py-2.5 bg-white rounded-xl shadow-sm border border-gray-200 font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink"
+                            className="px-4 py-2 bg-gray-50 rounded-lg font-medium hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink-0"
                         >
                             <>
                                 <Download className="w-5 h-5 lg:w-4 lg:h-4" />
@@ -591,7 +591,7 @@ export default function AIGeneratorMain({
                         <button
                             onClick={handlePublish}
                             disabled={isPublishing || isSaving || (activeMode === 'ai' && !activeWrapId) || (activeMode === 'diy' && !currentTexture) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
-                            className={`px-2.5 py-2 lg:px-4 lg:py-2.5 rounded-xl shadow-sm border font-medium transition-all flex items-center gap-1.5 flex-shrink ${isPublishing || isSaving ? 'bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 disabled:opacity-50')}`}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-1.5 flex-shrink-0 ${isPublishing || isSaving ? 'bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'bg-gray-100 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50')}`}
                         >
                             {(isPublishing || isSaving) ? (
                                 <>
@@ -613,22 +613,23 @@ export default function AIGeneratorMain({
                             )}
                         </button>
                     </div >
-                </div >
+                </div>
 
                 {/* Right Side: Controls (30%) */}
-                <div className="flex-none lg:flex-[3.5] flex flex-col p-4 lg:p-6 gap-4 lg:gap-6 overflow-visible lg:overflow-hidden">
+                <div className="flex-none lg:flex-[3.5] flex flex-col border-l border-gray-100 overflow-visible lg:overflow-hidden bg-gray-50/40">
 
                     {/* Mode Switcher Tabs */}
-                    < div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200" >
+                    <div className="flex border-b border-gray-100 bg-white" >
                         <button
                             onClick={() => {
                                 setActiveMode('ai');
                                 setCurrentTexture(null);
                                 setActiveWrapId(null);
                             }}
-                            className={`flex-1 h-12 rounded-xl font-bold transition-all text-sm ${activeMode === 'ai' ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
+                            className={`flex-1 h-12 font-bold transition-all text-base relative ${activeMode === 'ai' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                             {tGen('mode_ai')}
+                            {activeMode === 'ai' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
                         </button>
                         <button
                             onClick={() => {
@@ -636,18 +637,19 @@ export default function AIGeneratorMain({
                                 setCurrentTexture(null);
                                 setActiveWrapId(null);
                             }}
-                            className={`flex-1 h-12 rounded-xl font-bold transition-all text-sm ${activeMode === 'diy' ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
+                            className={`flex-1 h-12 font-bold transition-all text-base relative ${activeMode === 'diy' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                             {tGen('mode_diy')}
+                            {activeMode === 'diy' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
                         </button>
                     </div >
 
                     {/* Conditional Panels */}
-                    < div className="flex-1 overflow-hidden min-h-0" >
+                    <div className="flex-1 min-h-0 flex flex-col">
                         {activeMode === 'ai' ? (
-                            <div className="flex flex-col h-full gap-4">
+                            <div className="flex flex-col h-full">
                                 {/* Model, Credits & Buy Area in One Row - Specific for AI */}
-                                <div className="flex gap-3 items-center order-1 lg:order-2">
+                                <div className="flex gap-3 items-center px-4 py-3 border-b border-gray-100 bg-gray-50/30 order-1">
                                     <div className="flex-[2] relative">
                                         <select
                                             value={selectedModel}
@@ -656,7 +658,7 @@ export default function AIGeneratorMain({
                                                 setCurrentTexture(null)
                                                 setActiveWrapId(null)
                                             }}
-                                            className="w-full h-14 pl-4 pr-10 bg-white border border-gray-200 rounded-xl appearance-none font-medium focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                            className="w-full h-12 pl-4 pr-10 bg-white border border-gray-200 rounded-lg appearance-none font-medium text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
                                         >
                                             {models.map((m: any) => (
                                                 <option key={m.slug} value={m.slug}>
@@ -667,13 +669,13 @@ export default function AIGeneratorMain({
                                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 w-4 h-4" />
                                     </div>
 
-                                    <div className="flex-[3] flex gap-2 h-14 bg-white border border-gray-200 rounded-xl overflow-hidden p-1">
-                                        <div className="flex-1 bg-gray-50 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs px-2 whitespace-nowrap">
+                                    <div className="flex-[3] flex gap-2 h-12 bg-white border border-gray-200 rounded-lg overflow-hidden p-0.5">
+                                        <div className="flex-1 bg-gray-50 rounded flex items-center justify-center font-bold text-gray-700 text-xs px-2 whitespace-nowrap">
                                             {isLoggedInInternal ? tGen('balance', { count: balance }) : tGen('login_to_view')}
                                         </div>
                                         <button
                                             onClick={handleBuyCredits}
-                                            className="bg-blue-600 text-white px-4 rounded-lg font-bold hover:bg-blue-700 transition-all text-sm whitespace-nowrap"
+                                            className="bg-blue-600 text-white px-4 rounded font-bold hover:bg-blue-700 transition-all text-xs whitespace-nowrap"
                                         >
                                             {tGen('buy_short')}
                                         </button>
@@ -681,87 +683,82 @@ export default function AIGeneratorMain({
                                 </div>
 
                                 {/* Input Area */}
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col gap-4 order-2 lg:order-3">
-                                    <textarea
-                                        value={prompt}
-                                        onChange={(e) => setPrompt(e.target.value)}
-                                        placeholder={tGen('prompt_placeholder')}
-                                        className="w-full h-20 resize-none text-gray-800 focus:outline-none text-base"
-                                    />
-
-                                    {/* Reference Images Area */}
-                                    <div className="border-t border-gray-100 pt-3">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs font-bold text-gray-700">
-                                                {tGen('reference_images', { count: referenceImages.length })}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400">
-                                                {tGen('reference_tip')}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-2">
-                                            {referenceImages.map((img, index) => (
-                                                <div key={index} className="relative w-12 h-12 group">
-                                                    <Image
-                                                        src={img}
-                                                        alt="reference"
-                                                        width={48}
-                                                        height={48}
-                                                        className="w-full h-full object-cover rounded-lg border border-gray-100"
-                                                    />
-                                                    <button
-                                                        onClick={() => removeImage(index)}
-                                                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            ))}
-
-                                            {referenceImages.length < 5 && (
-                                                <button
-                                                    onClick={() => {
-                                                        if (!isLoggedInInternal) {
-                                                            const currentUrl = window.location.pathname + window.location.search
-                                                            if (typeof window !== 'undefined') {
-                                                                localStorage.setItem('auth_redirect_next', currentUrl)
-                                                            }
-                                                            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
-                                                            return
-                                                        }
-                                                        fileInputRef.current?.click()
-                                                    }}
-                                                    className="w-12 h-12 border-2 border-dashed border-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-all bg-gray-50/50"
-                                                >
-                                                    <Plus className="w-6 h-6 text-gray-400 group-hover:text-blue-500" />
-                                                    <span className="text-[10px] font-bold mt-1 whitespace-nowrap text-gray-400 group-hover:text-blue-500">{tGen('upload_reference')}</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            className="hidden"
-                                            accept="image/*"
-                                            multiple
-                                            onChange={handleImageUpload}
+                                <div className="p-3 flex flex-col gap-3 order-2 bg-white border-t border-gray-100">
+                                    <div className="bg-white border border-gray-200 rounded-xl p-2.5 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all flex flex-col gap-2">
+                                        <textarea
+                                            value={prompt}
+                                            onChange={(e) => setPrompt(e.target.value)}
+                                            placeholder={tGen('prompt_placeholder')}
+                                            className="w-full h-20 resize-none text-gray-800 focus:outline-none text-sm bg-transparent"
                                         />
+
+                                        {/* Reference Images Area - Nested inside input box */}
+                                        <div className="flex items-center gap-3 border-t border-gray-50 pt-2 pb-0.5">
+                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight whitespace-nowrap">
+                                                {tGen('reference_images', { count: referenceImages.length })}
+                                            </div>
+                                            <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                                                {referenceImages.length < 3 && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!isLoggedInInternal) {
+                                                                const currentUrl = window.location.pathname + window.location.search
+                                                                if (typeof window !== 'undefined') {
+                                                                    localStorage.setItem('auth_redirect_next', currentUrl)
+                                                                }
+                                                                router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+                                                                return
+                                                            }
+                                                            fileInputRef.current?.click()
+                                                        }}
+                                                        className="w-9 h-9 flex-shrink-0 border-2 border-dashed border-gray-100 rounded-lg flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-all bg-gray-50/30"
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                    </button>
+                                                )}
+
+                                                {referenceImages.map((img, index) => (
+                                                    <div key={index} className="relative w-9 h-9 flex-shrink-0 group">
+                                                        <Image
+                                                            src={img}
+                                                            alt="reference"
+                                                            width={36}
+                                                            height={36}
+                                                            className="w-full h-full object-cover rounded-lg border border-gray-100"
+                                                        />
+                                                        <button
+                                                            onClick={() => removeImage(index)}
+                                                            className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors"
+                                                        >
+                                                            <X className="w-2 h-2" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handleImageUpload}
+                                    />
 
                                     <button
                                         onClick={handleGenerate}
                                         disabled={isGenerating || !prompt.trim()}
-                                        className={`w-full h-14 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isGenerating ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-black text-white hover:bg-zinc-800 active:scale-95'}`}
+                                        className={`w-full h-12 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${isGenerating ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-black text-white hover:bg-zinc-800 active:scale-95'}`}
                                     >
                                         {isGenerating ? (
                                             <>
-                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                <Loader2 className="w-4 h-4 animate-spin" />
                                                 {tGen('generating')}
                                             </>
                                         ) : (
                                             <>
-                                                <Sparkles className="w-5 h-5" />
+                                                <Sparkles className="w-4 h-4" />
                                                 {tGen('generate_btn')}
                                             </>
                                         )}
@@ -769,10 +766,10 @@ export default function AIGeneratorMain({
                                 </div>
 
                                 {/* History List */}
-                                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden order-3 lg:order-1 min-h-[400px] lg:min-h-0">
-                                    <div className="p-4 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center">
+                                <div className="flex-1 flex flex-col overflow-hidden order-3 border-b border-gray-100 bg-white">
+                                    <div className="px-4 py-2 bg-gray-50/30 font-bold text-gray-800 flex justify-between items-center text-xs">
                                         {tGen('history')}
-                                        <button onClick={fetchHistory} className="text-xs text-blue-500 font-normal">{tGen('refresh')}</button>
+                                        <button onClick={fetchHistory} className="text-xs text-blue-500 font-normal hover:underline">{tGen('refresh')}</button>
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
                                         {isFetchingHistory && history.length === 0 ? (
@@ -826,9 +823,9 @@ export default function AIGeneratorMain({
                                 </div>
                             </div>
                         ) : (
-                            <div className="h-full flex flex-col gap-4 overflow-hidden">
+                            <div className="h-full flex flex-col gap-4">
                                 {/* Model Select for DIY */}
-                                <div className="relative">
+                                <div className="relative mx-4 mt-4">
                                     <select
                                         value={selectedModel}
                                         onChange={(e) => setSelectedModel(e.target.value)}
@@ -892,7 +889,7 @@ function HistoryItem({
     return (
         <div
             onClick={onClick}
-            className={`flex gap-3 p-3 rounded-xl border transition-all group cursor-pointer ${activeWrapId === item.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/30'}`}
+            className={`flex gap-3 p-3 rounded-lg border transition-all group cursor-pointer ${activeWrapId === item.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-50 hover:border-gray-200 hover:bg-gray-50/50'}`}
         >
             <div
                 className="w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0"

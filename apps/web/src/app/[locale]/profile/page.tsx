@@ -71,7 +71,7 @@ export default async function ProfilePage({
                 </div>
                 {/* User Info & Credits */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div className="bg-white overflow-hidden shadow rounded-lg p-6">
+                    <div className="bg-white overflow-hidden border border-gray-100 rounded-xl p-6">
                         <h2 className="text-lg font-medium text-gray-900 mb-4">{t('user_details')}</h2>
                         <div className="flex items-center">
                             <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-500 mr-4">

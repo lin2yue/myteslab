@@ -36,7 +36,7 @@ export default function CreditHistoryModal({ isOpen, onClose, history }: CreditH
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between p-6">
                     <h3 className="text-xl font-bold text-gray-900">{t('purchase_history')}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">

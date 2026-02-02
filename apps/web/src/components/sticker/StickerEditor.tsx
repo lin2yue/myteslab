@@ -124,8 +124,8 @@ export default function StickerEditor({
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col gap-5">
+        <div className="flex flex-col gap-0">
+            <div className="p-4 flex flex-col gap-5">
                 <div className="relative">
                     {!stickerImage ? (
                         <button
@@ -138,7 +138,7 @@ export default function StickerEditor({
                                 }
                                 fileInputRef.current?.click()
                             }}
-                            className="w-full h-48 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/10 transition-all bg-gray-50/50 group"
+                            className="w-full h-48 border-2 border-dashed border-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/10 transition-all bg-gray-50/30 group"
                         >
                             <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 border border-gray-100 group-hover:scale-110 transition-transform">
                                 <span className="text-3xl text-blue-500">+</span>
@@ -150,7 +150,7 @@ export default function StickerEditor({
                         </button>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            <div className="relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 flex items-center justify-center p-2">
+                            <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden border border-gray-100 flex items-center justify-center p-2">
                                 <img
                                     src={stickerImage}
                                     className="max-w-full max-h-full object-contain shadow-sm"
@@ -167,7 +167,7 @@ export default function StickerEditor({
                                     type="button"
                                     disabled={isSaving}
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all text-sm border border-gray-200 disabled:opacity-50"
+                                    className="flex-1 h-12 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-bold transition-all text-sm border border-gray-100 disabled:opacity-50"
                                 >
                                     更换图片
                                 </button>
@@ -179,7 +179,7 @@ export default function StickerEditor({
                                         setCurrentMergedTexture(null)
                                         onTextureUpdate('')
                                     }}
-                                    className="w-12 h-12 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl flex items-center justify-center transition-all border border-red-100 disabled:opacity-50"
+                                    className="w-12 h-12 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg flex items-center justify-center transition-all border border-red-50 disabled:opacity-50"
                                 >
                                     ✕
                                 </button>
@@ -199,7 +199,7 @@ export default function StickerEditor({
                     <button
                         onClick={handleSave}
                         disabled={!currentMergedTexture || isProcessing || isSaving}
-                        className="w-full h-14 bg-black text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none text-base flex items-center justify-center gap-2"
+                        className="w-full h-12 bg-black text-white rounded-lg font-bold hover:bg-zinc-800 transition-all active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 text-sm flex items-center justify-center gap-2"
                     >
                         {(isProcessing || isSaving) ? (
                             <>

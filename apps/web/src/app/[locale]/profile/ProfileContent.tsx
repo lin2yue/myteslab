@@ -182,27 +182,29 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     };
 
     return (
-        <div className="bg-white shadow rounded-lg overflow-hidden max-w-[1600px] mx-auto">
+        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden max-w-[1600px] mx-auto">
             {/* Tabs */}
-            <div className="border-b border-gray-200">
-                <nav className="-mb-px flex" aria-label="Tabs">
+            <div className="border-b border-gray-100 bg-gray-50/20">
+                <nav className="flex px-6" aria-label="Tabs">
                     <button
                         onClick={() => setActiveTab('creations')}
-                        className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm ${activeTab === 'creations'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        className={`py-4 px-6 text-sm font-bold transition-all relative ${activeTab === 'creations'
+                            ? 'text-gray-950'
+                            : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
                         {t('generated_wraps')}
+                        {activeTab === 'creations' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
                     </button>
                     <button
                         onClick={() => setActiveTab('downloads')}
-                        className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm ${activeTab === 'downloads'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        className={`py-4 px-6 text-sm font-bold transition-all relative ${activeTab === 'downloads'
+                            ? 'text-gray-950'
+                            : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
                         {t('download_history')}
+                        {activeTab === 'downloads' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
                     </button>
                 </nav>
             </div>
@@ -212,74 +214,76 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                 {activeTab === 'creations' && (
                     <div>
                         {wraps && wraps.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                                 {wraps.map((wrap) => (
-                                    <div key={wrap.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                    <div key={wrap.id} className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition-all group/card flex flex-col">
                                         {wrap.slug ? (
                                             <Link href={`/wraps/${wrap.slug}`} className="block">
-                                                <div className="relative aspect-square bg-gray-50 group">
+                                                <div className="relative aspect-square overflow-hidden group">
                                                     {wrap.texture_url ? (
                                                         <ResponsiveOSSImage
                                                             src={wrap.texture_url}
                                                             alt={wrap.name || wrap.prompt || 'Generated Wrap'}
                                                             fill
-                                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                                            className="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
+                                                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                                                            className="object-cover transition-transform duration-700 group-hover:scale-110"
                                                         />
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                                                        <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-400 text-[10px]">
                                                             No Images
                                                         </div>
                                                     )}
                                                     {wrap.is_public && (
-                                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full z-10">
+                                                        <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded z-10 uppercase tracking-wider">
                                                             {t('published')}
                                                         </div>
                                                     )}
                                                 </div>
                                             </Link>
                                         ) : (
-                                            <div className="relative aspect-square bg-gray-50 group cursor-default">
+                                            <div className="relative aspect-square overflow-hidden cursor-default">
                                                 {wrap.texture_url ? (
                                                     <ResponsiveOSSImage
                                                         src={wrap.texture_url}
                                                         alt={wrap.name || wrap.prompt || 'Generated Wrap'}
                                                         fill
-                                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                                        className="object-contain p-2"
+                                                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                                                        className="object-cover"
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                                                    <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-400 text-[10px]">
                                                         No Images
                                                     </div>
                                                 )}
                                                 {wrap.is_public && (
-                                                    <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full z-10">
+                                                    <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded z-10 uppercase tracking-wider">
                                                         {t('published')}
                                                     </div>
                                                 )}
                                             </div>
                                         )}
-                                        <div className="p-4">
-                                            {wrap.slug ? (
-                                                <Link href={`/wraps/${wrap.slug}`} className="block">
-                                                    <p className="text-sm text-gray-900 font-bold line-clamp-2 mb-4 h-10 hover:text-blue-600 transition-colors" title={wrap.name || wrap.prompt || ''}>
+                                        <div className="p-4 flex flex-col flex-1">
+                                            <div className="flex-1">
+                                                {wrap.slug ? (
+                                                    <Link href={`/wraps/${wrap.slug}`} className="block">
+                                                        <p className="text-sm text-gray-900 font-bold line-clamp-1 mb-4 hover:text-blue-600 transition-colors" title={wrap.name || wrap.prompt || ''}>
+                                                            {wrap.name || wrap.prompt || tCommon('untitled')}
+                                                        </p>
+                                                    </Link>
+                                                ) : (
+                                                    <p className="text-sm text-gray-400 font-bold line-clamp-1 mb-4 cursor-default" title={wrap.name || wrap.prompt || ''}>
                                                         {wrap.name || wrap.prompt || tCommon('untitled')}
                                                     </p>
-                                                </Link>
-                                            ) : (
-                                                <p className="text-sm text-gray-900 font-bold line-clamp-2 mb-4 h-10 text-gray-500 cursor-default" title={wrap.name || wrap.prompt || ''}>
-                                                    {wrap.name || wrap.prompt || tCommon('untitled')}
-                                                </p>
-                                            )}
+                                                )}
+                                            </div>
 
                                             <div className="flex justify-between items-center gap-2">
                                                 <button
                                                     onClick={() => handleTogglePublish(wrap)}
                                                     disabled={loadingId === wrap.id}
-                                                    className={`flex-1 text-xs px-3 py-2 rounded border transition-colors ${wrap.is_public
-                                                        ? 'border-yellow-500 text-yellow-600 hover:bg-yellow-50'
-                                                        : 'border-blue-500 text-blue-600 hover:bg-blue-50'
+                                                    className={`flex-1 text-xs font-bold h-9 rounded-lg border transition-all ${wrap.is_public
+                                                        ? 'border-gray-100 text-gray-400 hover:bg-gray-50'
+                                                        : 'border-black bg-black text-white hover:bg-zinc-800'
                                                         }`}
                                                 >
                                                     {loadingId === wrap.id ? '...' : (wrap.is_public ? t('unpublish') : t('publish'))}
@@ -287,9 +291,10 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                 <button
                                                     onClick={() => handleDelete(wrap.id)}
                                                     disabled={loadingId === wrap.id}
-                                                    className="flex-1 text-xs px-3 py-2 rounded border border-red-500 text-red-600 hover:bg-red-50 transition-colors"
+                                                    className="w-9 h-9 flex items-center justify-center rounded-lg border border-red-50 text-red-400 hover:bg-red-50 hover:border-red-100 transition-all text-xs"
+                                                    title={t('delete')}
                                                 >
-                                                    {loadingId === wrap.id ? '...' : t('delete')}
+                                                    {loadingId === wrap.id ? '...' : '✕'}
                                                 </button>
                                             </div>
                                         </div>
@@ -297,7 +302,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-12 text-gray-500">
+                            <div className="text-center py-24 text-gray-400 font-medium text-sm">
                                 {t('no_generated_wraps')}
                             </div>
                         )}
@@ -306,30 +311,29 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
 
                 {/* Downloads Tab */}
                 {activeTab === 'downloads' && (
-                    <div>
+                    <div className="max-w-4xl mx-auto">
                         {downloads && downloads.length > 0 ? (
-                            <ul className="divide-y divide-gray-200">
+                            <ul className="space-y-3">
                                 {downloads.map((item) => (
-                                    <li key={item.id} className="py-4 flex items-center justify-between">
+                                    <li key={item.id} className="p-4 flex items-center justify-between bg-white border border-gray-50 rounded-xl hover:border-gray-200 transition-all">
                                         <div className="flex items-center">
-                                            <div className="h-12 w-12 flex-shrink-0">
+                                            <div className="h-14 w-14 flex-shrink-0 relative bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
                                                 {item.wraps?.preview_url ? (
                                                     <ResponsiveOSSImage
                                                         src={item.wraps.preview_url}
                                                         alt={item.wraps.name}
-                                                        width={48}
-                                                        height={48}
-                                                        className="rounded-lg object-cover shadow-sm"
+                                                        fill
+                                                        className="object-cover"
                                                     />
                                                 ) : (
-                                                    <div className="h-12 w-12 rounded bg-gray-200 flex items-center justify-center">
-                                                        <span className="text-gray-400 text-xs">No Img</span>
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                        <span className="text-[10px] font-bold">NO IMG</span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">{item.wraps?.name || 'Unknown Wrap'}</div>
-                                                <div className="text-sm text-gray-500">{new Date(item.downloaded_at).toLocaleDateString()}</div>
+                                                <div className="text-sm font-bold text-gray-950">{item.wraps?.name || 'Unknown Wrap'}</div>
+                                                <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mt-1">{new Date(item.downloaded_at).toLocaleDateString()}</div>
                                             </div>
                                         </div>
                                         <div>
@@ -348,17 +352,16 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
             </div>
 
             {/* Danger Zone */}
-            <div className="border-t border-gray-100 p-6 bg-red-50/30">
-                <h3 className="text-sm font-bold text-red-600 mb-4">{t('danger_zone')}</h3>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border-t border-gray-100 p-8 bg-gray-50/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div>
-                        <p className="text-sm text-gray-900 font-medium">{t('delete_account')}</p>
-                        <p className="text-xs text-gray-500 mt-1">{t('delete_account_desc')}</p>
+                        <h3 className="text-sm font-bold text-gray-900">{t('danger_zone')}</h3>
+                        <p className="text-xs text-gray-400 mt-1">{t('delete_account_desc')}</p>
                     </div>
                     <button
                         onClick={handleDeleteAccount}
                         disabled={loadingId === 'delete_account'}
-                        className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-md text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                        className="px-6 py-2.5 bg-white border border-red-100 text-red-500 rounded-lg text-xs font-bold hover:bg-red-50 hover:border-red-200 transition-all disabled:opacity-50"
                     >
                         {loadingId === 'delete_account' ? t('deleting_account') : t('delete_account')}
                     </button>

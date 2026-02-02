@@ -20,7 +20,7 @@ export default function CreditsSection({ balance, totalEarned, history, usageHis
     const [isUsageOpen, setIsUsageOpen] = useState(false);
 
     return (
-        <div className="bg-white overflow-hidden shadow rounded-lg p-6 flex flex-col h-full relative group">
+        <div className="bg-white overflow-hidden border border-gray-100 rounded-xl p-6 flex flex-col h-full relative group">
             <h2 className="text-lg font-medium text-gray-900 mb-4">{t('credits')}</h2>
 
             <div className="flex-1 flex flex-col justify-center">
@@ -33,7 +33,7 @@ export default function CreditsSection({ balance, totalEarned, history, usageHis
                     </div>
                     <button
                         onClick={() => setIsPricingOpen(true)}
-                        className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95 whitespace-nowrap"
+                        className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 whitespace-nowrap"
                     >
                         {t('buy_more')}
                     </button>

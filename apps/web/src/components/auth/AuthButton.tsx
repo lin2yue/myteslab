@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PricingModal from '@/components/pricing/PricingModal';
+import { Star } from 'lucide-react';
 
 export default function AuthButton() {
     const t = useTranslations('Login');
@@ -116,8 +117,9 @@ export default function AuthButton() {
             {balance !== null && (
                 <button
                     onClick={() => setIsPricingOpen(true)}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/10 rounded-full border border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-800/20 transition-all hover:scale-105 active:scale-95"
                 >
+                    <Star className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 fill-blue-500 dark:fill-blue-400" />
                     <span className="text-sm font-black text-blue-600 dark:text-blue-400">{balance}</span>
                     <span className="text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-tight">{tProfile('credits')}</span>
                 </button>
@@ -127,7 +129,7 @@ export default function AuthButton() {
                 onClick={toggleMenu}
                 className="flex items-center focus:outline-none group"
             >
-                <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-100 dark:border-zinc-800 group-hover:border-blue-400 transition-all shadow-sm">
+                <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-100 dark:border-zinc-800 group-hover:border-blue-400 transition-all">
                     <Image
                         src={avatarUrl || defaultAvatar}
                         alt="User Avatar"
