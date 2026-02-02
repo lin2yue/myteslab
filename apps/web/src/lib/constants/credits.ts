@@ -57,7 +57,7 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
         nameKey: 'starter',
         price: '4.99',
         credits: 100,
-        polarProductId: 'aff7eae1-e21c-42b6-9098-edcf80fff75d',
+        polarProductId: 'c81b1659-cb09-4b8f-b61a-ba642c13e7eb',
     },
     {
         id: 'explorer',
@@ -66,7 +66,7 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
         credits: 250,
         popular: true,
         savings: '20',
-        polarProductId: 'a63dc1a2-c791-408f-ad8c-e13969440c82',
+        polarProductId: '3298ccba-c233-4090-a3bd-6074b3c29446',
     },
     {
         id: 'collector',
@@ -74,7 +74,7 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
         price: '19.99',
         credits: 700,
         savings: '40',
-        polarProductId: 'a144ca39-fa0d-4337-bcd8-b5aa2c6508c3',
+        polarProductId: '031f91c3-629b-45ef-a986-8953e7a92646',
     }
 ];
 
