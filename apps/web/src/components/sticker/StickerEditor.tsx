@@ -74,16 +74,17 @@ export default function StickerEditor({
             ctx.translate(designWidth / 2, designHeight / 2);
 
             if (isCybertruck) {
-                // Cybertruck: 顺时针旋转 270 度 (或逆时针 90 度) -> 车头向左 (1024x768)
-                // 注：用户上传的贴纸通常车头向上 (Heading Up)，逆时针 90 度正好向左
+                // Cybertruck: 逆时针旋转 90 度 (Head Left)
+                // 用户上传的贴纸通常车头向上 (Heading Up)，旋转后满足正式环境要求
                 ctx.rotate(-90 * Math.PI / 180);
                 const scale = Math.max(designHeight / stickerImg.width, designWidth / stickerImg.height)
                 const w = stickerImg.width * scale
                 const h = stickerImg.height * scale
                 ctx.drawImage(stickerImg, -w / 2, -h / 2, w, h)
             } else {
-                ctx.rotate(180 * Math.PI / 180);
-                // Heading down -> 180 deg -> Heading UP. Correct!
+                // 其他车型 (Model 3/Y): 车头向上 (Heading Up, 0 deg)
+                // 用户上传图片如果已经是车头向上，则无需额外旋转
+                ctx.rotate(0);
                 const scale = Math.max(designWidth / stickerImg.width, designHeight / stickerImg.height)
                 const w = stickerImg.width * scale
                 const h = stickerImg.height * scale
