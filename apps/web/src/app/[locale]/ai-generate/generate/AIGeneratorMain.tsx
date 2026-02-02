@@ -441,7 +441,7 @@ export default function AIGeneratorMain({
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const processFiles = async (files: FileList | File[]) => {
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
             if (typeof window !== 'undefined') {
@@ -450,8 +450,6 @@ export default function AIGeneratorMain({
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }
-        const files = e.target.files
-        if (!files) return
 
         const maxImages = 3
         const remainingSlots = maxImages - referenceImages.length
@@ -461,7 +459,8 @@ export default function AIGeneratorMain({
             return;
         }
 
-        const filesToProcess = Array.from(files).slice(0, remainingSlots)
+        const filesToProcess = Array.from(files).filter(file => file.type.startsWith('image/')).slice(0, remainingSlots)
+        if (filesToProcess.length === 0) return
 
         try {
             // Dynamically import utility to avoid server-side issues
@@ -476,9 +475,31 @@ export default function AIGeneratorMain({
             console.error('Image processing failed:', err);
             alert.error('图片处理失败，请重试');
         }
+    }
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return
+        await processFiles(e.target.files)
         // Reset input
         if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+
+    const handlePaste = async (e: React.ClipboardEvent) => {
+        const items = e.clipboardData?.items
+        if (!items) return
+
+        const files: File[] = []
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile()
+                if (file) files.push(file)
+            }
+        }
+
+        if (files.length > 0) {
+            e.preventDefault() // 防止图片数据作为文本插入（虽然通常不会，但防止意外触发）
+            await processFiles(files)
+        }
     }
 
     const removeImage = (index: number) => {
@@ -688,6 +709,7 @@ export default function AIGeneratorMain({
                                         <textarea
                                             value={prompt}
                                             onChange={(e) => setPrompt(e.target.value)}
+                                            onPaste={handlePaste}
                                             placeholder={tGen('prompt_placeholder')}
                                             className="w-full h-20 resize-none text-gray-800 focus:outline-none text-sm bg-transparent"
                                         />
