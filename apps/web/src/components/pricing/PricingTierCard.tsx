@@ -1,7 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type PricingTier } from '@/lib/constants/credits';
@@ -13,6 +13,7 @@ interface PricingTierCardProps {
 
 export default function PricingTierCard({ tier }: PricingTierCardProps) {
     const t = useTranslations('Pricing');
+    const locale = useLocale();
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
@@ -22,7 +23,10 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             const response = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId: tier.polarProductId }),
+                body: JSON.stringify({
+                    productId: tier.polarProductId,
+                    locale: locale
+                }),
             });
 
             const data = await response.json();

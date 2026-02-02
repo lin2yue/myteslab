@@ -11,11 +11,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { productId } = await request.json();
+        const { productId, locale } = await request.json();
 
         if (!productId) {
             return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
         }
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const localePrefix = locale ? `/${locale}` : '';
 
         // Create a checkout session
         // We pass the user's ID in customerMetadata to identify them in the webhook
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
                 supabase_user_id: user.id,
             },
             // You can also add success/failure URLs here
-            successUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_ID}`,
+            successUrl: `${appUrl}${localePrefix}/checkout/success?session_id={CHECKOUT_ID}`,
         });
 
         return NextResponse.json({ url: result.url });
