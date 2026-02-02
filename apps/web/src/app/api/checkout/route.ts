@@ -24,10 +24,6 @@ export async function POST(request: Request) {
         // We pass the user's ID in customerMetadata to identify them in the webhook
         const result = await polar.checkouts.create({
             products: [productId],
-            customerMetadata: {
-                supabase_user_id: user.id,
-            },
-            // @ts-ignore - some versions of SDK use metadata
             metadata: {
                 supabase_user_id: user.id,
             },

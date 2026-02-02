@@ -38,9 +38,10 @@ export async function POST(request: Request) {
                     const status = data.status;
 
                     if (status === 'succeeded' || status === 'paid' || type === 'order.created') {
-                        const metadata = data.customer_metadata || data.metadata || {};
+                        // Polar SDK transforms snake_case to camelCase in the Webhooks() wrapper
+                        const metadata = data.metadata || data.customerMetadata || {};
                         const userId = metadata.supabase_user_id;
-                        const productId = data.product_id;
+                        const productId = data.productId || data.product_id;
 
                         if (!userId) {
                             console.error('[Polar-Webhook] ❌ User ID missing. Metadata received:', JSON.stringify(metadata));
