@@ -275,6 +275,7 @@ export async function POST(request: NextRequest) {
             is_public: false,
             category: WRAP_CATEGORY.AI_GENERATED,
             reference_images: savedReferenceUrls,
+            generation_task_id: taskId,
             slug: crypto.randomBytes(6).toString('hex')
         }).select('id, slug').single();
 

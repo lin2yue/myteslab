@@ -4,30 +4,24 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import PricingModal from '@/components/pricing/PricingModal';
 import CreditHistoryModal from './CreditHistoryModal';
-import { History } from 'lucide-react';
+import UsageHistoryModal from './UsageHistoryModal';
 
 interface CreditsSectionProps {
     balance: number;
     totalEarned: number;
     history: any[];
+    usageHistory: any[];
 }
 
-export default function CreditsSection({ balance, totalEarned, history }: CreditsSectionProps) {
+export default function CreditsSection({ balance, totalEarned, history, usageHistory }: CreditsSectionProps) {
     const t = useTranslations('Profile');
     const [isPricingOpen, setIsPricingOpen] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isUsageOpen, setIsUsageOpen] = useState(false);
 
     return (
         <div className="bg-white overflow-hidden shadow rounded-lg p-6 flex flex-col h-full relative group">
             <h2 className="text-lg font-medium text-gray-900 mb-4">{t('credits')}</h2>
-
-            <button
-                onClick={() => setIsHistoryOpen(true)}
-                className="absolute top-6 right-6 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                title={t('purchase_history')}
-            >
-                <History className="w-5 h-5" />
-            </button>
 
             <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-4">
@@ -44,16 +38,24 @@ export default function CreditsSection({ balance, totalEarned, history }: Credit
                         {t('buy_more')}
                     </button>
                 </div>
-                <div className="flex items-center justify-between mt-4 border-t border-gray-50 pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 border-t border-gray-50 pt-4 gap-2">
                     <p className="text-sm text-gray-500">
                         {t('total_earned')}: <span className="font-bold text-gray-700">{totalEarned}</span>
                     </p>
-                    <button
-                        onClick={() => setIsHistoryOpen(true)}
-                        className="text-xs text-blue-600 font-bold hover:underline"
-                    >
-                        {t('purchase_history')} →
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setIsHistoryOpen(true)}
+                            className="text-xs text-blue-600 font-bold hover:underline"
+                        >
+                            {t('purchase_history')} →
+                        </button>
+                        <button
+                            onClick={() => setIsUsageOpen(true)}
+                            className="text-xs text-gray-500 font-bold hover:underline"
+                        >
+                            {t('usage_history')} →
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -66,6 +68,12 @@ export default function CreditsSection({ balance, totalEarned, history }: Credit
                 isOpen={isHistoryOpen}
                 onClose={() => setIsHistoryOpen(false)}
                 history={history}
+            />
+
+            <UsageHistoryModal
+                isOpen={isUsageOpen}
+                onClose={() => setIsUsageOpen(false)}
+                history={usageHistory}
             />
         </div>
     );
