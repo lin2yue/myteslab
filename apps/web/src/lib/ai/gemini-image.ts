@@ -155,12 +155,13 @@ export async function generateWrapTexture(
         const MODEL = 'gemini-3-pro-image-preview';
         const currentGeminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-        const maxRetries = 2;
+        const maxRetries = 1; // Reduced to 1 to stay within Vercel's 60s limit
         let lastError: any = null;
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            // Use 25s timeout per attempt so that 2 attempts + delay < 60s
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
 
             try {
                 if (attempt > 0) {
@@ -238,7 +239,7 @@ export async function generateWrapTexture(
                 console.error(`[AI-GEN] [Error] Gemini API attempt ${attempt + 1} failed:`, error.message);
 
                 if (error.name === 'AbortError') {
-                    lastError = new Error('AI 生成超时 (超过 60 秒)');
+                    lastError = new Error('AI 生成单次请求超时 (25s)');
                 } else {
                     lastError = error;
                 }
