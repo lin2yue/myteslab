@@ -70,26 +70,15 @@ export default function StickerEditor({
             // Based on user feedback:
             // Cybertruck -> 90deg CW (Official is Heading Left)
             // Model 3/Y -> 180deg (Official is Heading Up)
+            // 4. Center and draw image without rotation (Matching 3D UV format)
             ctx.save();
             ctx.translate(designWidth / 2, designHeight / 2);
 
-            if (isCybertruck) {
-                // Cybertruck: 用户上传图默认车头向左 (Heading Left)，与 3D UV 匹配
-                // 无需旋转，直接绘制到 1024x768 画布
-                ctx.rotate(0);
-                const scale = Math.max(designWidth / stickerImg.width, designHeight / stickerImg.height)
-                const w = stickerImg.width * scale
-                const h = stickerImg.height * scale
-                ctx.drawImage(stickerImg, -w / 2, -h / 2, w, h)
-            } else {
-                // 其他车型 (Model 3/Y): 用户上传图默认车头向上 (Heading Up)，与 3D UV 匹配
-                // 无需旋转，直接绘制到 1024x1024 画布
-                ctx.rotate(0);
-                const scale = Math.max(designWidth / stickerImg.width, designHeight / stickerImg.height)
-                const w = stickerImg.width * scale
-                const h = stickerImg.height * scale
-                ctx.drawImage(stickerImg, -w / 2, -h / 2, w, h)
-            }
+            const scale = Math.max(designWidth / stickerImg.width, designHeight / stickerImg.height)
+            const w = stickerImg.width * scale
+            const h = stickerImg.height * scale
+
+            ctx.drawImage(stickerImg, -w / 2, -h / 2, w, h)
             ctx.restore();
 
             const finalDataUrl = canvas.toDataURL('image/png')
