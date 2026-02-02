@@ -27,14 +27,14 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     const t = await getTranslations({ locale, namespace: 'Pricing' });
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-blue-950">
+        <div className="min-h-screen bg-white dark:bg-zinc-950">
             {/* Hero Section */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
                 <div className="text-center">
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-6">
+                    <h1 className="text-4xl sm:text-5xl lg:text-5xl font-bold text-zinc-900 dark:text-white mb-6 tracking-tight">
                         {t('title')}
                     </h1>
-                    <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-xl mx-auto leading-relaxed font-medium">
                         {t('subtitle')}
                     </p>
                 </div>
@@ -57,57 +57,57 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             </div>
 
             {/* What You Get Section */}
-            <div className="bg-white dark:bg-zinc-900 border-y border-gray-200 dark:border-zinc-800">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                    <h2 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white text-center mb-16">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 border-y border-zinc-100 dark:border-zinc-800/50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+                    <h2 className="text-3xl font-bold text-zinc-900 dark:text-white text-center mb-20 tracking-tight">
                         {t('features_title')}
                     </h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <div className="text-center">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white mb-6 shadow-lg">
-                                <Sparkles className="w-8 h-8" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+                        <div className="text-center group">
+                            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 mb-8 shadow-xl transition-transform group-hover:-translate-y-1 duration-300">
+                                <Sparkles className="w-6 h-6" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
                                 {t('feature_1_title')}
                             </h3>
-                            <p className="text-gray-600 dark:text-zinc-400 text-sm leading-relaxed">
+                            <p className="text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed">
                                 {t('feature_1_desc')}
                             </p>
                         </div>
 
-                        <div className="text-center">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 text-white mb-6 shadow-lg">
-                                <Download className="w-8 h-8" />
+                        <div className="text-center group">
+                            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 mb-8 shadow-xl transition-transform group-hover:-translate-y-1 duration-300">
+                                <Download className="w-6 h-6" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
                                 {t('feature_2_title')}
                             </h3>
-                            <p className="text-gray-600 dark:text-zinc-400 text-sm leading-relaxed">
+                            <p className="text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed">
                                 {t('feature_2_desc')}
                             </p>
                         </div>
 
-                        <div className="text-center">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white mb-6 shadow-lg">
-                                <Eye className="w-8 h-8" />
+                        <div className="text-center group">
+                            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 mb-8 shadow-xl transition-transform group-hover:-translate-y-1 duration-300">
+                                <Eye className="w-6 h-6" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
                                 {t('feature_3_title')}
                             </h3>
-                            <p className="text-gray-600 dark:text-zinc-400 text-sm leading-relaxed">
+                            <p className="text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed">
                                 {t('feature_3_desc')}
                             </p>
                         </div>
 
-                        <div className="text-center">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white mb-6 shadow-lg">
-                                <Share2 className="w-8 h-8" />
+                        <div className="text-center group">
+                            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 mb-8 shadow-xl transition-transform group-hover:-translate-y-1 duration-300">
+                                <Share2 className="w-6 h-6" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
                                 {t('feature_4_title')}
                             </h3>
-                            <p className="text-gray-600 dark:text-zinc-400 text-sm leading-relaxed">
+                            <p className="text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed">
                                 {t('feature_4_desc')}
                             </p>
                         </div>
@@ -116,21 +116,21 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             </div>
 
             {/* FAQ Section */}
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                <h2 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white text-center mb-16">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white text-center mb-20 tracking-tight">
                     {t('faq_title')}
                 </h2>
 
-                <div className="space-y-6">
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {[1, 2, 3, 4].map((i) => (
                         <div
                             key={i}
-                            className="bg-white dark:bg-zinc-900 rounded-2xl p-8 border border-gray-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow"
+                            className="py-10 first:pt-0 last:pb-0"
                         >
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                            <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
                                 {t(`faq_${i}_q`)}
                             </h3>
-                            <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
+                            <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed text-[13px] font-medium max-w-2xl">
                                 {t(`faq_${i}_a`)}
                             </p>
                         </div>
