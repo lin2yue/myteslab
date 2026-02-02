@@ -20,8 +20,8 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import crypto from 'crypto';
 
-// Allow longer execution time for AI generation (Vercel Pro: 60s, Hobby: 10s capped)
-export const maxDuration = 60;
+// Allow longer execution time for AI generation (Vercel Pro: 300s, Hobby: 60s max)
+export const maxDuration = 300;
 
 // Model slug to display name mapping
 const MODEL_NAMES: Record<string, string> = {

@@ -155,21 +155,15 @@ export async function generateWrapTexture(
         const MODEL = 'gemini-3-pro-image-preview';
         const currentGeminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-        const maxRetries = 1; // Reduced to 1 to stay within Vercel's 60s limit
+        const maxRetries = 0; // Single long attempt is better than 2 short ones within 60s
         let lastError: any = null;
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            // Use 25s timeout per attempt so that 2 attempts + delay < 60s
+            // Increase timeout to 55s to give AI enough time to finish
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 25000);
+            const timeoutId = setTimeout(() => controller.abort(), 55000);
 
             try {
-                if (attempt > 0) {
-                    const delay = Math.pow(2, attempt) * 1000;
-                    console.warn(`[AI-GEN] [Retry] Attempt ${attempt + 1}/${maxRetries + 1} for Gemini API after ${delay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-
                 const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
                     method: 'POST',
                     headers: {
@@ -189,18 +183,9 @@ export async function generateWrapTexture(
 
                 clearTimeout(timeoutId);
 
-                // Handle server errors that are worth retrying (503, 429)
-                if (response.status === 503 || response.status === 429 || response.status === 500) {
-                    const errorText = await response.text();
-                    console.warn(`[AI-GEN] [Retryable-Error] Gemini API returned ${response.status}: ${errorText}`);
-                    if (attempt < maxRetries) {
-                        lastError = new Error(`Gemini API Error (${response.status}): ${errorText}`);
-                        continue; // Retry
-                    }
-                }
-
                 if (!response.ok) {
                     const errorText = await response.text();
+                    // If it's a 503 or 429, we still throw, but callers can handle it
                     throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
                 }
 
@@ -236,21 +221,19 @@ export async function generateWrapTexture(
 
             } catch (error: any) {
                 clearTimeout(timeoutId);
-                console.error(`[AI-GEN] [Error] Gemini API attempt ${attempt + 1} failed:`, error.message);
+                console.error(`[AI-GEN] Gemini API attempt failed:`, error.message);
 
                 if (error.name === 'AbortError') {
-                    lastError = new Error('AI 生成单次请求超时 (25s)');
+                    lastError = new Error('AI 生成超时 (超过 55s)');
                 } else {
                     lastError = error;
                 }
 
-                if (attempt === maxRetries) {
-                    throw lastError;
-                }
+                throw lastError;
             }
         }
 
-        throw lastError || new Error('All retry attempts failed');
+        throw lastError || new Error('Generation failed');
 
     } catch (error) {
         console.error('Error calling Gemini API:', error);
