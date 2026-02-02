@@ -27,6 +27,10 @@ export async function POST(request: Request) {
             customerMetadata: {
                 supabase_user_id: user.id,
             },
+            // @ts-ignore - some versions of SDK use metadata
+            metadata: {
+                supabase_user_id: user.id,
+            },
             // You can also add success/failure URLs here
             successUrl: `${appUrl}${localePrefix}/checkout/success?session_id={CHECKOUT_ID}`,
         });
