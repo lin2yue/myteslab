@@ -43,12 +43,12 @@ export async function POST(request: Request) {
                         const productId = data.product_id;
 
                         if (!userId) {
-                            console.error('[Polar-Webhook] ❌ User ID missing');
+                            console.error('[Polar-Webhook] ❌ User ID missing. Metadata received:', JSON.stringify(metadata));
                             await adminClient.from('webhook_logs').insert({
                                 event_type: type,
                                 payload: event,
                                 status: 'error',
-                                error_msg: 'User ID missing in metadata'
+                                error_msg: `User ID missing. Metadata: ${JSON.stringify(metadata)}`
                             });
                             return;
                         }
