@@ -705,21 +705,21 @@ export default function AIGeneratorMain({
 
                                 {/* Input Area */}
                                 <div className="p-3 flex flex-col gap-3 order-2 bg-white border-t border-gray-100">
-                                    <div className="bg-white border border-gray-200 rounded-xl p-2.5 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all flex flex-col gap-2">
+                                    <div className="bg-white border border-gray-200 rounded-xl pt-4 px-4 pb-1 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all flex flex-col gap-4">
                                         <textarea
                                             value={prompt}
                                             onChange={(e) => setPrompt(e.target.value)}
                                             onPaste={handlePaste}
                                             placeholder={tGen('prompt_placeholder')}
-                                            className="w-full h-20 resize-none text-gray-800 focus:outline-none text-sm bg-transparent"
+                                            className="w-full h-20 resize-none text-gray-800 focus:outline-none text-sm bg-transparent px-0.5"
                                         />
 
                                         {/* Reference Images Area - Nested inside input box */}
-                                        <div className="flex items-center gap-3 border-t border-gray-50 pt-2 pb-0.5">
+                                        <div className="flex items-center gap-3 border-t border-gray-50 pt-3">
                                             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight whitespace-nowrap">
                                                 {tGen('reference_images', { count: referenceImages.length })}
                                             </div>
-                                            <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar py-1 px-1">
+                                            <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar p-2">
                                                 {referenceImages.length < 3 && (
                                                     <button
                                                         onClick={() => {
