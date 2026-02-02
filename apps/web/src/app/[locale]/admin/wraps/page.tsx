@@ -53,20 +53,41 @@ export default function AdminWrapsPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'hidden'>('all');
     const [publicFilter, setPublicFilter] = useState<'all' | 'public' | 'private'>('all');
     const [page, setPage] = useState(1);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 12;
+
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setPage(1); // Reset to page 1 on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const fetchWraps = async () => {
         setLoading(true);
         let query = supabase
             .from('wraps')
             .select(`
-                *,
+                id,
+                name,
+                model_slug,
+                category,
+                preview_url,
+                is_active,
+                is_public,
+                created_at,
                 profiles (
                     display_name,
                     email
                 )
-            `, { count: 'exact' })
+            `)
             .order('created_at', { ascending: false });
+
+        if (debouncedSearch) {
+            query = query.or(`name.ilike.%${debouncedSearch}%,model_slug.ilike.%${debouncedSearch}%`);
+        }
 
         if (categoryFilter !== 'all') {
             query = query.eq('category', categoryFilter);
@@ -90,35 +111,44 @@ export default function AdminWrapsPage() {
         if (error) {
             alert.error(error.message);
         } else {
-            setWraps(data || []);
+            // Fix: handle possible array return for single relationship if types mismatch
+            const formattedData = (data as any[]).map(w => ({
+                ...w,
+                profiles: Array.isArray(w.profiles) ? w.profiles[0] : w.profiles
+            }));
+            setWraps(formattedData);
         }
         setLoading(false);
     };
 
     useEffect(() => {
         fetchWraps();
-    }, [page, categoryFilter, statusFilter, publicFilter]);
+    }, [page, categoryFilter, statusFilter, publicFilter, debouncedSearch]);
 
     const toggleStatus = async (wrapId: string, currentStatus: boolean) => {
+        const newStatus = !currentStatus;
+
+        // 1. Optimistically update local state
+        setWraps(current => current.map(w => w.id === wrapId ? { ...w, is_active: newStatus } : w));
+
         const { error } = await supabase
             .from('wraps')
-            .update({ is_active: !currentStatus })
+            .update({ is_active: newStatus })
             .eq('id', wrapId);
 
         if (error) {
+            // 2. Revert on error
+            setWraps(current => current.map(w => w.id === wrapId ? { ...w, is_active: currentStatus } : w));
             alert.error(t('update_failed'));
         } else {
-            await revalidateWraps();
+            // 3. Revalidate in background
             alert.success(t('update_success'));
-            setWraps(wraps.map(w => w.id === wrapId ? { ...w, is_active: !currentStatus } : w));
+            revalidateWraps();
         }
     };
 
-    const filteredWraps = wraps.filter(wrap =>
-        wrap.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (wrap.profiles?.display_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (wrap.model_slug?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-    );
+    // Search is now handled server-side
+    const filteredWraps = wraps;
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto pb-12">
