@@ -20,6 +20,7 @@ interface WrapRecord {
 interface ModelConfig {
     slug: string
     model_3d_url: string
+    wheel_url?: string
 }
 
 export default function BatchRefreshPage() {
@@ -61,7 +62,7 @@ export default function BatchRefreshPage() {
             setLoading(true)
             try {
                 // 1. Fetch Models mapping
-                const { data: modelsData } = await supabase.from('wrap_models').select('slug, model_3d_url')
+                const { data: modelsData } = await supabase.from('wrap_models').select('slug, model_3d_url, wheel_url')
                 setModels(modelsData || [])
 
                 // 2. Fetch All Wraps (not just current user's)
@@ -223,6 +224,10 @@ export default function BatchRefreshPage() {
         return models.find(m => m.slug === slug)?.model_3d_url || ''
     }
 
+    const getModelWheelUrl = (slug: string) => {
+        return models.find(m => m.slug === slug)?.wheel_url || ''
+    }
+
     return (
         <div className="flex flex-col h-screen bg-gray-50 p-8 overflow-hidden">
             {/* Image Zoom Modal */}
@@ -304,6 +309,7 @@ export default function BatchRefreshPage() {
                             <ModelViewer
                                 ref={viewerRef}
                                 modelUrl={`/api/proxy?url=${encodeURIComponent(getModelUrl(activeWrap.model_slug))}`}
+                                wheelUrl={getModelWheelUrl(activeWrap.model_slug) ? `/api/proxy?url=${encodeURIComponent(getModelWheelUrl(activeWrap.model_slug))}` : undefined}
                                 textureUrl={`/api/proxy?url=${encodeURIComponent(activeWrap.texture_url)}`}
                                 modelSlug={activeWrap.model_slug}
                                 backgroundColor="#1F1F1F"
