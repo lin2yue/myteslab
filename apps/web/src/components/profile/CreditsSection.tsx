@@ -45,15 +45,15 @@ export default function CreditsSection({ balance, totalEarned, history, usageHis
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsHistoryOpen(true)}
-                            className="text-xs text-blue-600 font-bold hover:underline"
+                            className="text-xs text-blue-600 font-bold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
                         >
-                            {t('purchase_history')} →
+                            {t('purchase_history')}
                         </button>
                         <button
                             onClick={() => setIsUsageOpen(true)}
-                            className="text-xs text-gray-500 font-bold hover:underline"
+                            className="text-xs text-gray-500 font-bold hover:bg-gray-50 px-2 py-1 rounded transition-colors"
                         >
-                            {t('usage_history')} →
+                            {t('usage_history')}
                         </button>
                     </div>
                 </div>

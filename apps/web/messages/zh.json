@@ -108,7 +108,11 @@
         "delete_account_confirm": "确定要注销您的账户吗？",
         "delete_account_desc": "注销操作不可撤销，您所有的生成记录、积分和个人数据都将被永久删除。",
         "delete_account_success": "账户已成功注销。",
-        "deleting_account": "正在处理注销..."
+        "deleting_account": "正在处理注销...",
+        "my_profile": "个人中心",
+        "admin_dashboard": "管理后台",
+        "sign_out": "退出登录",
+        "success": "成功"
     },
     "Generator": {
         "title": "AI 创作中心",

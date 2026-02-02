@@ -20,12 +20,13 @@ interface CreditHistoryModalProps {
 
 export default function CreditHistoryModal({ isOpen, onClose, history }: CreditHistoryModalProps) {
     const t = useTranslations('Profile');
+    const tPricing = useTranslations('Pricing');
 
     if (!isOpen) return null;
 
     const getSkuName = (productId: string) => {
         const tier = PRICING_TIERS.find(t => t.polarProductId === productId);
-        return tier ? t(`../Pricing.tiers.${tier.id}`) : t('credits');
+        return tier ? tPricing(`tiers.${tier.id}`) : t('credits');
     };
 
     return (
@@ -47,20 +48,25 @@ export default function CreditHistoryModal({ isOpen, onClose, history }: CreditH
                     {history.length > 0 ? (
                         <div className="space-y-4">
                             {history.map((tx) => (
-                                <div key={tx.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                <div key={tx.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800/50 rounded-2xl border border-gray-100 dark:border-zinc-800 hover:border-blue-200 transition-colors group">
                                     <div className="flex-1">
-                                        <p className="font-bold text-gray-900 leading-tight">
-                                            {getSkuName(tx.metadata?.polar_product_id)}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-bold text-gray-900 dark:text-white leading-tight">
+                                                {getSkuName(tx.metadata?.polar_product_id)}
+                                            </p>
+                                            <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-md font-bold border border-blue-100 dark:border-blue-800/50">
+                                                {t('success')}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-1.5">
                                             {new Date(tx.created_at).toLocaleString()}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-lg font-black text-blue-600">
+                                        <p className="text-xl font-black text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform origin-right">
                                             +{tx.amount}
                                         </p>
-                                        <p className="text-[10px] text-gray-400 uppercase tracking-tighter">
+                                        <p className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">
                                             {t('history_amount')}
                                         </p>
                                     </div>

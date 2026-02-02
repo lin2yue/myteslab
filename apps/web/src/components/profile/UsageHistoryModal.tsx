@@ -45,14 +45,14 @@ export default function UsageHistoryModal({ isOpen, onClose, history }: UsageHis
                     {history.length > 0 ? (
                         <div className="space-y-4">
                             {history.map((record) => (
-                                <div key={record.id} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 relative border border-gray-200">
+                                <div key={record.id} className="flex gap-4 p-4 bg-gray-50 dark:bg-zinc-800/50 rounded-2xl border border-gray-100 dark:border-zinc-800 hover:border-blue-200 transition-colors group">
+                                    <div className="w-16 h-16 rounded-xl bg-gray-200 dark:bg-zinc-800 overflow-hidden flex-shrink-0 relative border border-gray-100 dark:border-zinc-700 shadow-sm">
                                         {record.wraps?.preview_url ? (
                                             <ResponsiveOSSImage
                                                 src={record.wraps.preview_url}
                                                 alt="Preview"
                                                 fill
-                                                className="object-contain p-1"
+                                                className="object-contain p-1 group-hover:scale-110 transition-transform duration-500"
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -61,14 +61,14 @@ export default function UsageHistoryModal({ isOpen, onClose, history }: UsageHis
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug">
                                             {record.wraps?.prompt || record.description}
                                         </p>
-                                        <div className="flex items-center justify-between mt-2">
-                                            <p className="text-[10px] text-gray-500">
+                                        <div className="flex items-center justify-between mt-2.5">
+                                            <p className="text-[10px] text-gray-400 font-medium">
                                                 {new Date(record.created_at).toLocaleString()}
                                             </p>
-                                            <div className="flex items-baseline gap-1 text-red-600">
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg border border-red-100 dark:border-red-900/30">
                                                 <span className="text-sm font-black">{record.amount}</span>
                                                 <span className="text-[9px] font-bold uppercase tracking-tighter">{t('usage_credits')}</span>
                                             </div>

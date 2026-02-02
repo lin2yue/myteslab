@@ -19,19 +19,46 @@ export default function AuthButton() {
     const router = useRouter();
     const supabase = createClient();
 
+    const [balance, setBalance] = useState<number | null>(null);
+
     useEffect(() => {
         const getUser = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
-                console.log('AuthButton: Initial user check:', user?.id);
                 setUser(user);
                 if (user) {
+                    // Fetch Profile
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('avatar_url')
                         .eq('id', user.id)
                         .single();
                     if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
+
+                    // Fetch Balance
+                    const { data: credits } = await supabase
+                        .from('user_credits')
+                        .select('balance')
+                        .eq('user_id', user.id)
+                        .single();
+                    if (credits) setBalance(credits.balance);
+
+                    // Subscribe to balance changes
+                    const channel = supabase
+                        .channel(`balance_auth_button_${user.id}`)
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'user_credits',
+                            filter: `user_id=eq.${user.id}`
+                        }, (payload) => {
+                            setBalance(payload.new.balance);
+                        })
+                        .subscribe();
+
+                    return () => {
+                        supabase.removeChannel(channel);
+                    };
                 }
             } catch (e) {
                 console.error('AuthButton: Get user error:', e);
@@ -43,8 +70,11 @@ export default function AuthButton() {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
-                console.log('AuthButton: Auth state changed:', event, session?.user?.id);
                 setUser(session?.user ?? null);
+                if (!session?.user) {
+                    setBalance(null);
+                    setAvatarUrl(null);
+                }
                 setIsLoading(false);
             }
         );
@@ -55,7 +85,8 @@ export default function AuthButton() {
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         setIsMenuOpen(false);
-        alert.success(t('sign_out_success') || 'Successfully signed out');
+        const sign_out_msg = t('sign_out_success') || 'Successfully signed out';
+        alert.success(sign_out_msg);
         router.refresh();
     };
 
@@ -73,53 +104,71 @@ export default function AuthButton() {
     }, [isMenuOpen]);
 
     const defaultAvatar = `https://ui-avatars.com/api/?name=${user?.email?.charAt(0) || 'U'}&background=random`;
+    const tProfile = useTranslations('Profile');
 
     if (isLoading) return <div className="w-8 h-8" />; // Loading placeholder
 
     return user ? (
-        <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            {/* Balance Display */}
+            {balance !== null && (
+                <Link
+                    href="/profile"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-colors"
+                >
+                    <span className="text-sm font-black text-blue-600 dark:text-blue-400">{balance}</span>
+                    <span className="text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-tight">{tProfile('credits')}</span>
+                </Link>
+            )}
+
             <button
                 onClick={toggleMenu}
-                className="flex items-center gap-2 focus:outline-none"
+                className="flex items-center focus:outline-none group"
             >
-                <div className="h-8 w-8 rounded-full overflow-hidden border border-gray-200">
+                <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-100 dark:border-zinc-800 group-hover:border-blue-400 transition-all shadow-sm">
                     <Image
                         src={avatarUrl || defaultAvatar}
                         alt="User Avatar"
-                        width={32}
-                        height={32}
+                        width={36}
+                        height={36}
                         className="h-full w-full object-cover"
                     />
                 </div>
             </button>
 
             {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100 dark:border-zinc-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl py-2 ring-1 ring-black/5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('email_label')}</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
                             {user.email}
                         </p>
                     </div>
-                    <Link
-                        href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700"
-                        onClick={() => setIsMenuOpen(false)}
-                    >
-                        My Profile
-                    </Link>
-                    <Link
-                        href="/admin/tasks"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700"
-                        onClick={() => setIsMenuOpen(false)}
-                    >
-                        Admin Dashboard
-                    </Link>
-                    <button
-                        onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-zinc-700"
-                    >
-                        Sign Out
-                    </button>
+                    <div className="py-1">
+                        <Link
+                            href="/profile"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            {tProfile('my_profile')}
+                        </Link>
+                        {/* Only show Admin Dashboard if needed - for now keeping it simple or check roles if available */}
+                        <Link
+                            href="/admin/tasks"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            {tProfile('admin_dashboard')}
+                        </Link>
+                    </div>
+                    <div className="border-t border-gray-100 dark:border-zinc-800 mt-1 pt-1">
+                        <button
+                            onClick={handleSignOut}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                            {tProfile('sign_out')}
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
