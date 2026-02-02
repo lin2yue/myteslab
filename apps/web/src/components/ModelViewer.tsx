@@ -663,45 +663,49 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             // If wheelUrl is present, injectWheels handles cleanup.
             // If NOT present, we should call cleanScene here.
 
-            if (wheelUrl) {
-                // Give a small delay to ensure the viewer scene graph is ready
-                // But keep loading spinner UP so user doesn't see the glitch.
-                setTimeout(async () => {
-                    await requestAnimationFrame(async () => {
-                        await injectWheels(viewer, wheelUrl)
-                        await groundModel(viewer)
-
-                        // Force update bounds and camera AFTER wheels and cleanup
-                        if ((viewer as any).updateFraming) {
-                            (viewer as any).updateFraming()
-                        } else if (viewer.updateBoundingBox) {
-                            viewer.updateBoundingBox()
-                        }
-
-                        if (typeof viewer.jumpCameraToGoal === 'function') viewer.jumpCameraToGoal()
-                        if (typeof (viewer as any).requestRender === 'function') {
-                            (viewer as any).requestRender()
-                        }
-
-                        setLoading(false) // FINALLY reveal the scene
-                    })
-                }, 100)
-            } else {
-                // No wheels to inject, just clean scene + reveal
-                setTimeout(async () => {
-                    cleanScene(viewer)
-                    await groundModel(viewer)
-                    if ((viewer as any).updateFraming) {
-                        (viewer as any).updateFraming()
-                    } else if (viewer.updateBoundingBox) {
-                        viewer.updateBoundingBox()
+            // Optimized loading sequence: Remove hardcoded timeouts and use proper frame synchronization
+            const initializeViewerState = async () => {
+                try {
+                    // Wait for model-viewer internal updates
+                    if (viewer.updateComplete) {
+                        await viewer.updateComplete;
                     }
 
-                    if (typeof viewer.jumpCameraToGoal === 'function') viewer.jumpCameraToGoal()
+                    // Double RAF ensures Three.js scene graph is fully built and accessible
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    await new Promise(resolve => requestAnimationFrame(resolve));
 
-                    setLoading(false)
-                }, 50)
-            }
+                    if (wheelUrl) {
+                        await injectWheels(viewer, wheelUrl);
+                    } else {
+                        cleanScene(viewer);
+                    }
+
+                    await groundModel(viewer);
+
+                    // Final layout and rendering updates
+                    if ((viewer as any).updateFraming) {
+                        (viewer as any).updateFraming();
+                    } else if (viewer.updateBoundingBox) {
+                        viewer.updateBoundingBox();
+                    }
+
+                    if (typeof viewer.jumpCameraToGoal === 'function') {
+                        viewer.jumpCameraToGoal();
+                    }
+
+                    if (typeof (viewer as any).requestRender === 'function') {
+                        (viewer as any).requestRender();
+                    }
+
+                    setLoading(false);
+                } catch (err) {
+                    console.error('[ModelViewer] Post-load initialization failed:', err);
+                    setLoading(false);
+                }
+            };
+
+            initializeViewerState();
 
             // Once loaded, apply current texture if any
             if (textureUrl) {

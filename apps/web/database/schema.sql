@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS wrap_models (
   uv_note TEXT,                           -- [NEW] UV 展开说明
   is_active BOOLEAN DEFAULT TRUE,
   sort_order INTEGER DEFAULT 0,
+  wheel_url TEXT,                         -- [NEW] 模块化轮毂模型地址
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- [NEW]
 );
@@ -29,6 +30,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   email TEXT NOT NULL,
   display_name TEXT,
   avatar_url TEXT,
+  role VARCHAR(20) DEFAULT 'user',         -- [NEW] 用户角色 (user, admin, super_admin)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -63,6 +65,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   is_public BOOLEAN DEFAULT TRUE,         -- 是否公开
   is_active BOOLEAN DEFAULT TRUE,         -- 是否激活
   reference_images TEXT[],                -- AI 参考图列表
+  generation_task_id UUID REFERENCES generation_tasks(id), -- [NEW] 关联生成任务
   deleted_at TIMESTAMP WITH TIME ZONE,    -- 软删除标记
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -11,21 +11,31 @@ export type OSSImageOptions = {
     resize?: 'fit' | 'fill' | 'mfit' | 'lfit' | 'pad';
 };
 
-export function getOptimizedImageUrl(url: string | undefined | null, options: OSSImageOptions = {}): string {
+/**
+ * Ensures a URL uses the CDN instead of direct OSS access.
+ * If url is null or undefined, returns empty string.
+ */
+export function ensureCdnUrl(url: string | undefined | null): string {
     if (!url) return '';
 
     const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club';
-    let targetUrl = url;
 
-    // 强制资源走 CDN
-    if (url.includes('aliyuncs.com')) {
+    // Core logic: Rewrite OSS domain to CDN domain
+    if (typeof url === 'string' && url.includes('aliyuncs.com')) {
         try {
             const urlObj = new URL(url);
-            targetUrl = `${cdnUrl}${urlObj.pathname}${urlObj.search}`;
+            return `${cdnUrl}${urlObj.pathname}${urlObj.search}`;
         } catch (e) {
-            // ignore
+            return url;
         }
     }
+    return url;
+}
+
+export function getOptimizedImageUrl(url: string | undefined | null, options: OSSImageOptions = {}): string {
+    if (!url) return '';
+
+    const targetUrl = ensureCdnUrl(url);
 
     // 如果不是 CDN/OSS 链接且重写后也不是，直接返回
     if (!targetUrl.includes('cdn.tewan.club') && !targetUrl.includes('aliyuncs.com')) {

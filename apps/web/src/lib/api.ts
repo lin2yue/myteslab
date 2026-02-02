@@ -38,25 +38,12 @@ async function injectModelInfo(wraps: Wrap[]): Promise<Wrap[]> {
     });
 }
 
+import { ensureCdnUrl } from '@/lib/images'
+
 /**
  * 将数据库记录规范化为 Wrap 接口格式
  */
 function normalizeWrap(w: any): Wrap {
-    const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club'
-
-    const ensureCdn = (url: string | undefined | null) => {
-        if (!url) return ''
-        if (url.includes('aliyuncs.com')) {
-            try {
-                const urlObj = new URL(url)
-                return `${cdnUrl}${urlObj.pathname}${urlObj.search}`
-            } catch (e) {
-                return url
-            }
-        }
-        return url
-    }
-
     // 作者信息现在 100% 来源于数据库
     const profile = w.profiles;
 
@@ -67,9 +54,9 @@ function normalizeWrap(w: any): Wrap {
         description: w.description || '',
         description_en: w.description_en || w.description || '',
         slug: w.slug || w.id,
-        wrap_image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
-        preview_image_url: w.preview_url ? ensureCdn(w.preview_url) : undefined,
-        image_url: w.texture_url ? ensureCdn(w.texture_url) : undefined,
+        wrap_image_url: w.texture_url ? ensureCdnUrl(w.texture_url) : undefined,
+        preview_image_url: w.preview_url ? ensureCdnUrl(w.preview_url) : undefined,
+        image_url: w.texture_url ? ensureCdnUrl(w.texture_url) : undefined,
         model_slug: w.model_slug,
         category: w.category || 'ai_generated', // Maintain a safe fallback for display
         is_active: w.is_active ?? true,
@@ -79,7 +66,7 @@ function normalizeWrap(w: any): Wrap {
         download_count: w.download_count || 0,
         created_at: w.created_at || new Date().toISOString(),
         reference_images: Array.isArray(w.reference_images)
-            ? w.reference_images.map((img: any) => typeof img === 'string' ? ensureCdn(img) : null).filter(Boolean)
+            ? w.reference_images.map((img: any) => typeof img === 'string' ? ensureCdnUrl(img) : null).filter(Boolean)
             : []
     } as Wrap
 }
