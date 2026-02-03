@@ -6,10 +6,11 @@ import { Link } from '@/i18n/routing';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PricingModal from '@/components/pricing/PricingModal';
 import { Star } from 'lucide-react';
+import { useCredits } from '@/components/credits/CreditsProvider';
 
 export default function AuthButton() {
     const t = useTranslations('Login');
@@ -19,9 +20,9 @@ export default function AuthButton() {
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
-    const [balance, setBalance] = useState<number | null>(null);
+    const { balance, loading: creditsLoading } = useCredits();
     const [isPricingOpen, setIsPricingOpen] = useState(false);
 
     useEffect(() => {
@@ -38,30 +39,6 @@ export default function AuthButton() {
                         .single();
                     if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
 
-                    // Fetch Balance
-                    const { data: credits } = await supabase
-                        .from('user_credits')
-                        .select('balance')
-                        .eq('user_id', user.id)
-                        .single();
-                    if (credits) setBalance(credits.balance);
-
-                    // Subscribe to balance changes
-                    const channel = supabase
-                        .channel(`balance_auth_button_${user.id}`)
-                        .on('postgres_changes', {
-                            event: 'UPDATE',
-                            schema: 'public',
-                            table: 'user_credits',
-                            filter: `user_id=eq.${user.id}`
-                        }, (payload) => {
-                            setBalance(payload.new.balance);
-                        })
-                        .subscribe();
-
-                    return () => {
-                        supabase.removeChannel(channel);
-                    };
                 }
             } catch (e) {
                 console.error('AuthButton: Get user error:', e);
@@ -72,10 +49,9 @@ export default function AuthButton() {
         getUser();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
+            (_event, session) => {
                 setUser(session?.user ?? null);
                 if (!session?.user) {
-                    setBalance(null);
                     setAvatarUrl(null);
                 }
                 setIsLoading(false);
@@ -109,7 +85,7 @@ export default function AuthButton() {
     const defaultAvatar = `https://ui-avatars.com/api/?name=${user?.email?.charAt(0) || 'U'}&background=random`;
     const tProfile = useTranslations('Profile');
 
-    if (isLoading) return <div className="w-8 h-8" />; // Loading placeholder
+    if (isLoading || creditsLoading) return <div className="w-8 h-8" />; // Loading placeholder
 
     return user ? (
         <div className="relative flex items-center gap-3" onClick={(e) => e.stopPropagation()}>

@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { AlertProvider } from '@/components/alert/AlertProvider';
+import { CreditsProvider } from '@/components/credits/CreditsProvider';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import "../globals.css";
@@ -119,11 +120,13 @@ export default async function RootLayout({
         <SpeedInsights />
         <NextIntlClientProvider messages={messages}>
           <AlertProvider>
-            <Navbar />
-            <main className="flex-1 overflow-x-hidden">
-              {children}
-            </main>
-            <Footer />
+            <CreditsProvider>
+              <Navbar />
+              <main className="flex-1 overflow-x-hidden">
+                {children}
+              </main>
+              <Footer />
+            </CreditsProvider>
           </AlertProvider>
         </NextIntlClientProvider>
       </body>

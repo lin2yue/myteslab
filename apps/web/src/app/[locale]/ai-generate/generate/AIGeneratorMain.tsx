@@ -17,6 +17,7 @@ import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import PublishModal from '@/components/publish/PublishModal'
 import { useAlert } from '@/components/alert/AlertProvider'
 import { ServiceType, getServiceCost } from '@/lib/constants/credits'
+import { useCredits } from '@/components/credits/CreditsProvider'
 
 interface GenerationHistory {
     id: string
@@ -86,7 +87,7 @@ export default function AIGeneratorMain({
         return models[0]?.slug || 'cybertruck'
     }
 
-    const [balance, setBalance] = useState(initialCredits)
+    const { balance, setBalance, refresh: refreshCredits } = useCredits()
     const [selectedModel, setSelectedModel] = useState(getInitialModel())
     const [prompt, setPrompt] = useState('')
     const [activeMode, setActiveMode] = useState<'ai' | 'diy'>('ai')
@@ -120,6 +121,13 @@ export default function AIGeneratorMain({
     useEffect(() => {
         setIsLoggedInInternal(isLoggedIn)
     }, [isLoggedIn])
+
+    // Seed initial credits if provider hasn't loaded yet
+    useEffect(() => {
+        if (balance === null && initialCredits > 0) {
+            setBalance(initialCredits)
+        }
+    }, [balance, initialCredits, setBalance])
 
 
     // 获取历史记录
@@ -192,7 +200,6 @@ export default function AIGeneratorMain({
             }
             if (event === 'SIGNED_OUT') {
                 setHistory([])
-                setBalance(0)
             }
         })
 
@@ -215,8 +222,9 @@ export default function AIGeneratorMain({
         if (!prompt.trim() || isGenerating) return
 
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
-        if (balance < requiredCredits) {
-            alert.warning(`积分不足，需要 ${requiredCredits} 积分，当前余额 ${balance}`)
+        const currentBalance = balance ?? 0
+        if (currentBalance < requiredCredits) {
+            alert.warning(`积分不足，需要 ${requiredCredits} 积分，当前余额 ${currentBalance}`)
             setShowPricing(true)
             return
         }
@@ -269,6 +277,7 @@ export default function AIGeneratorMain({
 
             // 更新余额
             setBalance(data.remainingBalance)
+            refreshCredits()
 
             // 刷新历史
             setTimeout(fetchHistory, 1000)
