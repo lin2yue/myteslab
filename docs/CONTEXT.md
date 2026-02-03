@@ -64,6 +64,15 @@
     - [ ] **Monetization**:
         - [ ] Configure payment system (Stripe/PayPal for credits).
 
+## 8. Recent Changes (Feb 2026)
+- **AI Generation Pipeline Hardening**:
+    - Added task polling API with throttle/cache and retry-after hints.
+    - Implemented idempotent task handling, task status transitions, and wrap_id linkage.
+    - Enforced reference image URL whitelist + OSS direct upload flow.
+    - Added polling backoff, max attempts, and pending-state handling in UI.
+    - Added default model fallback data and tightened wrap detail queries.
+    - New DB migration: `apps/web/database/add_wrap_id_to_generation_tasks.sql` (run in Supabase).
+
 ## 6. Where to Find Knowledge
 - **Architecture Analysis:** `docs/architecture/monorepo_analysis.md`
 - **Development Best Practices:** `docs/guides/development_principles.md` (Contains 3D capture and Texture Orientation details)
