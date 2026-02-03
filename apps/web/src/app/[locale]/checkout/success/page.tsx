@@ -1,9 +1,35 @@
+'use client';
+
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { CheckCircle2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { trackPurchase } from '@/lib/analytics';
 
 export default function CheckoutSuccessPage() {
     const t = useTranslations('Checkout');
+    const searchParams = useSearchParams();
+    const sessionId = searchParams.get('session_id');
+    const tierName = searchParams.get('tier_name');
+    const amount = searchParams.get('amount');
+    const hasTracked = useRef(false);
+
+    useEffect(() => {
+        if (sessionId && tierName && amount && !hasTracked.current) {
+            hasTracked.current = true;
+            trackPurchase(
+                sessionId,
+                parseFloat(amount),
+                'USD',
+                [{
+                    item_id: tierName, // Using tier name keys (basic, pro, etc) as ID
+                    item_name: tierName,
+                    price: parseFloat(amount)
+                }]
+            );
+        }
+    }, [sessionId, tierName, amount]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">

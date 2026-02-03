@@ -310,7 +310,7 @@ export default async function WrapDetailPage({
                 </div>
             </main>
 
-            <RelatedWraps modelSlug={wrap.model_slug} currentWrapSlug={slug} locale={locale} />
+            <RelatedWraps modelSlug={wrap.model_slug || ''} currentWrapSlug={slug} locale={locale} />
 
             {/* Structured Data */}
             <script

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { login, signup, resetPassword, resendVerification } from './actions';
 import { createClient } from '@/utils/supabase/client';
+import { trackLogin, trackSignUp } from '@/lib/analytics';
 import { ArrowLeft, Mail, Lock, CheckCircle2, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -59,6 +60,7 @@ export default function LoginForm() {
 
     const handleGoogleLogin = async () => {
         setIsGoogleLoading(true);
+        trackLogin('google');
         const supabase = createClient();
         let next = searchParams.get('next');
         if (!next && typeof window !== 'undefined') {
@@ -103,6 +105,7 @@ export default function LoginForm() {
                 } else if (result?.success) {
                     // Login success
                     alert.success(t('login_success') || 'Login successful!');
+                    trackLogin('email');
                     let next = searchParams.get('next');
                     if (!next && typeof window !== 'undefined') {
                         next = localStorage.getItem('auth_redirect_next');
@@ -125,6 +128,7 @@ export default function LoginForm() {
                 if (result.success) {
                     setView('VERIFY');
                     setResendTimer(60);
+                    trackSignUp('email');
                 } else {
                     // For signup, we might show "User already exists" or generic error
                     setError(result.error || t('error_default'));

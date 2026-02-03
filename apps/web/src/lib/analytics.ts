@@ -70,6 +70,7 @@ export const trackLanguageChange = (fromLang: string, toLang: string) => {
     })
 }
 
+
 /**
  * 追踪车型筛选事件
  */
@@ -78,5 +79,66 @@ export const trackModelFilter = (modelSlug: string, modelName: string) => {
         model_slug: modelSlug,
         model_name: modelName,
         event_category: 'engagement',
+    })
+}
+
+/**
+ * 追踪登录事件
+ */
+export const trackLogin = (method: string) => {
+    trackEvent('login', {
+        method: method
+    })
+}
+
+/**
+ * 追踪注册事件
+ */
+export const trackSignUp = (method: string) => {
+    trackEvent('sign_up', {
+        method: method
+    })
+}
+
+/**
+ * 追踪开始结账事件
+ */
+export const trackBeginCheckout = (item: {
+    id: string
+    name: string
+    price: number
+    currency?: string
+}) => {
+    trackEvent('begin_checkout', {
+        currency: item.currency || 'USD',
+        value: item.price,
+        items: [
+            {
+                item_id: item.id,
+                item_name: item.name,
+                price: item.price,
+                quantity: 1
+            }
+        ]
+    })
+}
+
+/**
+ * 追踪购买成功事件
+ */
+export const trackPurchase = (
+    transactionId: string,
+    value: number,
+    currency: string = 'USD',
+    items: Array<{ item_id: string; item_name: string; price: number }>
+) => {
+    trackEvent('purchase', {
+        transaction_id: transactionId,
+        value: value,
+        currency: currency,
+        items: items.map(item => ({
+            ...item,
+            quantity: 1
+        }))
     })
 }

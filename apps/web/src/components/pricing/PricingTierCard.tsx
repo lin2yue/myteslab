@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type PricingTier } from '@/lib/constants/credits';
+import { trackBeginCheckout } from '@/lib/analytics';
 
 interface PricingTierCardProps {
     tier: PricingTier;
@@ -18,6 +19,13 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
     const router = useRouter();
 
     const handleBuy = async () => {
+        // Track begin checkout
+        trackBeginCheckout({
+            id: tier.polarProductId || tier.id,
+            name: t(`tiers.${tier.nameKey}`),
+            price: parseFloat(tier.price),
+        })
+
         setLoading(true);
         try {
             const response = await fetch('/api/checkout', {
@@ -25,7 +33,11 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     productId: tier.polarProductId,
-                    locale: locale
+                    locale: locale,
+                    metadata: {
+                        tier_name: tier.nameKey, // Use key as stable identifier
+                        price: parseFloat(tier.price),
+                    }
                 }),
             });
 
