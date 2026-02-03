@@ -47,10 +47,10 @@ function AlertItem({ alert, onRemove }: { alert: Alert; onRemove: (id: string) =
             case 'info':
             default:
                 return {
-                    bg: 'bg-blue-50 dark:bg-blue-900/20',
-                    border: 'border-blue-200 dark:border-blue-800',
-                    text: 'text-blue-800 dark:text-blue-200',
-                    icon: <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    bg: 'bg-black/5 dark:bg-white/10',
+                    border: 'border-black/10 dark:border-white/10',
+                    text: 'text-gray-800 dark:text-gray-200',
+                    icon: <Info className="w-5 h-5 text-gray-700 dark:text-gray-200" />
                 };
         }
     };

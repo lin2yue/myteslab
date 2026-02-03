@@ -98,7 +98,7 @@ export default async function FAQPage({
                     {faqs.map((faq, index) => (
                         <div
                             key={index}
-                            className="bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-zinc-800"
+                            className="panel p-6"
                         >
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                                 {faq.question}
@@ -117,7 +117,7 @@ export default async function FAQPage({
                     </p>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors"
+                        className="btn-primary inline-flex items-center gap-2 px-8"
                     >
                         {locale === 'en' ? 'Browse Tesla Wraps' : '浏览特斯拉贴膜'}
                     </Link>

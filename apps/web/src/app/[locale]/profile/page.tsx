@@ -8,6 +8,7 @@ import ProfileForm from './ProfileForm';
 import ProfileContent from './ProfileContent';
 
 import CreditsSection from '@/components/profile/CreditsSection';
+import Card from '@/components/ui/Card';
 
 export const metadata: Metadata = {
     title: 'My Profile - MyTesLab',
@@ -65,13 +66,13 @@ export default async function ProfilePage({
 
     return (
         <div className="flex flex-col min-h-screen">
-            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex-1 w-full">
                 <div className="flex items-center gap-4 mb-8">
                     <h1 className="text-3xl font-black text-gray-900">{t('title')}</h1>
                 </div>
                 {/* User Info & Credits */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div className="bg-white overflow-hidden border border-gray-100 rounded-xl p-6">
+                    <Card className="overflow-hidden p-6">
                         <h2 className="text-lg font-medium text-gray-900 mb-4">{t('user_details')}</h2>
                         <div className="flex items-center">
                             <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-500 mr-4">
@@ -86,7 +87,7 @@ export default async function ProfilePage({
                                 />
                             </div>
                         </div>
-                    </div>
+                    </Card>
 
                     <CreditsSection
                         balance={credits?.balance || 0}

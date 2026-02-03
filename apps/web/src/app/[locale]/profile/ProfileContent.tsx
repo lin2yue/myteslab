@@ -10,6 +10,8 @@ import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PublishModal from '@/components/publish/PublishModal';
 import { Link } from '@/i18n/routing';
+import Card from '@/components/ui/Card';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface Wrap {
     id: string;
@@ -51,6 +53,8 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     const [activeTab, setActiveTab] = useState<'creations' | 'downloads'>('creations');
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [wraps, setWraps] = useState(generatedWraps);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
 
     // Publish Modal State
     const [showPublishModal, setShowPublishModal] = useState(false);
@@ -72,7 +76,6 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
 
 
     const handleDelete = async (id: string) => {
-        if (!confirm(t('confirm_delete'))) return;
         setLoadingId(id);
         try {
             await deleteGeneratedWrap(id);
@@ -168,7 +171,6 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     };
 
     const handleDeleteAccount = async () => {
-        if (!confirm(t('delete_account_confirm'))) return;
         setLoadingId('delete_account');
         try {
             await deleteUserAccount();
@@ -182,9 +184,9 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     };
 
     return (
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden max-w-[1600px] mx-auto">
+        <Card className="overflow-hidden max-w-[1440px] mx-auto">
             {/* Tabs */}
-            <div className="border-b border-gray-100 bg-gray-50/20">
+            <div className="border-b border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-950/60 backdrop-blur">
                 <nav className="flex px-6" aria-label="Tabs">
                     <button
                         onClick={() => setActiveTab('creations')}
@@ -215,10 +217,12 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                     <div>
                         {wraps && wraps.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                                {wraps.map((wrap) => (
-                                    <div key={wrap.id} className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition-all group/card flex flex-col">
-                                        {wrap.slug ? (
-                                            <Link href={`/wraps/${wrap.slug}`} className="block">
+                                {wraps.map((wrap) => {
+                                    const wrapSlug = wrap.slug || wrap.id;
+                                    return (
+                                    <Card key={wrap.id} variant="muted" className="rounded-xl overflow-hidden hover:border-black/15 transition-all group/card flex flex-col">
+                                        {wrapSlug ? (
+                                            <Link href={`/wraps/${wrapSlug}`} className="block">
                                                 <div className="relative aspect-square overflow-hidden group">
                                                     {wrap.texture_url ? (
                                                         <ResponsiveOSSImage
@@ -264,9 +268,9 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                         )}
                                         <div className="p-4 flex flex-col flex-1">
                                             <div className="flex-1">
-                                                {wrap.slug ? (
-                                                    <Link href={`/wraps/${wrap.slug}`} className="block">
-                                                        <p className="text-sm text-gray-900 font-bold line-clamp-1 mb-4 hover:text-blue-600 transition-colors" title={wrap.name || wrap.prompt || ''}>
+                                        {wrapSlug ? (
+                                                    <Link href={`/wraps/${wrapSlug}`} className="block">
+                                                        <p className="text-sm text-gray-900 font-bold line-clamp-1 mb-4 hover:underline transition-colors" title={wrap.name || wrap.prompt || ''}>
                                                             {wrap.name || wrap.prompt || tCommon('untitled')}
                                                         </p>
                                                     </Link>
@@ -281,25 +285,25 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                 <button
                                                     onClick={() => handleTogglePublish(wrap)}
                                                     disabled={loadingId === wrap.id}
-                                                    className={`flex-1 text-xs font-bold h-9 rounded-lg border transition-all ${wrap.is_public
-                                                        ? 'border-gray-100 text-gray-400 hover:bg-gray-50'
-                                                        : 'border-black bg-black text-white hover:bg-zinc-800'
+                                                    className={`flex-1 text-xs font-bold h-9 rounded-lg transition-all ${wrap.is_public
+                                                        ? 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-zinc-200'
+                                                        : 'bg-black text-white hover:bg-zinc-800 shadow-[0_8px_16px_rgba(0,0,0,0.18)]'
                                                         }`}
                                                 >
                                                     {loadingId === wrap.id ? '...' : (wrap.is_public ? t('unpublish') : t('publish'))}
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(wrap.id)}
+                                                    onClick={() => setPendingDeleteId(wrap.id)}
                                                     disabled={loadingId === wrap.id}
-                                                    className="w-9 h-9 flex items-center justify-center rounded-lg border border-red-50 text-red-400 hover:bg-red-50 hover:border-red-100 transition-all text-xs"
+                                                    className="w-9 h-9 flex items-center justify-center rounded-lg border border-red-200/50 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all text-xs"
                                                     title={t('delete')}
                                                 >
                                                     {loadingId === wrap.id ? '...' : '✕'}
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    </Card>
+                                )})}
                             </div>
                         ) : (
                             <div className="text-center py-24 text-gray-400 font-medium text-sm">
@@ -315,9 +319,9 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                         {downloads && downloads.length > 0 ? (
                             <ul className="space-y-3">
                                 {downloads.map((item) => (
-                                    <li key={item.id} className="p-4 flex items-center justify-between bg-white border border-gray-50 rounded-xl hover:border-gray-200 transition-all">
+                                    <li key={item.id} className="p-4 flex items-center justify-between bg-white/80 dark:bg-zinc-900/70 border border-black/5 dark:border-white/10 rounded-xl hover:border-black/15 transition-all backdrop-blur">
                                         <div className="flex items-center">
-                                            <div className="h-14 w-14 flex-shrink-0 relative bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+                                            <div className="h-14 w-14 flex-shrink-0 relative bg-black/5 dark:bg-white/10 rounded-lg overflow-hidden border border-black/5 dark:border-white/10">
                                                 {item.wraps?.preview_url ? (
                                                     <ResponsiveOSSImage
                                                         src={item.wraps.preview_url}
@@ -352,16 +356,16 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
             </div>
 
             {/* Danger Zone */}
-            <div className="border-t border-gray-100 p-8 bg-gray-50/30">
+            <div className="border-t border-black/5 dark:border-white/10 p-8 bg-white/70 dark:bg-zinc-950/60 backdrop-blur">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div>
                         <h3 className="text-sm font-bold text-gray-900">{t('danger_zone')}</h3>
                         <p className="text-xs text-gray-400 mt-1">{t('delete_account_desc')}</p>
                     </div>
                     <button
-                        onClick={handleDeleteAccount}
+                        onClick={() => setConfirmDeleteAccount(true)}
                         disabled={loadingId === 'delete_account'}
-                        className="px-6 py-2.5 bg-white border border-red-100 text-red-500 rounded-lg text-xs font-bold hover:bg-red-50 hover:border-red-200 transition-all disabled:opacity-50"
+                        className="px-6 py-2.5 bg-white/80 border border-red-200/60 text-red-500 rounded-lg text-xs font-bold hover:bg-red-50 hover:border-red-200 transition-all disabled:opacity-50 backdrop-blur"
                     >
                         {loadingId === 'delete_account' ? t('deleting_account') : t('delete_account')}
                     </button>
@@ -381,6 +385,36 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                     isPublishing={isPublishing}
                 />
             )}
-        </div>
+
+            <ConfirmDialog
+                isOpen={!!pendingDeleteId}
+                title={t('delete')}
+                description={t('confirm_delete')}
+                confirmText={t('delete')}
+                cancelText={tCommon('cancel')}
+                isDanger
+                onCancel={() => setPendingDeleteId(null)}
+                onConfirm={() => {
+                    if (!pendingDeleteId) return;
+                    const id = pendingDeleteId;
+                    setPendingDeleteId(null);
+                    handleDelete(id);
+                }}
+            />
+
+            <ConfirmDialog
+                isOpen={confirmDeleteAccount}
+                title={t('delete_account')}
+                description={t('delete_account_confirm')}
+                confirmText={t('delete_account')}
+                cancelText={tCommon('cancel')}
+                isDanger
+                onCancel={() => setConfirmDeleteAccount(false)}
+                onConfirm={() => {
+                    setConfirmDeleteAccount(false);
+                    handleDeleteAccount();
+                }}
+            />
+        </Card>
     );
 }

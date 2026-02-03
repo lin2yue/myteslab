@@ -71,17 +71,17 @@ export default function PublishModal({
     return (
         <Portal>
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-300">
+                <div className="bg-white/90 dark:bg-zinc-900/80 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.35)] animate-in fade-in zoom-in duration-300 border border-black/5 dark:border-white/10 backdrop-blur">
 
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                    <div className="flex items-center justify-between p-6 border-b border-black/5 dark:border-white/10">
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">{tGen('publish_preview')}</h2>
                             <p className="text-sm text-gray-500 mt-1">{tGen('publish_preview_desc')}</p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-2 hover:bg-black/5 rounded-full transition-colors"
                             disabled={isPublishing || isProcessing}
                         >
                             <X className="w-6 h-6 text-gray-400" />
@@ -94,7 +94,7 @@ export default function PublishModal({
 
                             {/* Left: 3D Preview (User facing) */}
                             <div className="flex flex-col gap-4">
-                                <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-gray-100 overflow-hidden relative shadow-inner">
+                                <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-black/5 dark:border-white/10 overflow-hidden relative shadow-inner">
                                     <ModelViewer
                                         ref={viewerRef}
                                         modelUrl={modelUrl}
@@ -122,8 +122,8 @@ export default function PublishModal({
                                 <div className="space-y-6">
                                     <div className="space-y-4">
                                         <div className="flex gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                            <div className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
+                                                <ShieldCheck className="w-5 h-5 text-gray-800 dark:text-white" />
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold text-gray-900">{tGen('terms_rule_title')}</h4>
@@ -134,8 +134,8 @@ export default function PublishModal({
                                         </div>
 
                                         <div className="flex gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                                <DownloadCloud className="w-5 h-5 text-blue-600" />
+                                            <div className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
+                                                <DownloadCloud className="w-5 h-5 text-gray-800 dark:text-white" />
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold text-gray-900">{tGen('terms_share_title')}</h4>
@@ -146,8 +146,8 @@ export default function PublishModal({
                                         </div>
 
                                         <div className="flex gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                                <Globe className="w-5 h-5 text-blue-600" />
+                                            <div className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
+                                                <Globe className="w-5 h-5 text-gray-800 dark:text-white" />
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold text-gray-900">{tGen('terms_public_title')}</h4>
@@ -158,10 +158,10 @@ export default function PublishModal({
                                         </div>
                                     </div>
 
-                                    <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-colors">
+                                    <label className="flex items-start gap-3 p-4 bg-black/5 dark:bg-white/10 rounded-2xl cursor-pointer hover:bg-black/10 transition-colors">
                                         <input
                                             type="checkbox"
-                                            className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            className="mt-1 w-4 h-4 rounded border-gray-300 text-black focus:ring-black/20"
                                             checked={agree}
                                             onChange={(e) => setAgree(e.target.checked)}
                                         />
@@ -174,7 +174,7 @@ export default function PublishModal({
                                 <div className="flex gap-3 mt-8">
                                     <button
                                         onClick={onClose}
-                                        className="flex-1 h-12 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all text-sm"
+                                        className="flex-1 h-12 rounded-xl border border-black/10 dark:border-white/10 font-bold text-gray-700 hover:bg-black/5 transition-all text-sm"
                                         disabled={isPublishing || isProcessing}
                                     >
                                         {t('cancel')}
@@ -182,7 +182,7 @@ export default function PublishModal({
                                     <button
                                         onClick={handleConfirm}
                                         disabled={!agree || isPublishing || isProcessing}
-                                        className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${agree && !isPublishing && !isProcessing ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                        className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${agree && !isPublishing && !isProcessing ? 'btn-primary h-12' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                     >
                                         {isPublishing || isProcessing ? (
                                             <>

@@ -4,8 +4,12 @@ import type { Wrap, Model } from '@/lib/types'
 import { DEFAULT_MODELS } from '@/config/models'
 
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('[API] Missing Supabase env vars for public client')
+}
 
 const publicSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
     auth: {
@@ -168,7 +172,6 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             'texture_url',
             'preview_url',
             'model_slug',
-            'model_3d_url',
             'category',
             'is_active',
             'is_public',
@@ -187,10 +190,17 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
 
         const { data: wrapData, error } = await query.single();
 
+        if (error && process.env.NODE_ENV === 'development') {
+            console.error('[getWrap] query error:', error.message, 'slugOrId:', slugOrId);
+        }
+
         if (error || !wrapData) {
             // 如果按 Slug 没查到，且不是 UUID，再尝试按 ID 查一下（容错）
             if (!isUuid) {
-                const { data: retryData } = await supabaseClient.from('wraps').select(selectFields).eq('id', slugOrId).single();
+                const { data: retryData, error: retryError } = await supabaseClient.from('wraps').select(selectFields).eq('id', slugOrId).single();
+                if (retryError && process.env.NODE_ENV === 'development') {
+                    console.error('[getWrap] retry error:', retryError.message, 'slugOrId:', slugOrId);
+                }
                 if (retryData) return normalizeWrap(retryData as any);
             }
             return null;

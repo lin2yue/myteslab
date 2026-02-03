@@ -32,10 +32,10 @@ export default function CheckoutSuccessPage() {
     }, [sessionId, tierName, amount]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center animate-in fade-in zoom-in-95 duration-500">
+        <div className="min-h-screen flex items-center justify-center bg-transparent px-4">
+            <div className="max-w-md w-full panel p-8 text-center animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex justify-center mb-6">
-                    <div className="p-3 rounded-full bg-green-100 text-green-600">
+                    <div className="p-3 rounded-full bg-green-100/80 text-green-600">
                         <CheckCircle2 className="w-16 h-16" />
                     </div>
                 </div>
@@ -51,14 +51,14 @@ export default function CheckoutSuccessPage() {
                 <div className="space-y-4">
                     <Link
                         href="/ai-generate/generate"
-                        className="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
+                        className="block w-full btn-primary h-12"
                     >
                         {t('back_to_generator')}
                     </Link>
 
                     <Link
                         href="/profile"
-                        className="block w-full py-4 bg-white border-2 border-gray-100 hover:border-gray-200 text-gray-600 rounded-xl font-bold transition-all"
+                        className="block w-full btn-secondary h-12"
                     >
                         {t('view_balance')}
                     </Link>

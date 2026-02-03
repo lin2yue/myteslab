@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
 import { ModelViewerClient } from '@/components/ModelViewerClient'
@@ -7,10 +7,11 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
-import { createClient } from '@/utils/supabase/server'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import { CategoryBadge } from '@/components/CategoryBadge'
 import { RelatedWraps } from '@/components/RelatedWraps'
+import Card from '@/components/ui/Card'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function generateMetadata({
     params,
@@ -18,8 +19,21 @@ export async function generateMetadata({
     params: Promise<{ slug: string, locale: string }>
 }): Promise<Metadata> {
     const { slug, locale } = await params
-    const supabase = await createClient()
-    const wrap = await getWrap(slug, supabase)
+    let wrap = await getWrap(slug)
+    if (process.env.NODE_ENV === 'development') {
+        console.log('[WrapDetail] slug:', slug, 'publicWrap:', !!wrap)
+    }
+    if (!wrap) {
+        try {
+            const admin = createAdminClient()
+            wrap = await getWrap(slug, admin)
+            if (process.env.NODE_ENV === 'development') {
+                console.log('[WrapDetail] adminWrap:', !!wrap)
+            }
+        } catch (error) {
+            console.error('[WrapDetail] admin fallback failed:', error)
+        }
+    }
 
     if (!wrap) {
         return {
@@ -115,12 +129,23 @@ export default async function WrapDetailPage({
     params: Promise<{ slug: string, locale: string }>
 }) {
     const { slug, locale } = await params
-    const supabase = await createClient()
-    const wrap = await getWrap(slug, supabase)
+    let wrap = await getWrap(slug)
+    if (!wrap) {
+        try {
+            const admin = createAdminClient()
+            wrap = await getWrap(slug, admin)
+        } catch (error) {
+            console.error('[WrapDetail] admin fallback failed:', error)
+        }
+    }
     const t = await getTranslations('Common')
 
     if (!wrap) {
         notFound()
+    }
+
+    if (wrap.slug && wrap.slug !== slug) {
+        permanentRedirect(`/${locale}/wraps/${wrap.slug}`)
     }
 
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
@@ -154,7 +179,7 @@ export default async function WrapDetailPage({
     return (
         <div className="flex flex-col min-h-screen">
             {/* Main Content */}
-            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex-1 w-full">
                 <div className="flex flex-wrap items-center gap-4 mb-8">
                     <Link
                         href={wrap.model_slug ? `/models/${wrap.model_slug}` : "/"}
@@ -170,11 +195,11 @@ export default async function WrapDetailPage({
 
                     {/* Visible Breadcrumbs for SEO and UX */}
                     <nav className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                        <Link href="/" className="hover:text-blue-600 transition-colors">{locale === 'en' ? 'Home' : '首页'}</Link>
+                        <Link href="/" className="hover:text-gray-900 transition-colors">{locale === 'en' ? 'Home' : '首页'}</Link>
                         <span>/</span>
                         {wrap.model_slug && (
                             <>
-                                <Link href={`/models/${wrap.model_slug}`} className="hover:text-blue-600 transition-colors">
+                                <Link href={`/models/${wrap.model_slug}`} className="hover:text-gray-900 transition-colors">
                                     {modelName}
                                 </Link>
                                 <span>/</span>
@@ -183,10 +208,10 @@ export default async function WrapDetailPage({
                         <span className="text-gray-900 dark:text-gray-100 truncate max-w-[200px]">{name}</span>
                     </nav>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-8 items-start">
                     {/* 左侧: 3D 预览 */}
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                        <div className="relative w-full aspect-[4/3] lg:aspect-video bg-gray-50">
+                    <Card className="overflow-hidden">
+                        <div className="relative w-full aspect-[4/3] lg:aspect-video bg-black/5 dark:bg-white/10">
                             <ModelViewerClient
                                 modelUrl={proxiedModelUrl}
                                 wheelUrl={wheelUrl}
@@ -196,17 +221,17 @@ export default async function WrapDetailPage({
                                 autoRotate
                             />
                         </div>
-                    </div>
+                    </Card>
 
                     {/* 右侧: 详情信息栏 */}
-                    <div className="flex flex-col gap-4">
-                        {/* 核心信息与下载区域 (简约化：移除了背景卡片) */}
-                        <div className="flex flex-col gap-8">
+                    <Card className="p-6 flex flex-col gap-6">
+                        {/* 核心信息与下载区域 */}
+                        <div className="flex flex-col gap-6">
                             {/* 标题，标签与作者 */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
                                     <CategoryBadge category={wrap.category} />
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full border border-black/5 dark:border-white/10">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
@@ -243,9 +268,9 @@ export default async function WrapDetailPage({
                             </div>
 
                             {/* 贴图预览 (完整展示，不裁切) */}
-                            <div className="bg-gray-50 rounded-xl border border-gray-100 p-2">
+                            <div className="bg-black/5 dark:bg-white/10 rounded-xl border border-black/5 dark:border-white/10 p-2">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Texture Preview</p>
-                                <div className="w-full bg-white rounded-lg overflow-hidden relative group shadow-inner">
+                                <div className="w-full bg-white/90 dark:bg-zinc-900/70 rounded-lg overflow-hidden relative group shadow-inner">
                                     <ResponsiveOSSImage
                                         src={wrap.texture_url}
                                         alt={wrap.prompt
@@ -282,7 +307,7 @@ export default async function WrapDetailPage({
 
                             {/* 描述 */}
                             {description && (
-                                <div className="pt-4 border-t border-gray-50">
+                                <div className="pt-4 border-t border-black/5 dark:border-white/10">
                                     <p className="text-sm text-gray-500 leading-relaxed font-medium">
                                         {description}
                                     </p>
@@ -292,21 +317,21 @@ export default async function WrapDetailPage({
 
                         {/* AI 提示词卡片 */}
                         {wrap.category === 'ai_generated' && wrap.prompt && (
-                            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <div className="pt-6 border-t border-black/5 dark:border-white/10">
                                 <div className="flex items-center justify-between mb-3">
-                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                    <p className="text-[10px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-gray-900 dark:bg-white rounded-full animate-pulse"></span>
                                         AI Prompt
                                     </p>
                                 </div>
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-200/50">
+                                <div className="bg-black/5 dark:bg-white/10 rounded-xl p-3 border border-black/10 dark:border-white/10">
                                     <p className="text-xs font-medium text-gray-600 italic leading-relaxed font-mono">
                                         "{wrap.prompt}"
                                     </p>
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </Card>
                 </div>
             </main>
 

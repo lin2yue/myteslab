@@ -93,11 +93,11 @@ export default function AuthButton() {
             {balance !== null && (
                 <button
                     onClick={() => setIsPricingOpen(true)}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/10 rounded-full border border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-800/20 transition-all hover:scale-105 active:scale-95"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900/5 dark:bg-white/10 rounded-full border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-900/10 dark:hover:bg-white/15 transition-all hover:scale-105 active:scale-95"
                 >
-                    <Star className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 fill-blue-500 dark:fill-blue-400" />
-                    <span className="text-sm font-black text-blue-600 dark:text-blue-400">{balance}</span>
-                    <span className="text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-tight">{tProfile('credits')}</span>
+                    <Star className="w-3.5 h-3.5 text-zinc-800 dark:text-white fill-zinc-800 dark:fill-white" />
+                    <span className="text-sm font-semibold text-zinc-900 dark:text-white">{balance}</span>
+                    <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-tight">{tProfile('credits')}</span>
                 </button>
             )}
 
@@ -105,7 +105,7 @@ export default function AuthButton() {
                 onClick={toggleMenu}
                 className="flex items-center focus:outline-none group"
             >
-                <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-100 dark:border-zinc-800 group-hover:border-blue-400 transition-all">
+                <div className="h-9 w-9 rounded-full overflow-hidden border border-black/10 dark:border-white/10 group-hover:border-black/30 dark:group-hover:border-white/30 transition-all shadow-[0_1px_0_rgba(0,0,0,0.06)]">
                     <Image
                         src={avatarUrl || defaultAvatar}
                         alt="User Avatar"
@@ -117,7 +117,7 @@ export default function AuthButton() {
             </button>
 
             {isMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl py-2 ring-1 ring-black/5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] py-2 ring-1 ring-black/5 dark:ring-white/10 z-[100] animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur">
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('email_label')}</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
@@ -127,7 +127,7 @@ export default function AuthButton() {
                     <div className="py-1">
                         <Link
                             href="/profile"
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
                             onClick={() => setIsMenuOpen(false)}
                         >
                             {tProfile('my_profile')}
@@ -135,7 +135,7 @@ export default function AuthButton() {
                         {/* Only show Admin Dashboard if needed - for now keeping it simple or check roles if available */}
                         <Link
                             href="/admin/tasks"
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
                             onClick={() => setIsMenuOpen(false)}
                         >
                             {tProfile('admin_dashboard')}
@@ -164,7 +164,7 @@ export default function AuthButton() {
                 localStorage.setItem('auth_redirect_next', currentUrl);
                 window.location.href = `/login?next=${encodeURIComponent(currentUrl)}`;
             }}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 transition-colors"
+            className="h-10 px-4 text-sm font-semibold text-white bg-black rounded-xl hover:bg-zinc-800 transition-colors shadow-[0_8px_18px_rgba(0,0,0,0.18)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
         >
             {t('sign_in_or_sign_up')}
         </button>

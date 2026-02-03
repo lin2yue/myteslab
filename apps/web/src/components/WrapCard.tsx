@@ -16,9 +16,11 @@ export function WrapCard({ wrap }: WrapCardProps) {
         ? wrap.model_name_en || wrap.model_name || (wrap.category === 'official' ? 'Official' : 'Custom')
         : wrap.model_name || (wrap.category === 'official' ? '官方作品' : '自定义');
 
+    const wrapSlug = wrap.slug || wrap.id;
+
     return (
-        <Link href={`/wraps/${wrap.slug}`}>
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group border border-gray-100 dark:border-zinc-800 flex flex-col h-full">
+        <Link href={`/wraps/${wrapSlug}`}>
+            <div className="bg-white/80 dark:bg-zinc-900/80 rounded-2xl overflow-hidden shadow-none hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_36px_rgba(0,0,0,0.10)] transition-all duration-300 group border border-black/5 dark:border-white/10 flex flex-col h-full backdrop-blur-sm hover:-translate-y-0.5">
                 {/* 预览图容器 */}
                 <div className="aspect-[4/3] relative bg-gray-50 overflow-hidden">
                     {wrap.preview_image_url ? (
@@ -53,7 +55,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
 
                 {/* 内容区域 */}
                 <div className="p-4 flex flex-col flex-1">
-                    <h3 className="font-bold text-gray-900 dark:text-zinc-100 group-hover:text-blue-600 transition-colors line-clamp-1 text-base mb-3">
+                    <h3 className="font-bold text-gray-900 dark:text-zinc-100 group-hover:text-gray-900 transition-colors line-clamp-1 text-base mb-3">
                         {name}
                     </h3>
 

@@ -15,6 +15,7 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { logTaskStep } from '@/lib/ai/task-logger';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
 import { ServiceType, getServiceCost } from '@/lib/constants/credits';
+import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -373,6 +374,14 @@ export async function POST(request: NextRequest) {
         const metadata = await metadataPromise;
 
         // 插入到统一的作品表 wraps
+        const slugBase = buildSlugBase({
+            name: metadata.name,
+            nameEn: metadata.name_en,
+            prompt,
+            modelSlug
+        });
+        const slug = await ensureUniqueSlug(supabase, slugBase);
+
         const { data: wrapData, error: historyError } = await supabase.from('wraps').insert({
             user_id: user.id,
             name: metadata.name,
@@ -386,7 +395,7 @@ export async function POST(request: NextRequest) {
             category: WRAP_CATEGORY.AI_GENERATED,
             reference_images: savedReferenceUrls,
             generation_task_id: taskId,
-            slug: crypto.randomBytes(6).toString('hex')
+            slug
         }).select('id, slug').single();
 
         if (historyError) {

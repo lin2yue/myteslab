@@ -3,6 +3,7 @@ import { uploadToOSS } from '@/lib/oss';
 import { createClient } from '@/utils/supabase/server';
 import crypto from 'crypto';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
+import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
 
 /**
  * Handle DIY wrap upload and save
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. Save to database
+        const slugBase = buildSlugBase({ name: prompt, prompt, modelSlug });
+        const slug = await ensureUniqueSlug(supabase, slugBase);
+
         const { data: wrapData, error: dbError } = await supabase.from('wraps').insert({
             user_id: user.id,
             name: prompt,
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
             preview_url: savedUrl, // DIY simple preview is same as texture or we could capture from 3D later
             is_public: false,
             category: WRAP_CATEGORY.DIY,
-            slug: crypto.randomBytes(6).toString('hex')
+            slug
         }).select('id, slug').single();
 
         if (dbError) {

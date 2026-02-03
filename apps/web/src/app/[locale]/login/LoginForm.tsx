@@ -188,14 +188,14 @@ export default function LoginForm() {
     );
 
     const renderError = () => error && (
-        <div className="flex items-center gap-2 p-3 mb-6 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg animate-in fade-in slide-in-from-top-2">
+        <div className="flex items-center gap-2 p-3 mb-6 text-sm text-red-600 bg-red-50/80 dark:bg-red-900/20 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg animate-in fade-in slide-in-from-top-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <p>{error === 'Invalid login credentials' ? t('error_invalid_credentials') : error}</p>
         </div>
     );
 
     return (
-        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800/50 shadow-2xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-zinc-700/50 rounded-3xl backdrop-blur-sm transition-all duration-500">
+        <div className="w-full max-w-md p-8 panel transition-all duration-500">
 
             {/* AUTH VIEW (LOGIN OR SIGNUP) */}
             {view === 'AUTH' && (
@@ -208,7 +208,7 @@ export default function LoginForm() {
 
                     <form onSubmit={onSubmit} className="space-y-4">
                         <div className="relative group">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-gray-900 dark:group-focus-within:text-white transition-colors" />
                             <input
                                 ref={emailInputRef}
                                 type="email"
@@ -216,19 +216,19 @@ export default function LoginForm() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder={t('email_placeholder')}
                                 required
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
+                                className="input-field pl-10"
                             />
                         </div>
 
                         <div className="relative group">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-gray-900 dark:group-focus-within:text-white transition-colors" />
                             <input
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder={t('password_placeholder')}
                                 required
-                                className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
+                                className="input-field pl-10 pr-12"
                             />
                             <button
                                 type="button"
@@ -244,7 +244,7 @@ export default function LoginForm() {
                                 <button
                                     type="button"
                                     onClick={() => setView('FORGOT')}
-                                    className="text-xs text-blue-500 hover:underline font-medium"
+                                    className="text-xs text-gray-700 dark:text-zinc-200 hover:underline font-medium"
                                 >
                                     {t('forgot_password')}
                                 </button>
@@ -253,7 +253,7 @@ export default function LoginForm() {
 
                         <button
                             disabled={isPending || !email || password.length < 6}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                            className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === 'LOGIN' ? (t('continue') || 'Log In') : (t('create_account_btn') || 'Sign Up'))}
                         </button>
@@ -261,10 +261,10 @@ export default function LoginForm() {
 
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-100 dark:border-zinc-700" />
+                            <div className="w-full border-t border-black/5 dark:border-white/10" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                            <span className="px-2 bg-white dark:bg-zinc-800 text-gray-400">
+                            <span className="px-2 bg-white/70 dark:bg-zinc-900/70 text-gray-400 backdrop-blur">
                                 {t('or')}
                             </span>
                         </div>
@@ -274,7 +274,7 @@ export default function LoginForm() {
                         type="button"
                         onClick={handleGoogleLogin}
                         disabled={isGoogleLoading || isPending}
-                        className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-black/10 dark:border-white/10 rounded-xl bg-white/90 dark:bg-zinc-900/70 text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shadow-[0_8px_18px_rgba(0,0,0,0.08)] disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur"
                     >
                         {isGoogleLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -320,7 +320,7 @@ export default function LoginForm() {
             {/* VERIFY VIEW */}
             {view === 'VERIFY' && (
                 <div className="animate-in zoom-in-95 duration-500 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-6">
+                    <div className="w-20 h-20 bg-green-50/80 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-6">
                         <CheckCircle2 className="w-10 h-10 text-green-500 animate-in zoom-in-0 duration-700 delay-300 fill-mode-both" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
@@ -334,7 +334,7 @@ export default function LoginForm() {
                         <button
                             onClick={handleResend}
                             disabled={isPending || resendTimer > 0}
-                            className="w-full py-3 bg-gray-50 dark:bg-zinc-900 text-gray-900 dark:text-white font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-zinc-950 disabled:text-gray-400 disabled:cursor-not-allowed"
+                            className="w-full btn-secondary disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-zinc-950 disabled:text-gray-400 disabled:cursor-not-allowed"
                         >
                             {isPending ? (
                                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -364,19 +364,19 @@ export default function LoginForm() {
                     {renderError()}
                     <form onSubmit={onForgotPassword} className="space-y-4">
                         <div className="relative group">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-gray-900 dark:group-focus-within:text-white transition-colors" />
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder={t('email_placeholder')}
                                 required
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none"
+                                className="input-field pl-10"
                             />
                         </div>
                         <button
                             disabled={isPending || !email}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
+                            className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : t('send_reset_link')}
                         </button>
@@ -387,8 +387,8 @@ export default function LoginForm() {
             {/* RESET SENT VIEW */}
             {view === 'RESET_SENT' && (
                 <div className="animate-in zoom-in-95 duration-500 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6">
-                        <Mail className="w-10 h-10 text-blue-500" />
+                    <div className="w-20 h-20 bg-black/5 dark:bg-white/10 rounded-full flex items-center justify-center mb-6">
+                        <Mail className="w-10 h-10 text-gray-700 dark:text-white" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                         {t('reset_link_sent')}
@@ -398,7 +398,7 @@ export default function LoginForm() {
                     </p>
                     <button
                         onClick={() => { setView('AUTH'); setMode('LOGIN'); }}
-                        className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-all"
+                        className="w-full btn-primary"
                     >
                         {t('back')}
                     </button>

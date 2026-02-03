@@ -128,19 +128,19 @@ export default function StickerEditor({
                                 }
                                 fileInputRef.current?.click()
                             }}
-                            className="w-full h-48 border-2 border-dashed border-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/10 transition-all bg-gray-50/30 group"
+                            className="w-full h-48 border-2 border-dashed border-black/10 dark:border-white/10 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-black/30 hover:text-gray-900 hover:bg-black/5 transition-all bg-black/5 dark:bg-white/5 group"
                         >
-                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 border border-gray-100 group-hover:scale-110 transition-transform">
-                                <span className="text-3xl text-blue-500">+</span>
+                            <div className="w-16 h-16 bg-white/90 dark:bg-zinc-900/70 rounded-full shadow-sm flex items-center justify-center mb-4 border border-black/5 dark:border-white/10 group-hover:scale-110 transition-transform">
+                                <span className="text-3xl text-gray-800 dark:text-white">+</span>
                             </div>
                             <span className="text-base font-bold text-gray-700">{t('upload_sticker')}</span>
                             <p className="text-xs text-gray-400 mt-2 px-6 text-center">
-                                上传图片，系统将自动将其应用到整车侧身
+                                {t('sticker_tip')}
                             </p>
                         </button>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden border border-gray-100 flex items-center justify-center p-2">
+                            <div className="relative aspect-square bg-black/5 dark:bg-white/10 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex items-center justify-center p-2">
                                 <img
                                     src={stickerImage}
                                     className="max-w-full max-h-full object-contain shadow-sm"
@@ -157,9 +157,9 @@ export default function StickerEditor({
                                     type="button"
                                     disabled={isSaving}
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="flex-1 h-12 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-bold transition-all text-sm border border-gray-100 disabled:opacity-50"
+                                    className="flex-1 h-12 bg-black/5 dark:bg-white/10 hover:bg-black/10 text-gray-700 dark:text-zinc-200 rounded-lg font-bold transition-all text-sm border border-black/5 dark:border-white/10 disabled:opacity-50"
                                 >
-                                    更换图片
+                                    {t('replace_image')}
                                 </button>
                                 <button
                                     type="button"
@@ -194,12 +194,12 @@ export default function StickerEditor({
                         {(isProcessing || isSaving) ? (
                             <>
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                {isSaving ? '正在保存...' : '处理中...'}
+                                {isSaving ? t('saving') : t('processing')}
                             </>
                         ) : t('save_diy')}
                     </button>
                     <p className="mt-4 text-[11px] text-gray-400 text-center leading-relaxed">
-                        💡 提示：上传高清图片可获得更好的贴图效果。<br />支持 PNG、JPG、WebP 格式。
+                        {t('sticker_quality_tip')}
                     </p>
                 </div>
             </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { trackDownload } from '@/lib/analytics'
+import Button from '@/components/ui/Button'
 
 interface DownloadButtonProps {
     wrapId: string
@@ -42,10 +43,11 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale }: DownloadB
 
     return (
         <div>
-            <button
+            <Button
                 onClick={handleDownload}
                 disabled={isDownloading}
-                className="block w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+                className="w-full"
+                size="lg"
             >
                 <span className="flex items-center justify-center gap-2">
                     {isDownloading ? (
@@ -65,7 +67,7 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale }: DownloadB
                         </>
                     )}
                 </span>
-            </button>
+            </Button>
             <p className="text-xs text-gray-500 text-center mt-2">
                 {t('free_download')}
             </p>

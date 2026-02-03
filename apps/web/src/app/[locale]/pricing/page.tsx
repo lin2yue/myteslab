@@ -27,9 +27,9 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     const t = await getTranslations({ locale, namespace: 'Pricing' });
 
     return (
-        <div className="min-h-screen bg-white dark:bg-zinc-950">
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Hero Section */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
                 <div className="text-center">
                     <h1 className="text-4xl sm:text-5xl lg:text-5xl font-bold text-zinc-900 dark:text-white mb-6 tracking-tight">
                         {t('title')}
@@ -41,7 +41,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             </div>
 
             {/* Pricing Cards */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-6">
                     {PRICING_TIERS.map((tier) => (
                         <PricingTierCard key={tier.id} tier={tier} />
@@ -57,8 +57,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             </div>
 
             {/* What You Get Section */}
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 border-y border-zinc-100 dark:border-zinc-800/50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div className="bg-white/70 dark:bg-zinc-900/50 border-y border-black/5 dark:border-white/10 backdrop-blur">
+                <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24">
                     <h2 className="text-3xl font-bold text-zinc-900 dark:text-white text-center mb-20 tracking-tight">
                         {t('features_title')}
                     </h2>

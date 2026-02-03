@@ -46,7 +46,7 @@ export default function ProfileForm({ initialDisplayName, userId }: ProfileFormP
                     <p className="text-lg font-semibold text-gray-900">{displayName || 'N/A'}</p>
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+                        className="text-sm text-gray-900 hover:underline font-medium"
                     >
                         {t('edit') || 'Edit'}
                     </button>
@@ -63,13 +63,13 @@ export default function ProfileForm({ initialDisplayName, userId }: ProfileFormP
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
+                    className="input-field flex-1 h-10"
                     placeholder="Enter nickname"
                 />
                 <button
                     onClick={handleSave}
                     disabled={isLoading}
-                    className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                    className="btn-primary h-10 px-3 text-sm disabled:opacity-50"
                 >
                     {isLoading ? '...' : (t('save') || 'Save')}
                 </button>
@@ -78,7 +78,7 @@ export default function ProfileForm({ initialDisplayName, userId }: ProfileFormP
                         setDisplayName(initialDisplayName || '')
                         setIsEditing(false)
                     }}
-                    className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-50 text-sm font-medium"
+                    className="btn-secondary h-10 px-3 text-sm"
                 >
                     {t('cancel') || 'Cancel'}
                 </button>

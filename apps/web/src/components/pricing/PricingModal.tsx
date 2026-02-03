@@ -28,7 +28,7 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     onClick={onClose}
                 />
 
-                <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-zinc-100 dark:border-zinc-800">
+                <div className="relative w-full max-w-5xl bg-white/90 dark:bg-zinc-900/80 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-black/5 dark:border-white/10 backdrop-blur">
 
                     {/* Header */}
                     <div className="flex flex-col items-center justify-center pt-10 pb-6 px-6 text-center">
@@ -36,7 +36,7 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
                         <p className="text-zinc-500 dark:text-zinc-400 max-w-lg leading-relaxed text-sm font-medium">{t('subtitle')}</p>
                         <button
                             onClick={onClose}
-                            className="absolute top-6 right-6 p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                            className="absolute top-6 right-6 p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -52,7 +52,7 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-6 bg-zinc-50 dark:bg-zinc-900/50 text-center border-t border-zinc-100 dark:border-zinc-800">
+                    <div className="p-6 bg-white/60 dark:bg-zinc-900/40 text-center border-t border-black/5 dark:border-white/10 backdrop-blur">
                         <p className="text-[10px] text-zinc-400 dark:text-zinc-500 tracking-wider font-semibold uppercase">
                             {t('secure_payment_desc')}
                         </p>

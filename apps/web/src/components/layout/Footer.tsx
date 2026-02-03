@@ -15,8 +15,8 @@ export default function Footer() {
     }
 
     return (
-        <footer className="mt-auto border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+        <footer className="mt-auto border-t border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-950/80 backdrop-blur">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 lg:gap-8">
                     {/* Brand section */}
                     <div className="md:col-span-2">

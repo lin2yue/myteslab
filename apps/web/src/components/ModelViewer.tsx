@@ -790,14 +790,14 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-50/50 backdrop-blur-sm rounded-lg z-20">
-                    <div className="w-6 h-6 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
                 </div>
             )}
 
             {textureLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[1px] rounded-lg z-10 transition-all text-xs">
                     <div className="bg-white/80 px-4 py-2 rounded-full shadow-sm border border-gray-100 flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin"></div>
                         <p className="text-gray-600 font-medium">{t('applying_texture')}</p>
                     </div>
                 </div>

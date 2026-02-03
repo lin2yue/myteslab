@@ -15,18 +15,18 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({ category, classNam
             case WRAP_CATEGORY.OFFICIAL:
                 return {
                     label: t('category_official'),
-                    styles: 'bg-blue-50 text-blue-600 border-blue-100',
+                    styles: 'bg-black/5 text-gray-700 border-black/10',
                 };
             case WRAP_CATEGORY.AI_GENERATED:
                 return {
                     label: t('category_ai_generated'),
-                    styles: 'bg-purple-50 text-purple-600 border-purple-100',
+                    styles: 'bg-black/10 text-gray-800 border-black/15',
                 };
             case WRAP_CATEGORY.DIY:
             default:
                 return {
                     label: t('category_diy'),
-                    styles: 'bg-green-50 text-green-600 border-green-100',
+                    styles: 'bg-black/5 text-gray-600 border-black/10',
                 };
         }
     };

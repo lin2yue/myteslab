@@ -51,7 +51,7 @@ export function LanguageSwitcher() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 disabled={isPending}
-                className="inline-flex items-center justify-center p-2 text-gray-700 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center p-2 text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
                 aria-label="Select Language"
             >
                 {isPending ? (
@@ -62,14 +62,14 @@ export function LanguageSwitcher() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-50">
+                <div className="absolute right-0 mt-2 w-32 bg-white/90 dark:bg-zinc-900/80 border border-black/5 dark:border-white/10 rounded-xl shadow-[0_12px_30px_rgba(0,0,0,0.18)] py-1 z-50 backdrop-blur">
                     {languages.map((lang) => (
                         <button
                             key={lang.code}
                             onClick={() => handleSwitch(lang.code)}
                             className={`w-full text-left px-4 py-2 text-sm transition-colors ${locale === lang.code
-                                ? 'bg-gray-50 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-medium'
-                                : 'text-gray-700 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                                ? 'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white font-medium'
+                                : 'text-gray-700 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10'
                                 }`}
                         >
                             {lang.label}

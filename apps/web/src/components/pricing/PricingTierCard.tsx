@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type PricingTier } from '@/lib/constants/credits';
 import { trackBeginCheckout } from '@/lib/analytics';
+import Button from '@/components/ui/Button';
 
 interface PricingTierCardProps {
     tier: PricingTier;
@@ -63,7 +64,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
 
     return (
         <div
-            className={`relative flex flex-col p-8 rounded-3xl border transition-all duration-500 text-center bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-lg ${tier.popular ? 'ring-1 ring-zinc-900/5 dark:ring-white/5' : ''
+            className={`relative flex flex-col p-8 rounded-3xl border transition-all duration-500 text-center bg-white/80 dark:bg-zinc-900/80 border-black/5 dark:border-white/10 shadow-[0_1px_0_rgba(0,0,0,0.04),0_18px_40px_rgba(0,0,0,0.10)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_26px_60px_rgba(0,0,0,0.14)] backdrop-blur ${tier.popular ? 'ring-1 ring-black/10 dark:ring-white/10' : ''
                 }`}
         >
             {tier.popular && (
@@ -106,20 +107,18 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             </div>
 
             {/* Action Button */}
-            <button
+            <Button
                 onClick={handleBuy}
                 disabled={loading}
-                className={`w-full py-4 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-sm ${loading
-                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-wait'
-                    : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100'
-                    }`}
+                className={`w-full rounded-2xl ${loading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-wait' : ''}`}
+                size="lg"
             >
                 {loading ? (
                     <div className="w-5 h-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                 ) : (
                     t('choose_plan')
                 )}
-            </button>
+            </Button>
         </div>
     );
 }

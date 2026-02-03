@@ -103,7 +103,7 @@ export default async function AllWrapsDebugPage({
                                         <div className="text-[10px] text-gray-500 mt-1 font-mono">{wrap.id.substring(0, 13)}...</div>
                                     </td>
                                     <td className="px-6 py-6 whitespace-nowrap">
-                                        <div className="text-sm font-semibold text-blue-400">{wrap.author_name}</div>
+                                        <div className="text-sm font-semibold text-gray-200">{wrap.author_name}</div>
                                         <div className="text-xs text-gray-500 mt-1 uppercase tracking-tight">{wrap.model_slug}</div>
                                     </td>
                                     <td className="px-6 py-6">

@@ -11,7 +11,7 @@ export default async function NotFound() {
                     404
                 </span>
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-20 h-20 bg-blue-600 rounded-2xl rotate-12 flex items-center justify-center shadow-2xl shadow-blue-500/20">
+                    <div className="w-20 h-20 bg-black rounded-2xl rotate-12 flex items-center justify-center shadow-2xl shadow-black/20">
                         <span className="text-white font-black text-4xl">T</span>
                     </div>
                 </div>
