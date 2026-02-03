@@ -838,8 +838,8 @@ export default function AIGeneratorMain({
                         {activeMode === 'ai' ? (
                             <div className="flex flex-col h-full">
                                 {/* Model, Credits & Buy Area in One Row - Specific for AI */}
-                                <div className="flex gap-3 items-center px-4 py-3 border-b border-black/5 dark:border-white/10 bg-transparent order-1">
-                                    <div className="flex-[2]">
+                                <div className="flex gap-3 items-center px-4 py-3 bg-transparent order-1">
+                                    <div className="flex-[3]">
                                         <Select
                                             value={selectedModel}
                                             options={models.map((m: any) => ({
@@ -854,13 +854,17 @@ export default function AIGeneratorMain({
                                         />
                                     </div>
 
-                                    <div className="flex-[3] flex items-center gap-2 h-12 bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-xl px-3">
+                                    <div className="flex-[2] flex items-center gap-2 h-12 bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-xl px-2.5">
                                         <div className="flex items-baseline gap-2 min-w-0">
-                                            <span className="text-[11px] text-gray-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">Balance</span>
+                                            <span className="text-[11px] text-gray-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">
+                                                {tGen('balance_label')}
+                                            </span>
                                             <span className="text-base font-semibold text-gray-900 dark:text-white truncate">
                                                 {isLoggedInInternal ? (balance ?? 0) : tGen('login_to_view')}
                                             </span>
-                                            <span className="text-[10px] text-gray-400 dark:text-zinc-400 uppercase tracking-wide">Credits</span>
+                                            <span className="text-[10px] text-gray-400 dark:text-zinc-400 uppercase tracking-wide">
+                                                {tGen('credits_label')}
+                                            </span>
                                         </div>
                                         <div className="flex-1" />
                                         <button
@@ -873,7 +877,7 @@ export default function AIGeneratorMain({
                                 </div>
 
                                 {/* Input Area */}
-                                <div className="p-4 flex flex-col gap-3 order-2 bg-transparent border-t border-black/5 dark:border-white/10">
+                                <div className="p-4 flex flex-col gap-3 order-2 bg-transparent">
                                     <div className="bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-2xl pt-4 px-4 pb-2 focus-within:ring-2 focus-within:ring-black/10 transition-all flex flex-col gap-4">
                                         <textarea
                                             value={prompt}
@@ -1025,7 +1029,7 @@ export default function AIGeneratorMain({
                                             label: _locale === 'en' ? (m.name_en || m.name) : m.name
                                         }))}
                                         onChange={(value) => setSelectedModel(value)}
-                                        buttonClassName="h-14"
+                                        buttonClassName="h-12"
                                     />
                                 </div>
 

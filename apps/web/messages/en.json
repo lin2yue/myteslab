@@ -124,6 +124,8 @@
         "refresh": "Refresh",
         "no_history": "No history yet",
         "balance": "Balance: {count} Credits",
+        "balance_label": "Balance",
+        "credits_label": "Credits",
         "buy_package": "Buy Generation Package",
         "buy_short": "Buy",
         "prompt_placeholder": "Describe the design you want...",

@@ -124,6 +124,8 @@
         "refresh": "刷新",
         "no_history": "还没有生成记录",
         "balance": "余额：{count} 积分",
+        "balance_label": "余额",
+        "credits_label": "积分",
         "buy_package": "购买生成分包",
         "buy_short": "购买",
         "prompt_placeholder": "请输入你想要生成的画面描述...",
