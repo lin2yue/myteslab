@@ -701,7 +701,7 @@ export default function AIGeneratorMain({
 
                                     <div className="flex-[3] flex gap-2 h-12 bg-white border border-gray-200 rounded-lg overflow-hidden p-0.5">
                                         <div className="flex-1 bg-gray-50 rounded flex items-center justify-center font-bold text-gray-700 text-xs px-2 whitespace-nowrap">
-                                            {isLoggedInInternal ? tGen('balance', { count: balance }) : tGen('login_to_view')}
+                                            {isLoggedInInternal ? tGen('balance', { count: balance ?? 0 }) : tGen('login_to_view')}
                                         </div>
                                         <button
                                             onClick={handleBuyCredits}
