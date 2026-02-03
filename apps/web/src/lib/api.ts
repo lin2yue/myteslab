@@ -197,12 +197,13 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
         }
 
         // 详情页也统一拉取 Profile
+        const wrapRecord = wrapData as any;
         let profiles = null
-        if (wrapData.user_id) {
-            const { data, error: profileError } = await supabaseClient.from('profiles').select('display_name, avatar_url').eq('id', wrapData.user_id).single()
+        if (wrapRecord?.user_id) {
+            const { data, error: profileError } = await supabaseClient.from('profiles').select('display_name, avatar_url').eq('id', wrapRecord.user_id).single()
             if (profileError) {
                 if (process.env.NODE_ENV === 'development') {
-                    console.error('[Debug] Failed to fetch profile for user:', wrapData.user_id, profileError)
+                    console.error('[Debug] Failed to fetch profile for user:', wrapRecord.user_id, profileError)
                 }
             } else if (process.env.NODE_ENV === 'development') {
                 console.log('[Debug] Fetched profile:', data)
@@ -210,17 +211,17 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             profiles = data
         } else {
             if (process.env.NODE_ENV === 'development') {
-                console.log('[Debug] Wrap has no user_id:', wrapData.id)
+                console.log('[Debug] Wrap has no user_id:', wrapRecord?.id)
             }
         }
 
         // 补齐模型预览链接
-        if (!wrapData.model_3d_url && wrapData.model_slug) {
-            const { data: model } = await supabaseClient.from('wrap_models').select('model_3d_url').eq('slug', wrapData.model_slug).single()
-            wrapData.model_3d_url = model?.model_3d_url
+        if (!wrapRecord?.model_3d_url && wrapRecord?.model_slug) {
+            const { data: model } = await supabaseClient.from('wrap_models').select('model_3d_url').eq('slug', wrapRecord.model_slug).single()
+            wrapRecord.model_3d_url = model?.model_3d_url
         }
 
-        const normalized = normalizeWrap({ ...wrapData, profiles })
+        const normalized = normalizeWrap({ ...wrapRecord, profiles })
         const withModelInfo = await injectModelInfo([normalized])
         return withModelInfo[0]
     } catch (error) {
