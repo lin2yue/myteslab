@@ -88,9 +88,14 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
                             ${tier.price.replace('.99', '.9')}
                         </span>
                     </div>
-                    <div className="mt-4 text-[11px] font-semibold px-3 py-1 rounded-full border text-zinc-600 dark:text-zinc-400 border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
-                        {tier.credits} {t('credits')}
-                    </div>
+                <div className="mt-4 px-3 py-1 rounded-full border text-zinc-600 dark:text-zinc-400 border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex items-baseline justify-center gap-1">
+                    <span className="text-base font-bold text-zinc-900 dark:text-white">
+                        {tier.credits}
+                    </span>
+                    <span className="text-[11px] font-semibold">
+                        {t('credits')}
+                    </span>
+                </div>
                 </div>
             </div>
 

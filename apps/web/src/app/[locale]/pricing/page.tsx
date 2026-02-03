@@ -29,12 +29,12 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Hero Section */}
-            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
                 <div className="text-center">
-                    <h1 className="text-4xl sm:text-5xl lg:text-5xl font-bold text-zinc-900 dark:text-white mb-6 tracking-tight">
+                    <h1 className="text-3xl sm:text-4xl lg:text-4xl font-bold text-zinc-900 dark:text-white mb-4 tracking-tight">
                         {t('title')}
                     </h1>
-                    <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-xl mx-auto leading-relaxed font-medium">
+                    <p className="text-base text-zinc-500 dark:text-zinc-400 max-w-xl mx-auto leading-relaxed font-medium">
                         {t('subtitle')}
                     </p>
                 </div>
