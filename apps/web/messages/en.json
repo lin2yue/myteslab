@@ -262,6 +262,8 @@
         },
         "choose_plan": "Buy Now",
         "buy_now": "Buy Credits",
+        "processing": "Processing",
+        "redirecting": "Redirecting",
         "approx_cost": "Only ${cost} per image",
         "save_percent": "Save {percent}%",
         "credits": "Credits",

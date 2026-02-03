@@ -16,7 +16,7 @@ interface PricingTierCardProps {
 export default function PricingTierCard({ tier }: PricingTierCardProps) {
     const t = useTranslations('Pricing');
     const locale = useLocale();
-    const [loading, setLoading] = useState(false);
+    const [status, setStatus] = useState<'idle' | 'loading' | 'redirecting'>('idle');
     const router = useRouter();
 
     const handleBuy = async () => {
@@ -27,7 +27,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             price: parseFloat(tier.price),
         })
 
-        setLoading(true);
+        setStatus('loading');
         try {
             const response = await fetch('/api/checkout', {
                 method: 'POST',
@@ -45,18 +45,20 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             const data = await response.json();
 
             if (data.url) {
+                setStatus('redirecting');
                 window.location.href = data.url;
             } else if (data.error === 'Unauthorized') {
                 const currentUrl = window.location.pathname + window.location.search;
                 router.push(`/login?next=${encodeURIComponent(currentUrl)}`);
+                setStatus('idle');
             } else {
                 alert(data.error || 'Failed to create checkout session');
+                setStatus('idle');
             }
         } catch (error) {
             console.error('Checkout error:', error);
             alert('Something went wrong. Please try again.');
-        } finally {
-            setLoading(false);
+            setStatus('idle');
         }
     };
 
@@ -114,12 +116,17 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             {/* Action Button */}
             <Button
                 onClick={handleBuy}
-                disabled={loading}
-                className={`w-full rounded-2xl ${loading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-wait' : ''}`}
+                disabled={status !== 'idle'}
+                className={`w-full rounded-2xl ${status !== 'idle' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-wait' : ''}`}
                 size="lg"
             >
-                {loading ? (
-                    <div className="w-5 h-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                {status !== 'idle' ? (
+                    <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                        <span className="text-sm font-semibold">
+                            {status === 'redirecting' ? t('redirecting') : t('processing')}
+                        </span>
+                    </div>
                 ) : (
                     t('choose_plan')
                 )}

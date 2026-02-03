@@ -262,6 +262,8 @@
         },
         "choose_plan": "立即购买",
         "buy_now": "立即充值",
+        "processing": "处理中",
+        "redirecting": "正在跳转",
         "approx_cost": "单张成本仅 ${cost}",
         "save_percent": "立省 {percent}%",
         "credits": "积分",
