@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   status generation_status DEFAULT 'pending',
   credits_spent INTEGER DEFAULT 10,
   error_message TEXT,
+  wrap_id UUID REFERENCES wraps(id) ON DELETE SET NULL,
   idempotency_key UUID UNIQUE,              -- 防止重复提交的唯一键
   steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

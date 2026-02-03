@@ -62,6 +62,14 @@ All database changes must first be written/updated in the source of truth file:
 3.  Execute **ONLY** the new SQL statements (incremental update).
 4.  *Advanced:* Use `supabase db diff` (requires CLI) to ensure no drift.
 
+### Step 4: Apply Incremental SQL Files
+For small, isolated changes, prefer adding a dedicated SQL file and executing it manually:
+
+1.  Create a new SQL file under `apps/web/database/` (e.g. `add_wrap_id_to_generation_tasks.sql`).
+2.  Run it in **Dev** first via Supabase SQL Editor.
+3.  Verify locally.
+4.  Promote the same SQL to **Prod**.
+
 ## 3. Data Safety Rules
 
 1.  **Never delete columns** in Production without a maintenance window.

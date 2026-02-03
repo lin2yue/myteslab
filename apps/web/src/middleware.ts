@@ -74,7 +74,12 @@ export default async function middleware(request: NextRequest) {
             const locale = pathname.split('/')[1] || 'en';
             const loginUrl = new URL(`/${locale}/login`, request.url);
             loginUrl.searchParams.set('next', pathname);
-            return NextResponse.redirect(loginUrl);
+            const redirectResponse = NextResponse.redirect(loginUrl);
+            const supabaseCookies = supabaseResponse.cookies.getAll();
+            supabaseCookies.forEach(cookie => {
+                redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+            });
+            return redirectResponse;
         }
 
         // Check role in profiles table
@@ -87,7 +92,12 @@ export default async function middleware(request: NextRequest) {
         if (!profile || (profile.role !== 'admin' && profile.role !== 'super_admin')) {
             // Logged in but not an admin, redirect to home
             const locale = pathname.split('/')[1] || 'en';
-            return NextResponse.redirect(new URL(`/${locale}`, request.url));
+            const redirectResponse = NextResponse.redirect(new URL(`/${locale}`, request.url));
+            const supabaseCookies = supabaseResponse.cookies.getAll();
+            supabaseCookies.forEach(cookie => {
+                redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+            });
+            return redirectResponse;
         }
     }
 

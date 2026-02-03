@@ -22,7 +22,48 @@ export interface ModelConfig {
  * Default Tesla model configurations
  * These values match the production database and serve as a fallback
  */
-export const DEFAULT_MODELS: ModelConfig[] = []
+export const DEFAULT_MODELS: ModelConfig[] = [
+    {
+        slug: 'cybertruck',
+        name: 'Cybertruck',
+        name_en: 'Cybertruck',
+        model_3d_url: 'https://cdn.tewan.club/models/wraps/cybertruck/model_v1.glb',
+        sort_order: 1,
+        is_active: true,
+    },
+    {
+        slug: 'model-3',
+        name: 'Model 3 (经典款)',
+        name_en: 'Model 3',
+        model_3d_url: 'https://cdn.tewan.club/models/wraps/model-3/model_v1.glb',
+        sort_order: 2,
+        is_active: true,
+    },
+    {
+        slug: 'model-3-2024-plus',
+        name: 'Model 3 (焕新版)',
+        name_en: 'Model 3 2024+',
+        model_3d_url: 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v2.glb',
+        sort_order: 3,
+        is_active: true,
+    },
+    {
+        slug: 'model-y-2025-plus',
+        name: 'Model Y (2025+)',
+        name_en: 'Model Y 2025+',
+        model_3d_url: 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v5.glb',
+        sort_order: 4,
+        is_active: true,
+    },
+    {
+        slug: 'model-y-pre-2025',
+        name: 'Model Y (经典款)',
+        name_en: 'Model Y',
+        model_3d_url: 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb',
+        sort_order: 5,
+        is_active: true,
+    },
+]
 
 /**
  * Get model configuration by slug

@@ -63,7 +63,8 @@ export async function uploadToOSS(
  */
 export async function getSignedUrl(
     filename: string,
-    folder: string = 'wraps/previews'
+    folder: string = 'wraps/previews',
+    contentType: string = 'image/png'
 ): Promise<{ url: string; key: string }> {
     const OSS = require('ali-oss');
     const config = getOSSConfig();
@@ -81,7 +82,7 @@ export async function getSignedUrl(
     // 生成 2 分钟有效的 PUT 签名连接
     const url = client.signatureUrl(ossKey, {
         method: 'PUT',
-        'Content-Type': 'image/png',
+        'Content-Type': contentType,
         expires: 120
     });
 

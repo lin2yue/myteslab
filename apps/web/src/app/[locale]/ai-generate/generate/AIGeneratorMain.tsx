@@ -102,6 +102,11 @@ export default function AIGeneratorMain({
     const [showPricing, setShowPricing] = useState(false)
     const router = useRouter()
     const [showPublishModal, setShowPublishModal] = useState(false)
+    const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
+    const [isUploadingRefs, setIsUploadingRefs] = useState(false)
+    const pollAttemptsRef = useRef(0)
+    const pollStartRef = useRef<number | null>(null)
+    const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -209,6 +214,80 @@ export default function AIGeneratorMain({
         }
     }, [fetchHistory, supabase])
 
+    useEffect(() => {
+        if (!pendingTaskId) return
+        let isActive = true
+        pollAttemptsRef.current = 0
+        pollStartRef.current = Date.now()
+
+        const poll = (delayMs: number) => {
+            if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+            pollTimeoutRef.current = setTimeout(async () => {
+                if (!isActive) return
+                const elapsedMs = Date.now() - (pollStartRef.current || Date.now())
+                if (pollAttemptsRef.current >= 24 || elapsedMs > 3 * 60 * 1000) {
+                    alert.info('生成可能仍在后台进行，请稍后刷新历史查看结果')
+                    setPendingTaskId(null)
+                    return
+                }
+                pollAttemptsRef.current += 1
+                try {
+                    const res = await fetch('/api/wrap/by-task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ taskId: pendingTaskId })
+                    })
+
+                    const retryAfterHeader = res.headers.get('Retry-After')
+                    const baseDelay = retryAfterHeader ? Number(retryAfterHeader) * 1000 : delayMs
+
+                    if (!res.ok) {
+                        if (res.status === 429) {
+                            poll(baseDelay || 5000)
+                        } else {
+                            poll(5000)
+                        }
+                        return
+                    }
+                    const data = await res.json()
+                    if (data?.wrap?.id) {
+                        setCurrentTexture(data.wrap.preview_url || data.wrap.texture_url)
+                        setActiveWrapId(data.wrap.id)
+                        setPendingTaskId(null)
+                        fetchHistory()
+                        return
+                    }
+
+                    if (data?.status === 'failed') {
+                        alert.error(`生成失败: ${data.error || '任务失败'}`)
+                        setPendingTaskId(null)
+                        return
+                    }
+
+                    if (data?.status === 'completed_missing') {
+                        alert.error('任务已完成但未找到结果，请稍后刷新或联系客服')
+                        setPendingTaskId(null)
+                        return
+                    }
+
+                    const nextBase = (data?.retryAfter || 5) * 1000
+                    const nextDelay = Math.min(30000, Math.round(nextBase * Math.pow(1.4, pollAttemptsRef.current)))
+                    poll(nextDelay)
+                } catch (err) {
+                    console.error('Polling wrap by task id failed:', err)
+                    poll(5000)
+                }
+            }, delayMs)
+        }
+
+        poll(5000)
+
+        return () => {
+            isActive = false
+            if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+        }
+    }, [pendingTaskId, fetchHistory])
+
     // 生成逻辑
     const handleGenerate = async () => {
         if (!isLoggedInInternal) {
@@ -271,6 +350,12 @@ export default function AIGeneratorMain({
 
             const data = await res.json()
             if (!data.success) throw new Error(data.error)
+
+            if (data.status === 'pending') {
+                setPendingTaskId(data.taskId)
+                alert.info('任务已提交，正在后台生成，完成后会自动刷新')
+                return
+            }
 
             setCurrentTexture(data.image.dataUrl) // 服务器已经返回了纠正后的贴图
             setActiveWrapId(data.wrapId) // 使用作品 ID 而非任务 ID
@@ -472,17 +557,36 @@ export default function AIGeneratorMain({
         if (filesToProcess.length === 0) return
 
         try {
+            setIsUploadingRefs(true)
             // Dynamically import utility to avoid server-side issues
             const { compressImage } = await import('@/utils/image');
 
-            const newImages = await Promise.all(
+            const dataUrls = await Promise.all(
                 filesToProcess.map(file => compressImage(file, 1024, 0.8))
             );
 
-            setReferenceImages(prev => [...prev, ...newImages]);
+            const uploadedUrls: string[] = []
+            let failedCount = 0
+            for (const dataUrl of dataUrls) {
+                const uploadResult = await uploadReferenceImage(dataUrl)
+                if (uploadResult) {
+                    uploadedUrls.push(uploadResult)
+                } else {
+                    failedCount += 1
+                }
+            }
+
+            if (uploadedUrls.length > 0) {
+                setReferenceImages(prev => [...prev, ...uploadedUrls]);
+            }
+            if (failedCount > 0) {
+                alert.warning(`有 ${failedCount} 张参考图上传失败，请重试`)
+            }
         } catch (err) {
             console.error('Image processing failed:', err);
             alert.error('图片处理失败，请重试');
+        } finally {
+            setIsUploadingRefs(false)
         }
     }
 
@@ -492,6 +596,58 @@ export default function AIGeneratorMain({
         // Reset input
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
+
+    const dataUrlToBlob = (dataUrl: string) => {
+        const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
+        if (!match) return null;
+        const contentType = match[1];
+        const base64Data = match[2];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        return { blob: new Blob([new Uint8Array(byteNumbers)], { type: contentType }), contentType };
+    };
+
+    const uploadReferenceImage = async (dataUrl: string): Promise<string | null> => {
+        const parsed = dataUrlToBlob(dataUrl);
+        if (!parsed) return null;
+        const { blob, contentType } = parsed;
+        const ext = contentType === 'image/png' ? 'png' : 'jpg';
+
+        for (let attempt = 1; attempt <= 2; attempt += 1) {
+            const signRes = await fetch('/api/wrap/get-reference-upload-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contentType, ext })
+            });
+
+            if (!signRes.ok) {
+                console.error('Failed to get reference upload URL');
+                continue;
+            }
+
+            const signData = await signRes.json();
+            if (!signData.success) {
+                console.error('Failed to get reference upload URL:', signData.error);
+                continue;
+            }
+
+            const uploadRes = await fetch(signData.uploadUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: { 'Content-Type': contentType }
+            });
+
+            if (uploadRes.ok) {
+                return signData.publicUrl as string;
+            }
+            console.error('Reference image upload failed');
+        }
+
+        return null;
+    };
 
     const handlePaste = async (e: React.ClipboardEvent) => {
         const items = e.clipboardData?.items
@@ -779,7 +935,7 @@ export default function AIGeneratorMain({
 
                                     <button
                                         onClick={handleGenerate}
-                                        disabled={isGenerating || !prompt.trim()}
+                                        disabled={isGenerating || isUploadingRefs || !prompt.trim()}
                                         className={`w-full h-12 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${isGenerating ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-black text-white hover:bg-zinc-800 active:scale-95'}`}
                                     >
                                         {isGenerating ? (
@@ -790,7 +946,7 @@ export default function AIGeneratorMain({
                                         ) : (
                                             <>
                                                 <Sparkles className="w-4 h-4" />
-                                                {tGen('generate_btn')}
+                                                {isUploadingRefs ? '参考图上传中...' : tGen('generate_btn')}
                                             </>
                                         )}
                                     </button>

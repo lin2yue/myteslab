@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Wrap, Model } from '@/lib/types'
+import { DEFAULT_MODELS } from '@/config/models'
 
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -156,7 +157,27 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
 
         // 构建查询：如果是 UUID，优先查 ID；否则查 Slug
-        let query = supabaseClient.from('wraps').select('*');
+        const selectFields = [
+            'id',
+            'slug',
+            'name',
+            'name_en',
+            'description',
+            'description_en',
+            'prompt',
+            'texture_url',
+            'preview_url',
+            'model_slug',
+            'model_3d_url',
+            'category',
+            'is_active',
+            'is_public',
+            'user_id',
+            'download_count',
+            'created_at',
+            'reference_images'
+        ].join(',');
+        let query = supabaseClient.from('wraps').select(selectFields);
 
         if (isUuid) {
             query = query.eq('id', slugOrId);
@@ -169,7 +190,7 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
         if (error || !wrapData) {
             // 如果按 Slug 没查到，且不是 UUID，再尝试按 ID 查一下（容错）
             if (!isUuid) {
-                const { data: retryData } = await supabaseClient.from('wraps').select('*').eq('id', slugOrId).single();
+                const { data: retryData } = await supabaseClient.from('wraps').select(selectFields).eq('id', slugOrId).single();
                 if (retryData) return normalizeWrap({ ...retryData });
             }
             return null;
@@ -180,13 +201,17 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
         if (wrapData.user_id) {
             const { data, error: profileError } = await supabaseClient.from('profiles').select('display_name, avatar_url').eq('id', wrapData.user_id).single()
             if (profileError) {
-                console.error('[Debug] Failed to fetch profile for user:', wrapData.user_id, profileError)
-            } else {
+                if (process.env.NODE_ENV === 'development') {
+                    console.error('[Debug] Failed to fetch profile for user:', wrapData.user_id, profileError)
+                }
+            } else if (process.env.NODE_ENV === 'development') {
                 console.log('[Debug] Fetched profile:', data)
             }
             profiles = data
         } else {
-            console.log('[Debug] Wrap has no user_id:', wrapData.id)
+            if (process.env.NODE_ENV === 'development') {
+                console.log('[Debug] Wrap has no user_id:', wrapData.id)
+            }
         }
 
         // 补齐模型预览链接
@@ -208,8 +233,6 @@ export async function getModels(): Promise<Model[]> {
     try {
         return await unstable_cache(
             async () => {
-                console.log('[getModels] Fetching from database...')
-
                 try {
                     const { data, error } = await publicSupabase
                         .from('wrap_models')
@@ -223,20 +246,24 @@ export async function getModels(): Promise<Model[]> {
                     }
 
                     const models = data || []
-                    console.log(`[getModels] Retrieved ${models.length} models from database`)
+
+                    if (models.length === 0) {
+                        console.warn('[getModels] Empty result, falling back to default models');
+                        return DEFAULT_MODELS.filter(m => m.is_active) as Model[];
+                    }
 
                     return models as Model[]
                 } catch (dbError) {
                     console.error('[getModels] Database query failed:', dbError)
-                    return []
+                    return DEFAULT_MODELS.filter(m => m.is_active) as Model[];
                 }
             },
             ['models-v9'], // Incremented version to force cache refresh
-            { revalidate: 3600 }
+            { revalidate: 3600, tags: ['models'] }
         )()
     } catch (error) {
         console.error('[getModels] Fatal error:', error)
-        return []
+        return DEFAULT_MODELS.filter(m => m.is_active) as Model[];
     }
 }
 
@@ -244,7 +271,6 @@ export async function incrementDownloadCount(wrapId: string): Promise<void> {
     try {
         await publicSupabase.rpc('increment_download_count', { wrap_id: wrapId })
     } catch (error) {
-        const { data } = await publicSupabase.from('wraps').select('download_count').eq('id', wrapId).single()
-        if (data) await publicSupabase.from('wraps').update({ download_count: (data.download_count || 0) + 1 }).eq('id', wrapId)
+        console.error('[incrementDownloadCount] RPC failed:', error)
     }
 }

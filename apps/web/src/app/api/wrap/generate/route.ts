@@ -32,9 +32,70 @@ const MODEL_NAMES: Record<string, string> = {
     'model-y-2025-plus': 'Model Y 2025+',
 };
 
+const MAX_REFERENCE_IMAGES = 3;
+const MAX_REFERENCE_IMAGE_BYTES = 1.5 * 1024 * 1024;
+
+const allowedReferenceHosts = new Set(
+    [
+        process.env.CDN_DOMAIN,
+        process.env.NEXT_PUBLIC_CDN_URL,
+        'https://cdn.tewan.club'
+    ]
+        .filter(Boolean)
+        .map(domain => {
+            const normalized = domain!.replace(/\/+$/, '');
+            try {
+                return new URL(normalized).hostname;
+            } catch {
+                return normalized.replace(/^https?:\/\//, '');
+            }
+        })
+);
+
+function extractBase64Payload(input: string): string | null {
+    if (!input) return null;
+    const dataUrlMatch = input.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (dataUrlMatch) return dataUrlMatch[2];
+    if (input.includes(',')) {
+        const [, base64] = input.split(',', 2);
+        return base64 || null;
+    }
+    return input;
+}
+
+function estimateBase64Size(base64: string): number {
+    const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+    return Math.floor((base64.length * 3) / 4) - padding;
+}
+
+function isAllowedReferenceUrl(input: string): boolean {
+    if (!input) return false;
+    if (input.startsWith('data:')) return true;
+    if (!input.startsWith('http')) return true;
+    try {
+        const url = new URL(input);
+        const hostAllowed = allowedReferenceHosts.has(url.hostname)
+            || allowedReferenceHosts.has(`https://${url.hostname}`)
+            || allowedReferenceHosts.has(`http://${url.hostname}`)
+            || url.hostname.endsWith('.aliyuncs.com');
+        if (!hostAllowed) return false;
+        if (!url.pathname.startsWith('/wraps/reference/')) return false;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export async function POST(request: NextRequest) {
     let taskId: string | undefined;
     const supabase = await createClient();
+    const markTaskFailed = async (reason: string) => {
+        if (!taskId) return;
+        await supabase
+            .from('generation_tasks')
+            .update({ status: 'failed', error_message: reason, updated_at: new Date().toISOString() })
+            .eq('id', taskId);
+    };
 
     const requestId = crypto.randomUUID();
     console.log(`[AI-GEN] [${requestId}] Request received. Content-Length: ${request.headers.get('content-length')}`);
@@ -66,6 +127,15 @@ export async function POST(request: NextRequest) {
         if (!modelSlug || !prompt) {
             return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 });
         }
+        if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > MAX_REFERENCE_IMAGES) {
+            return NextResponse.json({ success: false, error: 'Too many reference images' }, { status: 413 });
+        }
+        if (referenceImages && Array.isArray(referenceImages)) {
+            const hasInvalidRef = referenceImages.some((ref: any) => typeof ref !== 'string' || !isAllowedReferenceUrl(ref));
+            if (hasInvalidRef) {
+                return NextResponse.json({ success: false, error: 'Invalid reference image URL' }, { status: 400 });
+            }
+        }
 
         const modelName = MODEL_NAMES[modelSlug];
         if (!modelName) {
@@ -93,7 +163,33 @@ export async function POST(request: NextRequest) {
         // 如果是幂等命中，且任务已经完成，直接返回结果 (理想情况下这里应该查询任务结果)
         if (deductResultRaw[0].error_msg === 'Idempotent hit') {
             console.log(`[AI-GEN] ♻️ Idempotency hit: ${taskId}`);
-            // TODO: 这里可以优化为：如果任务已经完成，直接查询 wraps 表并返回
+            const { data: existingWrap } = await supabase
+                .from('wraps')
+                .select('id, slug, texture_url, preview_url')
+                .eq('generation_task_id', taskId)
+                .eq('user_id', user.id)
+                .single();
+
+            if (existingWrap?.texture_url) {
+                return NextResponse.json({
+                    success: true,
+                    taskId,
+                    wrapId: existingWrap.id,
+                    image: {
+                        dataUrl: existingWrap.preview_url || existingWrap.texture_url,
+                        mimeType: 'image/png',
+                        savedUrl: existingWrap.texture_url
+                    },
+                    remainingBalance: deductResultRaw?.[0]?.remaining_balance ?? 0
+                });
+            }
+
+            return NextResponse.json({
+                success: true,
+                taskId,
+                status: 'pending',
+                remainingBalance: deductResultRaw?.[0]?.remaining_balance ?? 0
+            }, { status: 202 });
         }
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
@@ -113,19 +209,21 @@ export async function POST(request: NextRequest) {
                 // 已经使用了你上传到线上的“预旋转”Mask，因此不需要再做预处理旋转
                 maskImageBase64 = maskBuffer.toString('base64');
 
-                // 【调试部分】保存发送给 AI 的 Mask
-                try {
-                    const debugBaseDir = join(process.cwd(), '../../dev-studio/test-previews');
-                    const taskDebugDir = join(debugBaseDir, taskId as string);
-                    console.log(`[AI-GEN] Saving debug mask to ${taskDebugDir}...`);
-                    if (!existsSync(debugBaseDir)) await mkdir(debugBaseDir, { recursive: true });
-                    if (!existsSync(taskDebugDir)) await mkdir(taskDebugDir, { recursive: true });
+                if (process.env.NODE_ENV === 'development') {
+                    // 【调试部分】仅本地保存发送给 AI 的 Mask
+                    try {
+                        const debugBaseDir = join(process.cwd(), '../../dev-studio/test-previews');
+                        const taskDebugDir = join(debugBaseDir, taskId as string);
+                        console.log(`[AI-GEN] Saving debug mask to ${taskDebugDir}...`);
+                        if (!existsSync(debugBaseDir)) await mkdir(debugBaseDir, { recursive: true });
+                        if (!existsSync(taskDebugDir)) await mkdir(taskDebugDir, { recursive: true });
 
-                    const inputMaskPath = join(taskDebugDir, 'input-mask.png');
-                    await writeFile(inputMaskPath, maskBuffer);
-                    console.log(`[AI-DEBUG] Input mask saved to: ${inputMaskPath}`);
-                } catch (debugErr) {
-                    console.error('[AI-DEBUG] Failed to save input mask for debug:', debugErr);
+                        const inputMaskPath = join(taskDebugDir, 'input-mask.png');
+                        await writeFile(inputMaskPath, maskBuffer);
+                        console.log(`[AI-DEBUG] Input mask saved to: ${inputMaskPath}`);
+                    } catch (debugErr) {
+                        console.error('[AI-DEBUG] Failed to save input mask for debug:', debugErr);
+                    }
                 }
             } else {
                 console.error(`[AI-GEN] Failed to fetch mask from: ${maskUrl}, Status: ${maskResponse.status}`);
@@ -143,16 +241,12 @@ export async function POST(request: NextRequest) {
                     const base64Data = referenceImages[i];
                     if (!base64Data) continue;
 
-                    // 处理可能带有的 data:image/xxx;base64, 前缀
-                    const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-                    let buffer;
-                    if (matches) {
-                        buffer = Buffer.from(matches[2], 'base64');
-                    } else if (base64Data.includes(',')) {
-                        buffer = Buffer.from(base64Data.split(',')[1], 'base64');
-                    } else {
-                        buffer = Buffer.from(base64Data, 'base64');
+                    const payload = extractBase64Payload(base64Data);
+                    if (!payload) continue;
+                    if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
+                        return NextResponse.json({ success: false, error: 'Reference image too large' }, { status: 413 });
                     }
+                    const buffer = Buffer.from(payload, 'base64');
 
                     const refFilename = `${taskId}-ref-${i}.png`;
                     const refUrl = await uploadToOSS(buffer, refFilename, 'wraps/reference');
@@ -170,7 +264,9 @@ export async function POST(request: NextRequest) {
         if (referenceImages && Array.isArray(referenceImages)) {
             for (const refImage of referenceImages) {
                 if (typeof refImage !== 'string') continue;
-                const base64 = refImage.startsWith('http') ? await imageUrlToBase64(refImage) : refImage.split(',')[1];
+                const base64 = refImage.startsWith('http')
+                    ? await imageUrlToBase64(refImage)
+                    : extractBase64Payload(refImage);
                 if (base64) referenceImagesBase64.push(base64);
             }
         }
@@ -182,9 +278,17 @@ export async function POST(request: NextRequest) {
             logTaskStep(taskId, step, status, reason, supabase);
 
         await logStep('ai_call_start', 'processing');
+        await supabase
+            .from('generation_tasks')
+            .update({ status: 'processing', updated_at: new Date().toISOString() })
+            .eq('id', taskId)
+            .eq('user_id', user.id);
 
         // 同时启动两个 AI 任务
         const metadataPromise = generateBilingualMetadata(prompt, modelName);
+        void metadataPromise.catch(err => {
+            console.error('[AI-GEN] Failed to generate bilingual metadata:', err);
+        });
         const imageGenerationPromise = generateWrapTexture({
             modelSlug,
             modelName,
@@ -199,7 +303,8 @@ export async function POST(request: NextRequest) {
         // 6. 处理结果
         if (!result.success) {
             // 失败：更新任务状态并自动退款
-            console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}...`);
+            console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${user.id}...`);
+            await markTaskFailed(`AI API Error: ${result.error}`);
             await supabase.rpc('refund_task_credits', {
                 p_task_id: taskId,
                 p_reason: `AI API Error: ${result.error}`
@@ -248,13 +353,15 @@ export async function POST(request: NextRequest) {
                 await logStep('oss_upload_success');
 
             } catch (ossErr) {
-                console.error('OSS Upload failed:', ossErr);
-                await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'OSS upload failed' });
-                return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
+            console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${user.id}:`, ossErr);
+            await markTaskFailed('OSS upload failed');
+            await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'OSS upload failed' });
+            return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
             }
 
         } catch (err) {
-            console.error('❌ [AI-GEN] Image processing error:', err);
+            console.error(`❌ [AI-GEN] Image processing error for task ${taskId}, user ${user.id}:`, err);
+            await markTaskFailed('Image processing failed');
             await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'Image processing failed' });
             return NextResponse.json({ success: false, error: 'Image correction failed' }, { status: 500 });
         }
@@ -290,6 +397,14 @@ export async function POST(request: NextRequest) {
 
         const wrapId = wrapData?.id;
 
+        if (taskId && wrapId) {
+            await supabase
+                .from('generation_tasks')
+                .update({ status: 'completed', wrap_id: wrapId, updated_at: new Date().toISOString() })
+                .eq('id', taskId)
+                .eq('user_id', user.id);
+        }
+
         // 记录步骤：作品保存成功
         await logStep('database_save_success');
 
@@ -312,6 +427,7 @@ export async function POST(request: NextRequest) {
         console.error('❌ [AI-GEN] Global API Error:', error);
 
         if (taskId) {
+            await markTaskFailed(`Global API Error: ${error instanceof Error ? error.message : String(error)}`);
             // Try to log the failure to the DB so it shows in Admin Console
             try {
                 // Try logging with user client first as it's already instantiated (hopefully)
