@@ -10,6 +10,7 @@ import { getOptimizedImageUrl } from '@/lib/images'
 import { createClient } from '@/utils/supabase/server'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import { CategoryBadge } from '@/components/CategoryBadge'
+import { RelatedWraps } from '@/components/RelatedWraps'
 
 export async function generateMetadata({
     params,
@@ -247,7 +248,10 @@ export default async function WrapDetailPage({
                                 <div className="w-full bg-white rounded-lg overflow-hidden relative group shadow-inner">
                                     <ResponsiveOSSImage
                                         src={wrap.texture_url}
-                                        alt={`${name} Tesla ${modelName || ''} wrap design texture pattern`}
+                                        alt={wrap.prompt
+                                            ? `${name} Tesla ${modelName || ''} wrap texture - ${wrap.prompt.slice(0, 100)}`
+                                            : `${name} Tesla ${modelName || ''} wrap design texture pattern`
+                                        }
                                         width={600}
                                         height={450}
                                         className="w-full h-auto max-h-[180px] object-contain mx-auto"
@@ -306,6 +310,8 @@ export default async function WrapDetailPage({
                 </div>
             </main>
 
+            <RelatedWraps modelSlug={wrap.model_slug} currentWrapSlug={slug} locale={locale} />
+
             {/* Structured Data */}
             <script
                 type="application/ld+json"
@@ -337,11 +343,25 @@ export default async function WrapDetailPage({
                             '@type': 'Offer',
                             price: '0',
                             priceCurrency: 'USD',
+                            priceValidUntil: '2030-12-31',
                             availability: 'https://schema.org/InStock',
-                            url: `https://myteslab.com/${locale}/wraps/${slug}`,
+                            url: `https://www.myteslab.com/${locale}/wraps/${slug}`,
                             seller: {
                                 '@type': 'Organization',
                                 name: 'MyTesLab',
+                            },
+                            shippingDetails: {
+                                '@type': 'OfferShippingDetails',
+                                shippingRate: {
+                                    '@type': 'MonetaryAmount',
+                                    value: '0',
+                                    currency: 'USD',
+                                },
+                            },
+                            hasMerchantReturnPolicy: {
+                                '@type': 'MerchantReturnPolicy',
+                                applicableCountry: 'US',
+                                returnPolicyCategory: 'https://schema.org/NoReturns',
                             },
                         },
                         aggregateRating: wrap.download_count > 0 ? {

@@ -2,8 +2,8 @@
     "Index": {
         "title": "MyTesLab",
         "description": "探索并免费下载优质特斯拉车身贴膜设计。实时 3D 可视化工作室。",
-        "welcome": "特斯拉改色设计库",
-        "welcome_desc": "探索海量免费贴膜方案，支持实时 3D 预览与下载。利用 AI 工具定制您的专属风格。",
+        "welcome": "特斯拉改色与涂装设计库",
+        "welcome_desc": "探索海量免费特斯拉改色贴膜与车身涂装方案，支持实时 3D 预览与免费下载。利用 AI 工具定义您的专属皮肤风格。",
         "explore": "探索免费设计",
         "loading": "加载中",
         "no_wraps": "未找到相关贴图方案",
@@ -16,7 +16,8 @@
             "one_click_download_desc": "直接获取高清纹理文件，免费用于后续施工"
         },
         "sort_latest": "最新",
-        "sort_popular": "热门"
+        "sort_popular": "热门",
+        "view_all": "查看全部"
     },
     "Common": {
         "back_to_home": "返回",
@@ -285,19 +286,19 @@
     },
     "Models": {
         "model-3": {
-            "description": "探索高品质 Model 3 改色灵感。从哑光黑到定制图案，为您寻找特斯拉 Model 3 的完美造型。"
+            "description": "探索高品质 Model 3 改色贴膜、车身涂装与改色灵感。从哑光黑到 AI 定制图案，为您寻找特斯拉 Model 3 的完美造型皮肤与纹理设计。"
         },
         "model-y": {
-            "description": "发现定制 Model Y 改色设计。通过 3D 预览不同颜色与风格，彻底改变您的特斯拉 Model Y。"
+            "description": "发现定制 Model Y 改色贴膜、官方改色设计与涂装方案。通过 3D 预览不同颜色与风格皮肤，彻底改变您的特斯拉 Model Y 外观造型。"
         },
         "cybertruck": {
-            "description": "赛博皮卡 Cybertruck 改色设计终极合集。实时预览未来感十足的皮肤及不锈钢颜色替代方案。"
+            "description": "赛博皮卡 Cybertruck 改色贴膜与车身涂装设计终极合集。实时预览未来感十足的皮肤、不锈钢颜色替代方案及定制车身贴图纹理。"
         },
         "model-s": {
-            "description": "为特斯拉 Model S 打造的高性能及优雅改色设计。通过定制纹理提升 Model S 的豪华质感。"
+            "description": "为特斯拉 Model S 打造的高性能及优雅改色贴膜、涂装设计。通过定制皮肤纹理提升 Model S 的豪华运动质感。"
         },
         "model-x": {
-            "description": "独特的 Model X 改色灵感。结合鹰翼门预览设计效果，为您的特斯拉 Model X 选择最佳风格。"
+            "description": "独特的 Model X 改色贴膜、涂装灵感。结合鹰翼门 3D 预览皮肤设计效果，为您的特斯拉 Model X 选择最佳个性化风格。"
         }
     },
     "Admin": {
@@ -330,9 +331,10 @@
         "total_rewarded": "累计赠送积分"
     },
     "NotFound": {
-        "title": "未找到该设计",
-        "desc": "您寻找的特斯拉贴膜设计可能已被移动或下线。别担心，还有更多精彩设计等你探索！",
-        "explore_btn": "探索最新设计"
+        "title": "页面未找到",
+        "desc": "您要查找的页面可能已被删除、更名或暂时无法访问。",
+        "explore_btn": "返回首页",
+        "popular_models": "热门车型"
     },
     "Checkout": {
         "success_title": "支付成功",

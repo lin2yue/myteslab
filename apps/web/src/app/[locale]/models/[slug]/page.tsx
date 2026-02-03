@@ -89,12 +89,17 @@ export default async function ModelPage({
     return (
         <div className="flex flex-col">
             <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
-                {/* 增加页面标题，对 SEO 有利 */}
-                <h1 className="sr-only">
-                    {locale === 'en'
-                        ? `Free Tesla ${currentModel.name_en || currentModel.name} Wrap Designs and 3D Visualization`
-                        : `特斯拉 ${currentModel.name} 车身贴膜设计免费下载与 3D 预览`}
-                </h1>
+                {/* 页面标题与描述 - 增强 SEO 内容深度 */}
+                <section className="sr-only">
+                    <h1 className="text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
+                        {locale === 'en'
+                            ? `Free Tesla ${currentModel.name_en || currentModel.name} Wrap Designs`
+                            : `特斯拉 ${currentModel.name} 改色贴膜与涂装设计库`}
+                    </h1>
+                    <p className="text-gray-600 dark:text-zinc-400 max-w-4xl text-lg leading-relaxed font-medium">
+                        {tModels(`${slug}.description`)}
+                    </p>
+                </section>
 
                 <FilterBarWrapper models={models} sortBy={sortBy}>
                     <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} />

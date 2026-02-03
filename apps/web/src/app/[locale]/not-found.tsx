@@ -33,6 +33,27 @@ export default async function NotFound() {
                 </svg>
                 {t('explore_btn')}
             </Link>
+
+            <div className="mt-16 w-full max-w-lg">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 opacity-60">
+                    {t('popular_models')}
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                    {[
+                        { name: 'Model 3', slug: 'model-3' },
+                        { name: 'Model Y', slug: 'model-y' },
+                        { name: 'Cybertruck', slug: 'cybertruck' }
+                    ].map(model => (
+                        <Link
+                            key={model.slug}
+                            href={`/models/${model.slug}`}
+                            className="px-5 py-2.5 bg-gray-50 dark:bg-zinc-800/50 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-white hover:shadow-md hover:text-black dark:hover:bg-zinc-800 dark:hover:text-white transition-all border border-transparent hover:border-gray-200 dark:hover:border-zinc-700"
+                        >
+                            {model.name}
+                        </Link>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }

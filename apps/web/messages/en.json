@@ -2,8 +2,8 @@
     "Index": {
         "title": "MyTesLab",
         "description": "Discover and download premium free Tesla wrap designs. Instant 3D visualization studio.",
-        "welcome": "Tesla Wrap Design Library",
-        "welcome_desc": "Explore premium free wrap designs with real-time 3D preview. Create custom styles with our AI tools.",
+        "welcome": "Tesla Wrap & Livery Design Library",
+        "welcome_desc": "Explore high-quality free Tesla wrap designs, custom liveries, and body skins with real-time 3D preview. Define your unique style with our AI designer tool.",
         "explore": "Explore Free Designs",
         "loading": "Loading",
         "no_wraps": "No wrap designs found",
@@ -16,7 +16,8 @@
             "one_click_download_desc": "Directly get high-definition texture files for free installation"
         },
         "sort_latest": "Latest",
-        "sort_popular": "Popular"
+        "sort_popular": "Popular",
+        "view_all": "View All"
     },
     "Common": {
         "back_to_home": "Back",
@@ -285,25 +286,26 @@
     },
     "Models": {
         "model-3": {
-            "description": "Discover premium Model 3 wrap ideas. From matte black to custom patterns, find the perfect look for your Tesla Model 3."
+            "description": "Discover premium Model 3 wrap designs, custom liveries, and skin inspirations. From matte black to AI-generated patterns, find the perfect wrap skin and texture for your Tesla Model 3."
         },
         "model-y": {
-            "description": "Explore custom Model Y wrap designs. Visualize colors and styles in 3D to transform your Tesla Model Y."
+            "description": "Explore custom Model Y wrap designs, official body skins, and livery schemes. Visualize colors and styles in 3D to transform your Tesla Model Y's appearance with unique textures."
         },
         "cybertruck": {
-            "description": "The ultimate collection of Cybertruck wrap designs. Preview futuristic skins and stainless steel alternatives in real-time."
+            "description": "The ultimate collection of Cybertruck wrap designs, futuristic liveries, and custom body skins. Preview stainless steel alternatives and high-definition texture patterns in real-time 3D."
         },
         "model-s": {
-            "description": "Elegant and high-performance wrap designs for Tesla Model S. Enhance the luxury of your Model S with custom textures."
+            "description": "Elegant and high-performance wrap designs, luxury liveries, and skins for Tesla Model S. Enhance the performance look of your Model S with premium custom wrap textures."
         },
         "model-x": {
-            "description": "Unique Model X wrap inspiration. Preview designs with falcon wing doors and choose the best style for your Tesla Model X."
+            "description": "Unique Model X wrap inspiration and livery skins. Preview designs with falcon wing doors and choose the best personalized style for your Tesla Model X with our 3D visualization."
         }
     },
     "NotFound": {
-        "title": "Design Not Found",
-        "desc": "The Tesla wrap design you're looking for might have been moved or unpublished. But don't worry, there are plenty more to explore!",
-        "explore_btn": "Explore Latest Designs"
+        "title": "Page Not Found",
+        "desc": "The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.",
+        "explore_btn": "Back to Home",
+        "popular_models": "Popular Models"
     },
     "Checkout": {
         "success_title": "Payment Successful",
