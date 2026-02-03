@@ -8,10 +8,7 @@
         "shadowSoftness": 1,
         "autoRotate": false,
         "interactionPrompt": "none",
-        "uvSet": "uv1",
-        "scale": 1,
-        "rotation": 0,
-        "mirror": false
+        "uvSet": "uv1"
     },
     "models": {
         "cybertruck": {

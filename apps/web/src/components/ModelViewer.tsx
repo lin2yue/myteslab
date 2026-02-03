@@ -477,11 +477,6 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             try {
                 console.log(`[ModelViewer] Loading texture (attempt ${attempt}/${maxRetries}): ${url.substring(0, 100)}...`)
 
-                const config = {
-                    ...viewerConfig.defaults,
-                    ...(slug && (viewerConfig.models as any)[slug] ? (viewerConfig.models as any)[slug] : {})
-                }
-
                 const texture = await viewer.createTexture(url)
                 const materials = viewer.model.materials
 
@@ -504,27 +499,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                                 material.pbrMetallicRoughness.baseColorTexture = { texture }
                             }
 
-                            // 关键：恢复并应用镜像/缩放/旋转参数
+                            // 关键：不在前端做贴图旋转/镜像/缩放，OSS 已处理
                             const threeTexture = (texture as any).source?.texture || (texture as any).texture
                             if (threeTexture) {
                                 threeTexture.flipY = false
-                                threeTexture.center.set(0.5, 0.5)
-
-                                // 应用配置中的旋转
-                                threeTexture.rotation = (config.rotation || 0) * (Math.PI / 180)
-
-                                // 应用缩放和镜像逻辑
-                                const scaleX = config.mirror ? -(config.scale || 1) : (config.scale || 1)
-                                const scaleY = config.scale || 1
-                                threeTexture.repeat.set(scaleX, scaleY)
-
-                                // 修正侧面平移 (镜像时需要偏移 1.0)
-                                if (config.mirror) {
-                                    threeTexture.offset.set(1, 0)
-                                } else {
-                                    threeTexture.offset.set(0, 0)
-                                }
-
+                                threeTexture.repeat.set(1, 1)
+                                threeTexture.offset.set(0, 0)
                                 threeTexture.wrapS = 1000 // RepeatWrapping
                                 threeTexture.wrapT = 1000 // RepeatWrapping
                                 threeTexture.needsUpdate = true
