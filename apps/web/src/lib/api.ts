@@ -191,7 +191,7 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             // 如果按 Slug 没查到，且不是 UUID，再尝试按 ID 查一下（容错）
             if (!isUuid) {
                 const { data: retryData } = await supabaseClient.from('wraps').select(selectFields).eq('id', slugOrId).single();
-                if (retryData) return normalizeWrap({ ...retryData });
+                if (retryData) return normalizeWrap(retryData as any);
             }
             return null;
         }
