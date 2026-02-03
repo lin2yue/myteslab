@@ -105,31 +105,29 @@ export function FilterBar({ models, onLoadingChange, sortBy = 'latest' }: Filter
 
             {/* Sort Filter */}
             <div className="flex -mx-4 px-4 overflow-x-auto no-scrollbar pb-1">
-                <div className="inline-flex bg-black/5 dark:bg-white/10 rounded-xl p-1 gap-1 min-w-max backdrop-blur">
+                <div className="inline-flex border border-black/5 dark:border-white/10 rounded-lg p-1 gap-1 min-w-max bg-white/60 dark:bg-zinc-900/50">
                     <button
                         onClick={() => handleSortChange('latest')}
                         className={`
-                            px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5
+                            px-4 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all
                             ${selectedSort === 'latest'
-                                ? 'bg-black text-white shadow-[0_8px_16px_rgba(0,0,0,0.18)]'
+                                ? 'bg-black/90 text-white'
                                 : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
                             }
                         `}
                     >
-                        <span className="text-[10px]">✨</span>
                         {t('sort_latest')}
                     </button>
                     <button
                         onClick={() => handleSortChange('popular')}
                         className={`
-                            px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5
+                            px-4 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all
                             ${selectedSort === 'popular'
-                                ? 'bg-black text-white shadow-[0_8px_16px_rgba(0,0,0,0.18)]'
+                                ? 'bg-black/90 text-white'
                                 : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
                             }
                         `}
                     >
-                        <span className="text-[10px]">🔥</span>
                         {t('sort_popular')}
                     </button>
                 </div>

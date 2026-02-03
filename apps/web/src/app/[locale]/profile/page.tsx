@@ -38,7 +38,13 @@ export default async function ProfilePage({
         supabase.from('user_downloads').select('id, downloaded_at, wraps(id, name, preview_url, texture_url)').eq('user_id', user.id).order('downloaded_at', { ascending: false }).limit(20),
         supabase.from('wrap_models').select('slug, model_3d_url'),
         supabase.from('credit_ledger').select('*').eq('user_id', user.id).eq('type', 'top-up').order('created_at', { ascending: false }).limit(50),
-        supabase.from('credit_ledger').select('*, wraps!generation_task_id(preview_url, prompt)').eq('user_id', user.id).eq('type', 'generation').order('created_at', { ascending: false }).limit(50)
+        supabase
+            .from('credit_ledger')
+            .select('id, amount, description, created_at, task_id, generation_tasks (prompt, wrap_id, wraps (preview_url, prompt))')
+            .eq('user_id', user.id)
+            .eq('type', 'generation')
+            .order('created_at', { ascending: false })
+            .limit(50)
     ]);
 
     const profile = profileRes.data;
@@ -47,10 +53,15 @@ export default async function ProfilePage({
     const wrapsError = wrapsRes.error;
     const wrapModels = modelsRes.data || [];
     const purchaseHistory = historyRes.data || [];
-    const usageHistory = usageRes.data?.map(item => ({
-        ...item,
-        wraps: Array.isArray(item.wraps) ? item.wraps[0] : item.wraps
-    })) || [];
+    const usageHistory = usageRes.data?.map((item: any) => {
+        const task = Array.isArray(item.generation_tasks) ? item.generation_tasks[0] : item.generation_tasks;
+        const wrap = task?.wraps ? (Array.isArray(task.wraps) ? task.wraps[0] : task.wraps) : null;
+        const prompt = task?.prompt || wrap?.prompt || item.description || '';
+        return {
+            ...item,
+            wraps: wrap ? { ...wrap, prompt } : (prompt ? { preview_url: '', prompt } : null)
+        };
+    }) || [];
 
     // 适配 Supabase 关联查询返回的数组格式为对象
     const downloads = downloadsRes.data?.map(item => ({

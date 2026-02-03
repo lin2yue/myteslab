@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
 import { createClient } from '@/utils/supabase/client'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Loader2, CheckCircle2, AlertCircle, Play, Pause, RefreshCw, CheckSquare, Square, Eye } from 'lucide-react'
 import { useAlert } from '@/components/alert/AlertProvider'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
+import { createModelNameResolver } from '@/lib/model-display'
 
 interface WrapRecord {
     id: string
@@ -19,6 +20,8 @@ interface WrapRecord {
 
 interface ModelConfig {
     slug: string
+    name: string
+    name_en?: string
     model_3d_url: string
     wheel_url?: string
 }
@@ -28,6 +31,7 @@ export default function BatchRefreshPage() {
     const alert = useAlert()
     const supabase = createClient()
     const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club'
+    const locale = useLocale()
 
     const [wraps, setWraps] = useState<WrapRecord[]>([])
     const [models, setModels] = useState<ModelConfig[]>([])
@@ -41,6 +45,7 @@ export default function BatchRefreshPage() {
     const [activeWrap, setActiveWrap] = useState<WrapRecord | null>(null)
     const [isProcessing, setIsProcessing] = useState(false)
     const [zoomImage, setZoomImage] = useState<string | null>(null)
+    const getModelName = useMemo(() => createModelNameResolver(models, locale), [models, locale])
 
     // Standard View Configuration constants for UI sync
 
@@ -62,7 +67,9 @@ export default function BatchRefreshPage() {
             setLoading(true)
             try {
                 // 1. Fetch Models mapping
-                const { data: modelsData } = await supabase.from('wrap_models').select('slug, model_3d_url, wheel_url')
+                const { data: modelsData } = await supabase
+                    .from('wrap_models')
+                    .select('slug, name, name_en, model_3d_url, wheel_url')
                 setModels(modelsData || [])
 
                 // 2. Fetch All Wraps (not just current user's)
@@ -394,7 +401,7 @@ export default function BatchRefreshPage() {
 
                                     <div className="flex-1 min-w-0" onClick={() => status !== 'running' && setActiveWrap(wrap)}>
                                         <p className="font-medium text-sm truncate">{wrap.name || 'Untitled'}</p>
-                                        <p className="text-[10px] text-gray-400 font-mono truncate">{wrap.model_slug}</p>
+                                        <p className="text-[10px] text-gray-400 font-mono truncate">{getModelName(wrap.model_slug)}</p>
                                     </div>
 
                                     <div className="flex items-center gap-2">

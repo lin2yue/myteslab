@@ -12,6 +12,7 @@ import { CategoryBadge } from '@/components/CategoryBadge'
 import { RelatedWraps } from '@/components/RelatedWraps'
 import Card from '@/components/ui/Card'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { getModelDisplayName } from '@/lib/model-display'
 
 export async function generateMetadata({
     params,
@@ -47,7 +48,13 @@ export async function generateMetadata({
     // 获取模型名称以增强标题 SEO
     const models = await getModels()
     const model = models.find(m => m.slug === wrap.model_slug)
-    const modelName = model ? (locale === 'en' ? model.name_en || model.name : model.name) : ''
+    const modelName = getModelDisplayName({
+        slug: wrap.model_slug,
+        modelName: wrap.model_name,
+        modelNameEn: wrap.model_name_en,
+        models,
+        locale
+    })
 
     const title = modelName
         ? (locale === 'en' ? `${name} Tesla ${modelName} Wrap Design - Free Download | MyTesLab` : `${name} - 特斯拉 ${modelName} 车身贴膜设计免费下载 | MyTesLab`)
@@ -154,7 +161,13 @@ export default async function WrapDetailPage({
     // 获取模型名称以增强标题和结构化数据 SEO
     const models = await getModels()
     const model = models.find(m => m.slug === wrap.model_slug)
-    const modelName = model ? (locale === 'en' ? model.name_en || model.name : model.name) : ''
+    const modelName = getModelDisplayName({
+        slug: wrap.model_slug,
+        modelName: wrap.model_name,
+        modelNameEn: wrap.model_name_en,
+        models,
+        locale
+    })
 
     const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200, quality: 85 })
     const absoluteImageUrl = imageUrl.startsWith('http')

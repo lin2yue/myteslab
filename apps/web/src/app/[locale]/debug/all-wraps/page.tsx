@@ -5,6 +5,8 @@ import { redirect } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import ImageResolution from './ImageResolution';
+import { getModels } from '@/lib/api';
+import { createModelNameResolver } from '@/lib/model-display';
 
 export const revalidate = 0; // Disable cache for debug page
 
@@ -50,6 +52,8 @@ export default async function AllWrapsDebugPage({
     }
 
     const tCommon = await getTranslations('Common');
+    const models = await getModels();
+    const getModelName = createModelNameResolver(models, locale);
     const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club';
 
     const getCdnUrl = (url: string) => {
@@ -104,7 +108,7 @@ export default async function AllWrapsDebugPage({
                                     </td>
                                     <td className="px-6 py-6 whitespace-nowrap">
                                         <div className="text-sm font-semibold text-gray-200">{wrap.author_name}</div>
-                                        <div className="text-xs text-gray-500 mt-1 uppercase tracking-tight">{wrap.model_slug}</div>
+                                        <div className="text-xs text-gray-500 mt-1 uppercase tracking-tight">{getModelName(wrap.model_slug)}</div>
                                     </td>
                                     <td className="px-6 py-6">
                                         <p className="text-sm text-gray-300 leading-relaxed max-w-xs break-words italic">

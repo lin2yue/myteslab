@@ -19,6 +19,7 @@ import { useAlert } from '@/components/alert/AlertProvider'
 import { ServiceType, getServiceCost } from '@/lib/constants/credits'
 import { useCredits } from '@/components/credits/CreditsProvider'
 import Select from '@/components/ui/Select'
+import { createModelNameResolver } from '@/lib/model-display'
 
 interface GenerationHistory {
     id: string
@@ -47,6 +48,7 @@ export default function AIGeneratorMain({
     const tGen = useTranslations('Generator')
     const alert = useAlert()
     const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club'
+    const getModelName = useMemo(() => createModelNameResolver(models, _locale), [models, _locale])
 
     const getCdnUrl = (url: string) => {
         if (url && url.includes('aliyuncs.com')) {
@@ -994,6 +996,7 @@ export default function AIGeneratorMain({
                                                         item={item}
                                                         activeWrapId={activeWrapId}
                                                         getCdnUrl={getCdnUrl}
+                                                        getModelName={getModelName}
                                                         onClick={() => {
                                                             const itemCdnUrl = getCdnUrl(item.texture_url);
                                                             let displayUrl = itemCdnUrl;
@@ -1065,12 +1068,14 @@ function HistoryItem({
     item,
     activeWrapId,
     onClick,
-    getCdnUrl
+    getCdnUrl,
+    getModelName
 }: {
     item: GenerationHistory;
     activeWrapId: string | null;
     onClick: () => void;
     getCdnUrl: (url: string) => string;
+    getModelName: (slug: string) => string;
 }) {
     const textureUrl = item.texture_url || '';
 
@@ -1101,7 +1106,7 @@ function HistoryItem({
                     )}
                 </div>
                 <div className="flex justify-between mt-2">
-                    <span className="text-[10px] text-gray-400 uppercase">{item.model_slug}</span>
+                    <span className="text-[10px] text-gray-400 uppercase">{getModelName(item.model_slug)}</span>
                     <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 flex items-center gap-1">
                         Apply <ArrowRight className="w-3 h-3" />
                     </span>

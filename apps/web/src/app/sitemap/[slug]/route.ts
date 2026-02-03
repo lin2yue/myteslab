@@ -1,5 +1,6 @@
 import { getWraps, getModels } from '@/lib/api'
 import { getOptimizedImageUrl } from '@/lib/images'
+import { getModelDisplayName } from '@/lib/model-display'
 
 const baseUrl = 'https://www.myteslab.com'
 const locales = ['en', 'zh']
@@ -47,7 +48,12 @@ export async function GET(
                     for (const wrap of homePageWraps) {
                         const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200 })
                         const absoluteImgUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`
-                        const modelName = wrap.model_slug?.replace(/-/g, ' ') || ''
+                        const modelName = getModelDisplayName({
+                            slug: wrap.model_slug,
+                            modelName: wrap.model_name,
+                            modelNameEn: wrap.model_name_en,
+                            locale
+                        })
 
                         const imgTitle = locale === 'en'
                             ? `${wrap.name} - Tesla ${modelName} wrap design`
@@ -123,7 +129,12 @@ export async function GET(
                     const isoDate = new Date(date).toISOString()
                     const imageUrl = getOptimizedImageUrl(wrap.preview_url || wrap.texture_url, { width: 1200 })
                     const absoluteImgUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`
-                    const modelName = wrap.model_slug?.replace(/-/g, ' ') || ''
+                    const modelName = getModelDisplayName({
+                        slug: wrap.model_slug,
+                        modelName: wrap.model_name,
+                        modelNameEn: wrap.model_name_en,
+                        locale
+                    })
 
                     // 动态增强图片 SEO 描述
                     const imgTitle = locale === 'en'

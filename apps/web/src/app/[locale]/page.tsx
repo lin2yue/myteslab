@@ -4,6 +4,7 @@ import { FilterBarWrapper } from '@/components/FilterBarWrapper'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import AuthButton from '@/components/auth/AuthButton'
 import { getWraps, getModels } from '@/lib/api'
+import { getModelDisplayName } from '@/lib/model-display'
 
 import { Link } from '@/i18n/routing'
 export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提升首页响应速度
@@ -111,8 +112,8 @@ export default async function HomePage({
                 name: wrap.name,
                 image: wrap.preview_url || wrap.texture_url,
                 description: locale === 'en'
-                  ? `${wrap.name} wrap design for Tesla ${wrap.model_slug?.replace(/-/g, ' ')}`
-                  : `适用于特斯拉 ${wrap.model_slug?.replace(/-/g, ' ')} 的 ${wrap.name} 贴膜设计`,
+                  ? `${wrap.name} wrap design for Tesla ${getModelDisplayName({ slug: wrap.model_slug, modelName: wrap.model_name, modelNameEn: wrap.model_name_en, locale })}`
+                  : `适用于特斯拉 ${getModelDisplayName({ slug: wrap.model_slug, modelName: wrap.model_name, modelNameEn: wrap.model_name_en, locale })} 的 ${wrap.name} 贴膜设计`,
                 url: `https://www.myteslab.com/${locale}/wraps/${wrap.slug}`,
                 offers: {
                   '@type': 'Offer',

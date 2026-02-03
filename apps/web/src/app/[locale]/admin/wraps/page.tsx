@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
     Search,
     Filter,
@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { revalidateWraps } from '@/app/actions/revalidate';
+import { createModelNameResolver } from '@/lib/model-display';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -41,12 +42,20 @@ interface WrapRecord {
     } | null;
 }
 
+interface ModelConfig {
+    slug: string;
+    name: string;
+    name_en?: string;
+}
+
 export default function AdminWrapsPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
     const supabase = createClient();
+    const locale = useLocale();
 
     const [wraps, setWraps] = useState<WrapRecord[]>([]);
+    const [models, setModels] = useState<ModelConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -55,6 +64,7 @@ export default function AdminWrapsPage() {
     const [page, setPage] = useState(1);
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 12;
+    const getModelName = useMemo(() => createModelNameResolver(models, locale), [models, locale]);
 
     // Debounce search query
     useEffect(() => {
@@ -124,6 +134,25 @@ export default function AdminWrapsPage() {
     useEffect(() => {
         fetchWraps();
     }, [page, categoryFilter, statusFilter, publicFilter, debouncedSearch]);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchModels = async () => {
+            const { data, error } = await supabase
+                .from('wrap_models')
+                .select('slug, name, name_en')
+                .eq('is_active', true)
+                .order('sort_order', { ascending: true });
+            if (!isMounted) return;
+            if (error) {
+                console.error('[AdminWraps] fetch models failed:', error);
+                return;
+            }
+            setModels(data || []);
+        };
+        fetchModels();
+        return () => { isMounted = false; };
+    }, [supabase]);
 
     const toggleStatus = async (wrapId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus;
@@ -262,7 +291,7 @@ export default function AdminWrapsPage() {
                                     </h3>
                                     <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
                                         <Car size={14} className="opacity-60" />
-                                        <span className="capitalize">{wrap.model_slug?.replace(/-/g, ' ')}</span>
+                                        <span className="capitalize">{getModelName(wrap.model_slug)}</span>
                                     </div>
                                 </div>
 
