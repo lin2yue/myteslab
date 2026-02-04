@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
             // 失败：更新任务状态并自动退款
             console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${user.id}...`);
             await markTaskFailed(`AI API Error: ${result.error}`);
-            await refundTaskCredits(taskId, `AI API Error: ${result.error}`);
+            if (taskId) await refundTaskCredits(taskId, `AI API Error: ${result.error}`);
 
             return NextResponse.json({ success: false, error: result.error }, { status: 500 });
         }
@@ -502,16 +502,16 @@ export async function POST(request: NextRequest) {
                 await logStep('oss_upload_success');
 
             } catch (ossErr) {
-            console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${user.id}:`, ossErr);
-            await markTaskFailed('OSS upload failed');
-            await refundTaskCredits(taskId, 'OSS upload failed');
-            return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
+                console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${user.id}:`, ossErr);
+                await markTaskFailed('OSS upload failed');
+                if (taskId) await refundTaskCredits(taskId, 'OSS upload failed');
+                return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
             }
 
         } catch (err) {
             console.error(`❌ [AI-GEN] Image processing error for task ${taskId}, user ${user.id}:`, err);
             await markTaskFailed('Image processing failed');
-            await refundTaskCredits(taskId, 'Image processing failed');
+            if (taskId) await refundTaskCredits(taskId, 'Image processing failed');
             return NextResponse.json({ success: false, error: 'Image correction failed' }, { status: 500 });
         }
 

@@ -11,9 +11,9 @@ async function injectModelInfo(wraps: Wrap[]): Promise<Wrap[]> {
     const modelSlugs = wraps.map(w => w.model_slug).filter(Boolean) as string[];
     if (modelSlugs.length === 0) return wraps;
     const models = await getModelsBySlugs(modelSlugs);
-    const modelMap = new Map(models.map(m => [m.slug, m]));
+    const modelMap = new Map<string, Model>(models.map((m: Model) => [m.slug, m]));
 
-    return wraps.map(w => {
+    return wraps.map((w: Wrap) => {
         if (!w.model_slug) return w;
         const model = modelMap.get(w.model_slug);
         if (model) {
@@ -51,8 +51,8 @@ async function getModelsBySlugs(slugs: string[]): Promise<Model[]> {
 
                 const fallback = DEFAULT_MODELS.filter(m => uniqueSlugs.includes(m.slug)) as Model[]
                 const map = new Map<string, Model>()
-                models.forEach(m => map.set(m.slug, m))
-                fallback.forEach(m => {
+                models.forEach((m: Model) => map.set(m.slug, m))
+                fallback.forEach((m: Model) => {
                     if (!map.has(m.slug)) map.set(m.slug, m)
                 })
                 return Array.from(map.values())
@@ -165,7 +165,7 @@ async function fetchWrapsInternal(
         `
 
         const { rows } = await dbQuery(sql, params)
-        const normalized = (rows || []).map(w => normalizeWrap(w))
+        const normalized = (rows || []).map((w: any) => normalizeWrap(w))
         // 注入车型名称
         const withModelInfo = await injectModelInfo(normalized)
 

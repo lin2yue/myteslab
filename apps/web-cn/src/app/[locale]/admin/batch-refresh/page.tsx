@@ -74,7 +74,7 @@ export default function BatchRefreshPage() {
                 setModels(modelsData)
 
                 // Filter out wraps with local debug paths (they won't load in production)
-                const validWraps = (wrapsData || []).filter((wrap: any) => {
+                const validWraps: WrapRecord[] = (wrapsData || []).filter((wrap: WrapRecord) => {
                     const hasLocalTexture = wrap.texture_url?.includes('/api/debug/assets')
                     const hasLocalPreview = wrap.preview_url?.includes('/api/debug/assets')
                     const hasBase64Texture = wrap.texture_url?.startsWith('data:image/')
@@ -88,7 +88,7 @@ export default function BatchRefreshPage() {
                 })
 
                 // Simple de-duplication by id just in case
-                const uniqueWraps = Array.from(new Map(validWraps.map(item => [item.id, item])).values())
+                const uniqueWraps = Array.from(new Map<string, WrapRecord>(validWraps.map(item => [item.id, item])).values())
 
                 console.log(`Loaded ${uniqueWraps.length} valid wraps (filtered out ${(wrapsData?.length || 0) - uniqueWraps.length} local wraps)`)
 

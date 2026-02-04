@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, QueryResultRow } from 'pg';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -16,7 +16,7 @@ const pool = new Pool({
     connectionTimeoutMillis: Number(process.env.PG_POOL_CONN_MS || 5000),
 });
 
-export async function dbQuery<T = any>(text: string, params: any[] = []) {
+export async function dbQuery<T extends QueryResultRow = any>(text: string, params: any[] = []) {
     const client = await pool.connect();
     try {
         return await client.query<T>(text, params);

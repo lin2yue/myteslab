@@ -1,6 +1,6 @@
 import Dysmsapi20170525, * as $Dysmsapi20170525 from '@alicloud/dysmsapi20170525';
-import OpenApi from '@alicloud/openapi-client';
-import Util from '@alicloud/tea-util';
+import * as OpenApi from '@alicloud/openapi-client';
+import * as Util from '@alicloud/tea-util';
 
 export async function sendSmsCode(phone: string, code: string) {
     const accessKeyId = process.env.ALIBABA_CLOUD_ACCESS_KEY_ID;
