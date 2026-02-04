@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --surface-1: #ffffff;
+  --surface-2: #f6f7f9;
+  --surface-3: #eef0f2;
+  --border: #e6e8ec;
+  --ring: rgba(0, 0, 0, 0.08);
+  --text-muted: #5b616e;
+  --shadow-soft: 0 1px 0 rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --surface-1: #111111;
+    --surface-2: #141414;
+    --surface-3: #1a1a1a;
+    --border: #242424;
+    --ring: rgba(255, 255, 255, 0.08);
+    --text-muted: #9aa0ab;
+    --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  :root:not(.light) body {
+    background-image:
+      radial-gradient(1200px 800px at 80% -10%, rgba(255, 255, 255, 0.06), transparent 60%),
+      radial-gradient(1000px 700px at -10% 20%, rgba(255, 255, 255, 0.04), transparent 55%);
+  }
+}
+
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface-1: #111111;
+  --surface-2: #141414;
+  --surface-3: #1a1a1a;
+  --border: #242424;
+  --ring: rgba(255, 255, 255, 0.08);
+  --text-muted: #9aa0ab;
+  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.dark body {
+  background-image:
+    radial-gradient(1200px 800px at 80% -10%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(1000px 700px at -10% 20%, rgba(255, 255, 255, 0.04), transparent 55%);
+}
+
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-image:
+    radial-gradient(1200px 800px at 80% -10%, rgba(0, 0, 0, 0.06), transparent 60%),
+    radial-gradient(1000px 700px at -10% 20%, rgba(0, 0, 0, 0.04), transparent 55%);
+  background-size: auto, auto;
+  background-position: center, center;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-white/80 dark:bg-zinc-900/80 border border-black/5 dark:border-white/10 rounded-2xl backdrop-blur shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_36px_rgba(0,0,0,0.12)];
+  }
+
+  .panel-muted {
+    @apply bg-white/70 dark:bg-zinc-950/70 border border-black/5 dark:border-white/10 rounded-2xl backdrop-blur;
+  }
+
+  .btn-primary {
+    @apply h-11 px-4 rounded-xl bg-black text-white font-semibold transition-all hover:bg-zinc-800 shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)] active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply h-11 px-4 rounded-xl bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white font-medium hover:bg-black/10 transition-all;
+  }
+
+  .btn-ghost {
+    @apply h-10 px-3 rounded-lg text-gray-600 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all;
+  }
+
+  .input-field {
+    @apply w-full h-11 px-4 bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 focus:ring-2 focus:ring-black/10 outline-none transition-all;
+  }
+
+  .select-field {
+    @apply w-full h-11 px-4 pr-10 bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-xl text-sm font-medium text-gray-900 dark:text-zinc-100 focus:ring-2 focus:ring-black/10 outline-none appearance-none;
+  }
+}
+
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes slideInFromTop {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}

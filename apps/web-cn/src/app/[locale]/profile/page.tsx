@@ -1,0 +1,134 @@
+import { Metadata } from 'next';
+import { redirect } from '@/i18n/routing';
+import AuthButton from '@/components/auth/AuthButton';
+import { Link } from '@/i18n/routing';
+import { getTranslations } from 'next-intl/server';
+import ProfileForm from './ProfileForm';
+import ProfileContent from './ProfileContent';
+import { getSessionUser } from '@/lib/auth/session';
+import { dbQuery } from '@/lib/db';
+
+import CreditsSection from '@/components/profile/CreditsSection';
+import Card from '@/components/ui/Card';
+
+export const metadata: Metadata = {
+    title: 'My Profile - 特玩',
+    robots: {
+        index: false,
+    },
+};
+
+export default async function ProfilePage({
+    params
+}: {
+    params: Promise<{ locale: string }>
+}) {
+    const { locale } = await params;
+    const user = await getSessionUser();
+
+    if (!user) {
+        return redirect({ href: '/login?next=/profile', locale });
+    }
+
+    // 并行获取所有数据，减少串行等待时间
+    const userId = user.id;
+    const [profileRes, creditsRes, wrapsRes, downloadsRes, modelsRes, historyRes, usageRes] = await Promise.all([
+        dbQuery(`SELECT display_name, avatar_url, email FROM profiles WHERE id = $1`, [userId]),
+        dbQuery(`SELECT balance, total_earned FROM user_credits WHERE user_id = $1`, [userId]),
+        dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug
+                 FROM wraps
+                 WHERE user_id = $1 AND deleted_at IS NULL
+                 ORDER BY created_at DESC
+                 LIMIT 24`, [userId]),
+        dbQuery(`SELECT d.id, d.downloaded_at, w.id AS wrap_id, w.name, w.preview_url, w.texture_url
+                 FROM user_downloads d
+                 LEFT JOIN wraps w ON w.id = d.wrap_id
+                 WHERE d.user_id = $1
+                 ORDER BY d.downloaded_at DESC
+                 LIMIT 20`, [userId]),
+        dbQuery(`SELECT slug, model_3d_url, wheel_url FROM wrap_models`),
+        dbQuery(`SELECT * FROM credit_ledger WHERE user_id = $1 AND type = 'top-up'
+                 ORDER BY created_at DESC LIMIT 50`, [userId]),
+        dbQuery(`SELECT l.id, l.amount, l.description, l.created_at, l.task_id,
+                        t.prompt AS task_prompt,
+                        t.wrap_id AS task_wrap_id,
+                        w.preview_url AS wrap_preview_url,
+                        w.prompt AS wrap_prompt
+                 FROM credit_ledger l
+                 LEFT JOIN generation_tasks t ON t.id = l.task_id
+                 LEFT JOIN wraps w ON w.id = t.wrap_id
+                 WHERE l.user_id = $1 AND l.type = 'generation'
+                 ORDER BY l.created_at DESC
+                 LIMIT 50`, [userId])
+    ]);
+
+    const profile = profileRes.rows[0];
+    const credits = creditsRes.rows[0];
+    const generatedWraps = wrapsRes.rows || [];
+    const wrapModels = modelsRes.rows || [];
+    const purchaseHistory = historyRes.rows || [];
+    const usageHistory = (usageRes.rows || []).map((item: any) => {
+        const prompt = item.task_prompt || item.wrap_prompt || item.description || '';
+        return {
+            ...item,
+            wraps: item.wrap_preview_url
+                ? { preview_url: item.wrap_preview_url, prompt }
+                : (prompt ? { preview_url: '', prompt } : null)
+        };
+    });
+
+    const downloads = (downloadsRes.rows || []).map((item: any) => ({
+        id: item.id,
+        downloaded_at: item.downloaded_at,
+        wraps: item.wrap_id ? {
+            id: item.wrap_id,
+            name: item.name,
+            preview_url: item.preview_url,
+            texture_url: item.texture_url
+        } : null
+    }));
+
+    const t = await getTranslations('Profile');
+
+    return (
+        <div className="flex flex-col min-h-screen">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex-1 w-full">
+                <div className="flex items-center gap-4 mb-8">
+                    <h1 className="text-3xl font-black text-gray-900">{t('title')}</h1>
+                </div>
+                {/* User Info & Credits */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <Card className="overflow-hidden p-6">
+                        <h2 className="text-lg font-medium text-gray-900 mb-4">{t('user_details')}</h2>
+                        <div className="flex items-center">
+                            <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-500 mr-4">
+                                {profile?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-gray-500">{t('email')}</p>
+                                <p className="text-lg font-semibold text-gray-900">{user.email || user.phone || ''}</p>
+                                <ProfileForm
+                                    initialDisplayName={profile?.display_name || ''}
+                                    userId={user.id}
+                                />
+                            </div>
+                        </div>
+                    </Card>
+
+                    <CreditsSection
+                        balance={credits?.balance || 0}
+                        totalEarned={credits?.total_earned || 0}
+                        history={purchaseHistory}
+                        usageHistory={usageHistory}
+                    />
+                </div>
+
+                <ProfileContent
+                    generatedWraps={generatedWraps || []}
+                    downloads={downloads || []}
+                    wrapModels={wrapModels}
+                />
+            </main>
+        </div>
+    );
+}
