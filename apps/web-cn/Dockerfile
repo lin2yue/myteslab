@@ -1,14 +1,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 # Copy full repo for monorepo build
 COPY . .
 
-# Install dependencies and build only web-cn
-RUN pnpm --filter web-cn... install
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile
 RUN pnpm --filter web-cn build
 
 FROM node:20-alpine AS runner
