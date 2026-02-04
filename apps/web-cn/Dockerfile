@@ -27,14 +27,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
-COPY --from=builder /app/apps/web-cn/.next apps/web-cn/.next
-COPY --from=builder /app/apps/web-cn/public apps/web-cn/public
-COPY --from=builder /app/apps/web-cn/package.json apps/web-cn/package.json
-COPY --from=builder /app/node_modules /app/node_modules
+# Copy standalone output (self-contained server.js + minimal node_modules)
+COPY --from=builder /app/apps/web-cn/.next/standalone ./
+COPY --from=builder /app/apps/web-cn/.next/static /app/apps/web-cn/.next/static
+COPY --from=builder /app/apps/web-cn/public /app/apps/web-cn/public
 
-WORKDIR /app/apps/web-cn
 EXPOSE 3000
-
-CMD ["pnpm", "start"]
+CMD ["node", "apps/web-cn/server.js"]
