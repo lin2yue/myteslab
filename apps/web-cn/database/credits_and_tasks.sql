@@ -95,7 +95,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 绑定到 auth.users 的触发器
--- 注意：这需要 supabase_admin 权限才能执行，可以在 Supabase Dashboard SQL Editor 中运行
+-- 注意：这需要管理员权限且仅在存在 auth.users 表的环境中执行
 -- DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 -- CREATE TRIGGER on_auth_user_created
 --   AFTER INSERT ON auth.users

@@ -56,7 +56,7 @@ const nextConfig: NextConfig = {
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src 'self' data: blob: https://cdn.tewan.club https://www.googletagmanager.com https://www.google-analytics.com https://www.tewan.club https://tewan.club;
       font-src 'self' https://fonts.gstatic.com;
-      connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://*.supabase.co https://vitals.vercel-insights.com https://*.paddle.com;
+      connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://vitals.vercel-insights.com https://*.paddle.com;
       frame-ancestors 'self';
       upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim();
