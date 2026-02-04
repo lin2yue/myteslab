@@ -1,7 +1,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 # Copy full repo for monorepo build
 COPY . .
@@ -14,7 +14,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 COPY --from=builder /app/apps/web-cn/.next apps/web-cn/.next
 COPY --from=builder /app/apps/web-cn/public apps/web-cn/public
