@@ -20,6 +20,7 @@ import { ServiceType, getServiceCost } from '@/lib/constants/credits'
 import { useCredits } from '@/components/credits/CreditsProvider'
 import Select from '@/components/ui/Select'
 import { createModelNameResolver } from '@/lib/model-display'
+import { getEffectiveTheme, THEME_CHANGE_EVENT } from '@/utils/theme'
 
 interface GenerationHistory {
     id: string
@@ -113,10 +114,13 @@ export default function AIGeneratorMain({
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
+    const isNightManualRef = useRef(false)
     const [autoRotate, setAutoRotate] = useState(true)
     const viewerRef = useRef<ModelViewerRef>(null)
     const isFetchingRef = useRef(false)
     const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
+
+    const aiThemeStorageKey = 'ai_viewer_theme'
 
     // 当模型改变时保存到 localStorage
     useEffect(() => {
@@ -124,6 +128,30 @@ export default function AIGeneratorMain({
             localStorage.setItem('ai_generator_last_model', selectedModel)
         }
     }, [selectedModel])
+
+    // Sync 3D day/night with theme by default, unless user manually overrides
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const stored = localStorage.getItem(aiThemeStorageKey)
+        if (stored === 'night' || stored === 'day') {
+            isNightManualRef.current = true
+            setIsNight(stored === 'night')
+            return
+        }
+        const effective = getEffectiveTheme()
+        setIsNight(effective === 'dark')
+    }, [])
+
+    useEffect(() => {
+        const handler = (event: Event) => {
+            if (isNightManualRef.current) return
+            const detail = (event as CustomEvent).detail as { effective?: string } | undefined
+            const effective = detail?.effective || getEffectiveTheme()
+            setIsNight(effective === 'dark')
+        }
+        window.addEventListener(THEME_CHANGE_EVENT, handler as EventListener)
+        return () => window.removeEventListener(THEME_CHANGE_EVENT, handler as EventListener)
+    }, [])
 
     // Sync internal login state with prop
     useEffect(() => {
@@ -709,7 +737,7 @@ export default function AIGeneratorMain({
 
                 {/* Left Side: 3D Preview (65%) */}
                 <div className="flex-none lg:flex-[6.5] flex flex-col p-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
-                    <div className="h-[50vh] lg:flex-1 relative overflow-hidden m-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
+                    <div className="relative w-full aspect-video max-h-[50vh] min-h-[220px] lg:flex-1 lg:aspect-auto lg:max-h-none overflow-hidden m-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
@@ -726,7 +754,14 @@ export default function AIGeneratorMain({
                     {/* Bottom Controls for 3D */}
                     <div className="flex flex-row items-center px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 gap-2 overflow-x-auto backdrop-blur" >
                         <button
-                            onClick={() => setIsNight(!isNight)}
+                            onClick={() => {
+                                const next = !isNight
+                                setIsNight(next)
+                                isNightManualRef.current = true
+                                if (typeof window !== 'undefined') {
+                                    localStorage.setItem(aiThemeStorageKey, next ? 'night' : 'day')
+                                }
+                            }}
                             className="btn-secondary h-10 px-4 rounded-lg flex items-center gap-1.5 flex-shrink-0"
                         >
                             {isNight ? (
@@ -815,10 +850,13 @@ export default function AIGeneratorMain({
                                 setCurrentTexture(null);
                                 setActiveWrapId(null);
                             }}
-                            className={`flex-1 h-12 font-bold transition-all text-base tracking-tight relative ${activeMode === 'ai' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`flex-1 h-12 font-bold transition-all text-base tracking-tight relative ${activeMode === 'ai'
+                                ? 'text-gray-900 dark:text-white'
+                                : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'
+                                }`}
                         >
                             {tGen('mode_ai')}
-                            {activeMode === 'ai' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
+                            {activeMode === 'ai' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black dark:bg-white" />}
                         </button>
                         <button
                             onClick={() => {
@@ -826,10 +864,13 @@ export default function AIGeneratorMain({
                                 setCurrentTexture(null);
                                 setActiveWrapId(null);
                             }}
-                            className={`flex-1 h-12 font-bold transition-all text-base tracking-tight relative ${activeMode === 'diy' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`flex-1 h-12 font-bold transition-all text-base tracking-tight relative ${activeMode === 'diy'
+                                ? 'text-gray-900 dark:text-white'
+                                : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'
+                                }`}
                         >
                             {tGen('mode_diy')}
-                            {activeMode === 'diy' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
+                            {activeMode === 'diy' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black dark:bg-white" />}
                         </button>
                     </div >
 
@@ -944,7 +985,10 @@ export default function AIGeneratorMain({
                                     <button
                                         onClick={handleGenerate}
                                         disabled={isGenerating || isUploadingRefs || !prompt.trim()}
-                                        className={`w-full btn-primary h-12 flex items-center justify-center gap-2 ${isGenerating ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none' : ''}`}
+                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all ${isGenerating
+                                            ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed shadow-none'
+                                            : 'bg-black text-white dark:bg-white dark:text-black shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]'
+                                            }`}
                                     >
                                         {isGenerating ? (
                                             <>
@@ -964,7 +1008,20 @@ export default function AIGeneratorMain({
                                 <div className="flex-1 flex flex-col overflow-hidden order-3 border-b border-black/5 dark:border-white/10 bg-transparent">
                                     <div className="px-4 py-2 font-bold text-gray-800 dark:text-zinc-100 flex justify-between items-center text-xs">
                                         {tGen('history')}
-                                        <button onClick={fetchHistory} className="text-xs text-zinc-700 font-normal hover:underline">{tGen('refresh')}</button>
+                                        <div className="flex items-center gap-3 text-xs font-normal">
+                                            <Link
+                                                href="/profile"
+                                                className="text-zinc-700 dark:text-zinc-300 hover:underline"
+                                            >
+                                                {_locale === 'zh' ? '查看所有' : 'View all'}
+                                            </Link>
+                                            <button
+                                                onClick={fetchHistory}
+                                                className="text-zinc-700 dark:text-zinc-300 hover:underline"
+                                            >
+                                                {tGen('refresh')}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 relative">
                                         {isFetchingHistory && history.length === 0 ? (

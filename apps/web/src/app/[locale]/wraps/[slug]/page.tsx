@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
-import { ModelViewerClient } from '@/components/ModelViewerClient'
+import ThemedModelViewer from '@/components/ThemedModelViewer'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
@@ -225,7 +225,7 @@ export default async function WrapDetailPage({
                     {/* 左侧: 3D 预览 */}
                     <Card className="overflow-hidden">
                         <div className="relative w-full aspect-[4/3] lg:aspect-video bg-black/5 dark:bg-white/10">
-                            <ModelViewerClient
+                            <ThemedModelViewer
                                 modelUrl={proxiedModelUrl}
                                 wheelUrl={wheelUrl}
                                 textureUrl={textureUrl}

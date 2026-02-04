@@ -298,8 +298,17 @@
         "model-3": {
             "description": "Discover premium Model 3 wrap designs, custom liveries, and skin inspirations. From matte black to AI-generated patterns, find the perfect wrap skin and texture for your Tesla Model 3."
         },
+        "model-3-2024-plus": {
+            "description": "Premium wrap designs and liveries for the refreshed Model 3. Preview sharper lines and modern proportions in 3D with high-definition textures."
+        },
         "model-y": {
             "description": "Explore custom Model Y wrap designs, official body skins, and livery schemes. Visualize colors and styles in 3D to transform your Tesla Model Y's appearance with unique textures."
+        },
+        "model-y-2025-plus": {
+            "description": "Latest wrap designs and colorways for the Model Y 2025+. Explore sleek proportions, modern finishes, and high-quality textures in real-time 3D."
+        },
+        "model-y-pre-2025": {
+            "description": "Classic Model Y wraps and custom liveries. Browse popular textures and finishes to personalize your Tesla Model Y with standout style."
         },
         "cybertruck": {
             "description": "The ultimate collection of Cybertruck wrap designs, futuristic liveries, and custom body skins. Preview stainless steel alternatives and high-definition texture patterns in real-time 3D."

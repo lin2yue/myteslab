@@ -6,6 +6,17 @@ export async function updateSession(request: NextRequest) {
         request,
     })
 
+    const hasAuthCookie = request.cookies.getAll().some(({ name }) => {
+        if (name === 'supabase-auth-token') return true
+        if (!name.startsWith('sb-')) return false
+        return name.includes('auth-token') || name.includes('refresh-token') || name.includes('access-token')
+    })
+
+    // Skip touching Supabase if there's no auth cookie (public traffic)
+    if (!hasAuthCookie) {
+        return supabaseResponse
+    }
+
 
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -42,7 +53,10 @@ export async function updateSession(request: NextRequest) {
     // supabase.auth.getUser(). A simple mistake can make it very hard to debug
     // issues with users or sessions.
 
-    console.log('[Middleware] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING');
+    const isDev = process.env.NODE_ENV === 'development'
+    if (isDev) {
+        console.log('[Middleware] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING');
+    }
 
     try {
         const {
@@ -50,7 +64,7 @@ export async function updateSession(request: NextRequest) {
             error
         } = await supabase.auth.getUser()
         if (error) console.error('[Middleware] getUser error:', error.message);
-        else console.log('[Middleware] getUser success');
+        else if (isDev) console.log('[Middleware] getUser success');
     } catch (e: any) {
         console.error('[Middleware] getUser exception:', e.message);
     }

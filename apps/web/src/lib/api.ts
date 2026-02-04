@@ -24,7 +24,9 @@ const publicSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
  */
 async function injectModelInfo(wraps: Wrap[]): Promise<Wrap[]> {
     if (!wraps || wraps.length === 0) return wraps;
-    const models = await getModels();
+    const modelSlugs = wraps.map(w => w.model_slug).filter(Boolean) as string[];
+    if (modelSlugs.length === 0) return wraps;
+    const models = await getModelsBySlugs(modelSlugs);
     const modelMap = new Map(models.map(m => [m.slug, m]));
 
     return wraps.map(w => {
@@ -44,6 +46,44 @@ async function injectModelInfo(wraps: Wrap[]): Promise<Wrap[]> {
 }
 
 import { ensureCdnUrl } from '@/lib/images'
+
+async function getModelsBySlugs(slugs: string[]): Promise<Model[]> {
+    const uniqueSlugs = Array.from(new Set(slugs.filter(Boolean))).sort();
+    if (uniqueSlugs.length === 0) return [];
+
+    return await unstable_cache(
+        async () => {
+            try {
+                const { data, error } = await publicSupabase
+                    .from('wrap_models')
+                    .select('slug, name, name_en, model_3d_url')
+                    .eq('is_active', true)
+                    .in('slug', uniqueSlugs)
+
+                if (error) {
+                    console.error('[getModelsBySlugs] Supabase error:', error)
+                    throw error
+                }
+
+                const models = (data || []) as Model[]
+                if (models.length >= uniqueSlugs.length) return models
+
+                const fallback = DEFAULT_MODELS.filter(m => uniqueSlugs.includes(m.slug)) as Model[]
+                const map = new Map<string, Model>()
+                models.forEach(m => map.set(m.slug, m))
+                fallback.forEach(m => {
+                    if (!map.has(m.slug)) map.set(m.slug, m)
+                })
+                return Array.from(map.values())
+            } catch (dbError) {
+                console.error('[getModelsBySlugs] Database query failed:', dbError)
+                return DEFAULT_MODELS.filter(m => uniqueSlugs.includes(m.slug)) as Model[]
+            }
+        },
+        ['models-by-slug-v1', ...uniqueSlugs],
+        { revalidate: 3600, tags: ['models'] }
+    )()
+}
 
 /**
  * 将数据库记录规范化为 Wrap 接口格式

@@ -6,24 +6,56 @@ import { updateSession } from './utils/supabase/middleware';
 const intlMiddleware = createIntlMiddleware(routing);
 
 export default async function middleware(request: NextRequest) {
-    // 1. First update the Supabase session
-    const supabaseResponse = await updateSession(request);
-
     const pathname = request.nextUrl.pathname;
     const isApiRoute = pathname.startsWith('/api/');
+
+    // 1. Check for OAuth callback (code or token_hash parameter at root path)
+    const searchParams = request.nextUrl.searchParams;
+    const code = searchParams.get('code');
+    const token_hash = searchParams.get('token_hash');
+    const type = searchParams.get('type');
+
+    const isOAuthCallback = (code || token_hash) && (pathname === '/' || pathname.match(/^\/(en|zh)$/));
+
+    // 2. Admin Protection (route check)
+    // Check if the route is an admin route (e.g., /en/admin, /zh/admin, /admin)
+    const isAdminRoute = pathname.match(/^\/(en|zh)\/admin/) || pathname.startsWith('/admin');
+    const isProfileRoute = pathname.match(/^\/(en|zh)\/profile/) || pathname.startsWith('/profile');
+    const isAiRoute = pathname.match(/^\/(en|zh)\/ai-generate/) || pathname.startsWith('/ai-generate');
+    const isCheckoutRoute = pathname.match(/^\/(en|zh)\/checkout/) || pathname.startsWith('/checkout');
+    const isAuthRoute = pathname.match(/^\/(en|zh)\/(login|auth)/) || pathname.startsWith('/login') || pathname.startsWith('/auth');
+
+    const requiresSupabase = isApiRoute || isOAuthCallback || isAdminRoute || isProfileRoute || isAiRoute || isCheckoutRoute || isAuthRoute;
+
+    if (!requiresSupabase) {
+        const response = intlMiddleware(request);
+        response.headers.set('Vary', 'Accept-Language');
+        return response;
+    }
+
+    const hasAuthCookie = request.cookies.getAll().some(({ name }) => {
+        if (name === 'supabase-auth-token') return true;
+        if (!name.startsWith('sb-')) return false;
+        return name.includes('auth-token') || name.includes('refresh-token') || name.includes('access-token');
+    });
+
+    if (isAdminRoute && !hasAuthCookie) {
+        const locale = pathname.split('/')[1] || 'en';
+        const loginUrl = new URL(`/${locale}/login`, request.url);
+        loginUrl.searchParams.set('next', pathname);
+        return NextResponse.redirect(loginUrl);
+    }
+
+    // 3. First update the Supabase session (only when needed)
+    const supabaseResponse = await updateSession(request);
 
     // If it's an API route, we just need the Supabase cookies
     if (isApiRoute) {
         return supabaseResponse;
     }
 
-    // 2. Check for OAuth callback (code or token_hash parameter at root path)
-    const searchParams = request.nextUrl.searchParams;
-    const code = searchParams.get('code');
-    const token_hash = searchParams.get('token_hash');
-    const type = searchParams.get('type');
-
-    if ((code || token_hash) && (pathname === '/' || pathname.match(/^\/(en|zh)$/))) {
+    // 4. Check for OAuth callback (code or token_hash parameter at root path)
+    if (isOAuthCallback) {
         console.log('[Middleware] Detected OAuth/Auth callback at root, redirecting to API handler');
         const next = searchParams.get('next') ?? '/';
         const callbackUrl = new URL('/api/auth/callback', request.url);
@@ -45,12 +77,8 @@ export default async function middleware(request: NextRequest) {
         return redirectResponse;
     }
 
-    // 3. For other routes, run intl middleware
+    // 5. For other routes, run intl middleware
     const response = intlMiddleware(request);
-
-    // 4. Admin Protection
-    // Check if the route is an admin route (e.g., /en/admin, /zh/admin, /admin)
-    const isAdminRoute = pathname.match(/^\/(en|zh)\/admin/) || pathname.startsWith('/admin');
 
     if (isAdminRoute) {
         // We need a fresh client to check the user role accurately
@@ -101,13 +129,13 @@ export default async function middleware(request: NextRequest) {
         }
     }
 
-    // 5. IMPORTANT: Transfer cookies from supabaseResponse to the final response
+    // 6. IMPORTANT: Transfer cookies from supabaseResponse to the final response
     const supabaseCookies = supabaseResponse.cookies.getAll();
     supabaseCookies.forEach(cookie => {
         response.cookies.set(cookie.name, cookie.value, cookie);
     });
 
-    // 6. Add Vary: Accept-Language header for International SEO
+    // 7. Add Vary: Accept-Language header for International SEO
     response.headers.set('Vary', 'Accept-Language');
 
     return response;

@@ -29,9 +29,15 @@ export async function generateMetadata({
         ? `${modelName} Free Tesla Wrap Designs & Download | 3D Visualization | MyTesLab`
         : `特斯拉 ${modelName} 车身贴膜设计免费下载与 3D 预览 | MyTesLab`
 
-    const description = tModels(`${slug}.description`) || (locale === 'en'
+    const descriptionFallback = locale === 'en'
         ? `Browse and download the best free custom wrap designs for Tesla ${modelName}. Preview 3D wraps and find inspiration for your next look.`
-        : `浏览并免费下载最优秀的特斯拉 ${modelName} 定制车身贴图设计。实时 3D 预览，为您的爱车寻找下一个造型灵感。`)
+        : `浏览并免费下载最优秀的特斯拉 ${modelName} 定制车身贴图设计。实时 3D 预览，为您的爱车寻找下一个造型灵感。`
+    let description = descriptionFallback
+    try {
+        description = tModels(`${slug}.description`)
+    } catch {
+        description = descriptionFallback
+    }
 
     return {
         title,
@@ -85,6 +91,15 @@ export default async function ModelPage({
 
     const t = await getTranslations('Index')
     const tModels = await getTranslations('Models')
+    const descriptionFallback = locale === 'en'
+        ? `Browse and download the best free custom wrap designs for Tesla ${currentModel.name_en || currentModel.name}. Preview 3D wraps and find inspiration for your next look.`
+        : `浏览并免费下载最优秀的特斯拉 ${currentModel.name} 定制车身贴图设计。实时 3D 预览，为您的爱车寻找下一个造型灵感。`
+    let modelDescription = descriptionFallback
+    try {
+        modelDescription = tModels(`${slug}.description`)
+    } catch {
+        modelDescription = descriptionFallback
+    }
 
     return (
         <div className="flex flex-col">
@@ -97,7 +112,7 @@ export default async function ModelPage({
                             : `特斯拉 ${currentModel.name} 改色贴膜与涂装设计库`}
                     </h1>
                     <p className="text-gray-600 dark:text-zinc-400 max-w-4xl text-lg leading-relaxed font-medium">
-                        {tModels(`${slug}.description`)}
+                        {modelDescription}
                     </p>
                 </section>
 

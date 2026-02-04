@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -111,6 +112,27 @@ export default async function RootLayout({
       <head>
         <link rel="dns-prefetch" href="https://cdn.tewan.club" />
         <link rel="preconnect" href="https://cdn.tewan.club" crossOrigin="anonymous" />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var stored = localStorage.getItem('theme');
+                  var mode = stored === 'dark' || stored === 'light' || stored === 'system' ? stored : 'system';
+                  var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  var effective = mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;
+                  var root = document.documentElement;
+                  root.classList.toggle('dark', effective === 'dark');
+                  root.classList.toggle('light', effective === 'light');
+                  root.dataset.themeMode = mode;
+                  root.style.colorScheme = effective;
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 flex flex-col`}

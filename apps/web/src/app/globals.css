@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -20,7 +22,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
     --surface-1: #111111;
@@ -32,11 +34,29 @@
     --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 30px rgba(0, 0, 0, 0.45);
   }
 
-  body {
+  :root:not(.light) body {
     background-image:
       radial-gradient(1200px 800px at 80% -10%, rgba(255, 255, 255, 0.06), transparent 60%),
       radial-gradient(1000px 700px at -10% 20%, rgba(255, 255, 255, 0.04), transparent 55%);
   }
+}
+
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface-1: #111111;
+  --surface-2: #141414;
+  --surface-3: #1a1a1a;
+  --border: #242424;
+  --ring: rgba(255, 255, 255, 0.08);
+  --text-muted: #9aa0ab;
+  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.dark body {
+  background-image:
+    radial-gradient(1200px 800px at 80% -10%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(1000px 700px at -10% 20%, rgba(255, 255, 255, 0.04), transparent 55%);
 }
 
 

@@ -62,14 +62,14 @@ export function LanguageSwitcher() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white/90 dark:bg-zinc-900/80 border border-black/5 dark:border-white/10 rounded-xl shadow-[0_12px_30px_rgba(0,0,0,0.18)] py-1 z-50 backdrop-blur">
+                <div className="absolute right-0 mt-2 w-32 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] py-1 ring-1 ring-black/5 dark:ring-white/10 z-[100] backdrop-blur">
                     {languages.map((lang) => (
                         <button
                             key={lang.code}
                             onClick={() => handleSwitch(lang.code)}
                             className={`w-full text-left px-4 py-2 text-sm transition-colors ${locale === lang.code
                                 ? 'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white font-medium'
-                                : 'text-gray-700 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10'
+                                : 'text-gray-700 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                                 }`}
                         >
                             {lang.label}
