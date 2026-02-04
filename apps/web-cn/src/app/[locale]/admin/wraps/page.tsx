@@ -135,14 +135,13 @@ export default function AdminWrapsPage() {
             if (!res.ok || !data?.success) {
                 throw new Error(data?.error || t('update_failed'));
             }
+            // 3. Revalidate in background
+            alert.success(t('update_success'));
+            revalidateWraps();
         } catch (err) {
             // 2. Revert on error
             setWraps(current => current.map(w => w.id === wrapId ? { ...w, is_active: currentStatus } : w));
             alert.error(t('update_failed'));
-        } else {
-            // 3. Revalidate in background
-            alert.success(t('update_success'));
-            revalidateWraps();
         }
     };
 
