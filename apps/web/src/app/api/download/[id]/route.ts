@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { getDownloadUrl } from '@/lib/oss'
 
 export async function GET(
@@ -38,10 +39,15 @@ export async function GET(
         // 2. 增加下载计数并记录下载历史
         const { data: { user } } = await supabase.auth.getUser();
 
-        // 增加总下载量
-        await supabase.rpc('increment_download_count', {
-            wrap_id: id
-        });
+        // 增加总下载量 (使用 service role 绕过 RLS，避免匿名用户更新失败)
+        try {
+            const admin = createAdminClient();
+            await admin.rpc('increment_download_count', {
+                wrap_id: id
+            });
+        } catch (err) {
+            console.error('[download] increment_download_count failed:', err);
+        }
 
         // 如果用户已登录，记录到个人下载历史
         if (user) {
@@ -124,4 +130,3 @@ async function compressImage(input: Buffer): Promise<Buffer> {
         })
         .toBuffer();
 }
-
