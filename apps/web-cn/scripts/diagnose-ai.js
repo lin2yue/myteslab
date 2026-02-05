@@ -18,9 +18,10 @@ async function testConnectivity() {
 
         try {
             const MODEL = 'gemini-1.5-flash';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+            const apiBaseUrl = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
+            const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
 
-            console.log(`Connecting to: https://generativelanguage.googleapis.com/...`);
+            console.log(`Connecting to: ${apiBaseUrl}...`);
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -36,7 +37,6 @@ async function testConnectivity() {
                 console.log('✅ Gemini API Response:', text || 'Empty response but OK');
             } else {
                 const errText = await response.text();
-                // Mask sensitive info in error if any, but usually it's public
                 console.error(`❌ Gemini API Error (${response.status}):`, errText.substring(0, 500));
             }
         } catch (err) {

@@ -153,7 +153,8 @@ export async function generateWrapTexture(
         }
 
         const MODEL = 'gemini-3-pro-image-preview';
-        const currentGeminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+        const apiBaseUrl = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
+        const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
@@ -285,7 +286,8 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
 
         // Note: Using flash-latest for fast and cheap text generation
         const MODEL = 'gemini-flash-latest';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+        const apiBaseUrl = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
+        const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
 
         const systemInstruction = `You are a professional automotive wrap titler. 
 Based on the user's prompt (which could be in Chinese, English, or any other language), generate a creative title and a short description for the car wrap in BOTH Chinese and English. 
