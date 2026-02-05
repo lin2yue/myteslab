@@ -1,5 +1,3 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { Client } = require('pg');
 const dotenv = require('dotenv');
 const path = require('path');
 
@@ -9,7 +7,7 @@ dotenv.config({ path: path.join(__dirname, '../.env.production') });
 dotenv.config();
 
 async function testConnectivity() {
-    console.log('--- 1. Testing Gemini API Connectivity ---');
+    console.log('--- 1. Testing Gemini API Connectivity (via Fetch) ---');
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -23,15 +21,31 @@ async function testConnectivity() {
         }
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const result = await model.generateContent("Say 'Connectivity OK'");
-            const response = await result.response;
-            console.log('✅ Gemini API Response:', response.text());
+            const MODEL = 'gemini-1.5-flash';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+
+            console.log(`Connecting to: https://generativelanguage.googleapis.com/...`);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: "Say 'Connectivity OK'" }] }]
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                console.log('✅ Gemini API Response:', text || 'Empty response but OK');
+            } else {
+                const errText = await response.text();
+                console.error(`❌ Gemini API Error (${response.status}):`, errText);
+            }
         } catch (err) {
-            console.error('❌ Gemini API Error:', err.message);
+            console.error('❌ Connectivity Error:', err.message);
             if (err.message.includes('fetch failed')) {
-                console.error('👉 Suggestion: This is likely a network issue. Ensure your ECS can reach Gemini API (may need a proxy in China).');
+                console.error('👉 Suggestion: This is a network issue. Ensure your ECS can reach Google APIs.');
             }
         }
     }
@@ -41,27 +55,18 @@ async function testConnectivity() {
     if (!dbUrl) {
         console.error('❌ DATABASE_URL is not set');
     } else {
-        const client = new Client({ connectionString: dbUrl });
         try {
+            const { Client } = require('pg');
+            const client = new Client({ connectionString: dbUrl });
             await client.connect();
             const res = await client.query('SELECT slug, name, is_active FROM wrap_models');
             console.log('Database Slugs:');
             res.rows.forEach(row => {
                 console.log(` - [${row.slug}] ${row.name} (Active: ${row.is_active})`);
             });
-
-            const hardcoded = ['cybertruck', 'model-3', 'model-3-2024-plus', 'model-y-pre-2025', 'model-y-2025-plus'];
-            const missing = res.rows.filter(r => r.is_active && !hardcoded.includes(r.slug.toLowerCase()));
-            if (missing.length > 0) {
-                console.warn('\n⚠️ Warning: The following active models are NOT in the API whitelist:');
-                missing.forEach(m => console.log(` - ${m.slug}`));
-            } else {
-                console.log('\n✅ All database models are in the API whitelist.');
-            }
-        } catch (err) {
-            console.error('❌ Database Error:', err.message);
-        } finally {
             await client.end();
+        } catch (err) {
+            console.error('❌ Database Check Skipped or Failed:', err.message);
         }
     }
 }
