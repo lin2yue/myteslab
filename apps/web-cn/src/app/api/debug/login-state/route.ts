@@ -1,6 +1,9 @@
 import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
+    if (process.env.NODE_ENV !== 'development') {
+        return new Response('Forbidden', { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const next = searchParams.get('next');
 

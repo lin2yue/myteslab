@@ -23,7 +23,7 @@ export function buildSlugBase({
     modelSlug?: string | null
 }) {
     const raw = nameEn || name || prompt || 'wrap'
-    const base = slugify(raw)
+    const base = slugify(raw).slice(0, 80)
     if (base) {
         return modelSlug ? `${modelSlug}-${base}` : base
     }

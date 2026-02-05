@@ -12,12 +12,22 @@ export async function GET(
 
         // 1. 获取贴图信息 - 从合并后的 wraps 表拉取
         const { rows } = await dbQuery(
-            `SELECT id, texture_url, slug FROM wraps WHERE id = $1 LIMIT 1`,
+            `SELECT id, texture_url, slug, user_id, is_active, is_public, deleted_at 
+             FROM wraps WHERE id = $1 LIMIT 1`,
             [id]
         )
         const wrap = rows[0]
-        if (!wrap) {
+        if (!wrap || wrap.deleted_at) {
             return NextResponse.json({ error: '贴图不存在' }, { status: 404 })
+        }
+
+        // 2. 检查可见性与所有权
+        const user = await getSessionUser();
+        const isOwner = user && user.id === wrap.user_id;
+        const isPubliclyAvailable = wrap.is_public && wrap.is_active;
+
+        if (!isOwner && !isPubliclyAvailable) {
+            return NextResponse.json({ error: '无权下载此私有贴图' }, { status: 403 });
         }
 
         const wrapData = {
@@ -34,8 +44,7 @@ export async function GET(
             )
         }
 
-        // 2. 增加下载计数并记录下载历史
-        const user = await getSessionUser();
+        // 3. 增加下载计数并记录下载历史
         try {
             await dbQuery(
                 `UPDATE wraps SET download_count = COALESCE(download_count, 0) + 1 WHERE id = $1`,

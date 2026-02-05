@@ -40,7 +40,7 @@ export default function CheckoutSuccessPage() {
                     </div>
                 </div>
 
-                <h1 className="text-3xl font-black text-gray-900 mb-4">
+                <h1 className="text-3xl font-black text-gray-900 dark:text-zinc-100 mb-4">
                     {t('success_title')}
                 </h1>
 

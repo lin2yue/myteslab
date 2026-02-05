@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+    if (process.env.NODE_ENV !== 'development') {
+        return new Response('Forbidden', { status: 403 });
+    }
     return NextResponse.json({
         time: new Date().toISOString(),
         env: {

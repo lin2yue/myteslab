@@ -700,8 +700,8 @@ export default function AIGeneratorMain({
             <div className="flex flex-col lg:flex-row flex-1 overflow-visible lg:overflow-hidden w-full mx-auto">
 
                 {/* Left Side: 3D Preview (65%) */}
-                <div className="flex-none lg:flex-[6.5] flex flex-col p-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
-                    <div className="relative w-full aspect-video max-h-[50vh] min-h-[220px] lg:flex-1 lg:aspect-auto lg:max-h-none overflow-hidden m-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
+                <div className="flex-none lg:flex-[6.5] flex flex-col p-4 pb-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
+                    <div className="relative flex-1 aspect-video max-h-[50vh] min-h-[220px] lg:aspect-auto lg:max-h-none overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
@@ -716,7 +716,7 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    <div className="flex flex-row items-center px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 gap-2 overflow-x-auto backdrop-blur" >
+                    <div className="flex flex-row items-center px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 gap-2 overflow-x-auto backdrop-blur -mx-4 mt-4" >
                         <button
                             onClick={() => {
                                 const next = !isNight
@@ -1123,7 +1123,7 @@ function HistoryItem({
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">
-                    <p className="text-xs text-gray-600 line-clamp-1 italic flex-1">&quot;{item.prompt}&quot;</p>
+                    <p className="text-xs text-gray-600 dark:text-zinc-400 line-clamp-1 italic flex-1">&quot;{item.prompt}&quot;</p>
                     {item.is_public && (
                         <span className="ml-2 px-1.5 py-0.5 bg-zinc-900/10 text-zinc-700 text-[8px] font-bold rounded uppercase">
                             Public
@@ -1132,7 +1132,7 @@ function HistoryItem({
                 </div>
                 <div className="flex justify-between mt-2">
                     <span className="text-[10px] text-gray-400 uppercase">{getModelName(item.model_slug)}</span>
-                    <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                    <span className="text-[10px] text-zinc-600 dark:text-zinc-400 opacity-0 group-hover:opacity-100 flex items-center gap-1">
                         Apply <ArrowRight className="w-3 h-3" />
                     </span>
                 </div>

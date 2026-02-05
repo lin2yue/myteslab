@@ -42,12 +42,12 @@ export default function ProfileForm({ initialDisplayName, userId }: ProfileFormP
     if (!isEditing) {
         return (
             <div>
-                <p className="text-sm font-medium text-gray-500 mt-2">{t('display_name')}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 mt-2">{t('display_name')}</p>
                 <div className="flex items-center gap-4">
-                    <p className="text-lg font-semibold text-gray-900">{displayName || 'N/A'}</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-zinc-100">{displayName || 'N/A'}</p>
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="text-sm text-gray-900 hover:underline font-medium"
+                        className="text-sm text-gray-900 dark:text-zinc-100 hover:underline font-medium"
                     >
                         {t('edit') || 'Edit'}
                     </button>
@@ -58,7 +58,7 @@ export default function ProfileForm({ initialDisplayName, userId }: ProfileFormP
 
     return (
         <div className="mt-2">
-            <p className="text-sm font-medium text-gray-500">{t('display_name')}</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400">{t('display_name')}</p>
             <div className="flex items-center gap-2 mt-1">
                 <input
                     type="text"

@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import type { Wrap, Model } from '@/lib/types'
 import { DEFAULT_MODELS } from '@/config/models'
 import { dbQuery } from '@/lib/db'
+import { getSessionUser } from '@/lib/auth/session'
 
 /**
  * 注入车型信息到作品对象中
@@ -203,6 +204,7 @@ export async function getWrap(slugOrId: string): Promise<Wrap | null> {
                 w.is_active,
                 w.is_public,
                 w.user_id,
+                w.deleted_at,
                 w.download_count,
                 w.created_at,
                 w.reference_images,
@@ -237,6 +239,21 @@ export async function getWrap(slugOrId: string): Promise<Wrap | null> {
         }
 
         if (!wrapRecord) return null
+
+        // 权限校验：仅作者或管理员可访问私有/已删除贴图
+        const user = await getSessionUser();
+        const isOwner = user && user.id === wrapRecord.user_id;
+
+        if (wrapRecord.deleted_at && !isOwner) {
+            return null;
+        }
+
+        if (!wrapRecord.is_active && !isOwner) {
+            return null;
+        }
+
+        // 注意：is_public 逻辑视业务逻辑而定，如果详情页必须公开才能看，请开启下行
+        // if (!wrapRecord.is_public && !isOwner) return null;
 
         const normalized = normalizeWrap(wrapRecord)
         const withModelInfo = await injectModelInfo([normalized])

@@ -170,7 +170,7 @@ export default async function WrapDetailPage({
                 <div className="flex flex-wrap items-center gap-4 mb-8">
                     <Link
                         href={wrap.model_slug ? `/models/${wrap.model_slug}` : "/"}
-                        className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm font-medium mr-2"
+                        className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors text-sm font-medium mr-2"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -182,11 +182,11 @@ export default async function WrapDetailPage({
 
                     {/* Visible Breadcrumbs for SEO and UX */}
                     <nav className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                        <Link href="/" className="hover:text-gray-900 transition-colors">{locale === 'en' ? 'Home' : '首页'}</Link>
+                        <Link href="/" className="hover:text-gray-900 dark:hover:text-white transition-colors">{locale === 'en' ? 'Home' : '首页'}</Link>
                         <span>/</span>
                         {wrap.model_slug && (
                             <>
-                                <Link href={`/models/${wrap.model_slug}`} className="hover:text-gray-900 transition-colors">
+                                <Link href={`/models/${wrap.model_slug}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
                                     {modelName}
                                 </Link>
                                 <span>/</span>
@@ -226,7 +226,7 @@ export default async function WrapDetailPage({
                                     </span>
                                 </div>
 
-                                <h1 className="text-xl lg:text-2xl font-black text-gray-900 tracking-tight">
+                                <h1 className="text-xl lg:text-2xl font-black text-gray-900 dark:text-zinc-100 tracking-tight">
                                     {name}
                                 </h1>
 
@@ -295,7 +295,7 @@ export default async function WrapDetailPage({
                             {/* 描述 */}
                             {description && (
                                 <div className="pt-4 border-t border-black/5 dark:border-white/10">
-                                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                    <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed font-medium">
                                         {description}
                                     </p>
                                 </div>

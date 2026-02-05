@@ -1159,7 +1159,7 @@ function HistoryItem({
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">
-                    <p className="text-xs text-gray-600 line-clamp-1 italic flex-1">&quot;{item.prompt}&quot;</p>
+                    <p className="text-xs text-gray-600 dark:text-zinc-400 line-clamp-1 italic flex-1">&quot;{item.prompt}&quot;</p>
                     {item.is_public && (
                         <span className="ml-2 px-1.5 py-0.5 bg-zinc-900/10 text-zinc-700 text-[8px] font-bold rounded uppercase">
                             Public
@@ -1168,7 +1168,7 @@ function HistoryItem({
                 </div>
                 <div className="flex justify-between mt-2">
                     <span className="text-[10px] text-gray-400 uppercase">{getModelName(item.model_slug)}</span>
-                    <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                    <span className="text-[10px] text-zinc-600 dark:text-zinc-400 opacity-0 group-hover:opacity-100 flex items-center gap-1">
                         Apply <ArrowRight className="w-3 h-3" />
                     </span>
                 </div>

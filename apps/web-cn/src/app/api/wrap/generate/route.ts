@@ -448,9 +448,14 @@ export async function POST(request: NextRequest) {
         );
 
         // 同时启动两个 AI 任务
-        const metadataPromise = generateBilingualMetadata(prompt, modelName);
-        void metadataPromise.catch(err => {
-            console.error('[AI-GEN] Failed to generate bilingual metadata:', err);
+        const metadataPromise = generateBilingualMetadata(prompt, modelName).catch(err => {
+            console.error('[AI-GEN] Failed to generate bilingual metadata, using fallback:', err);
+            return {
+                name: 'AI Generated Wrap',
+                name_en: 'AI Generated Wrap',
+                description: '',
+                description_en: ''
+            };
         });
         const imageGenerationPromise = generateWrapTexture({
             modelSlug,
