@@ -29,11 +29,15 @@ const MODEL_NAMES: Record<string, string> = {
     'cybertruck': 'Cybertruck',
     'model-3': 'Model 3',
     'model-3-2024-plus': 'Model 3 2024+',
+    'model3-l': 'Model 3',
     'model-y-pre-2025': 'Model Y',
     'model-y-2025-plus': 'Model Y 2025+',
-    'model-y': 'Model Y', // Alias for general Model Y
+    'model-y': 'Model Y',
+    'modely-l': 'Model Y',
     'model-s': 'Model S',
+    'models-l': 'Model S',
     'model-x': 'Model X',
+    'modelx-l': 'Model X',
 };
 
 const MAX_REFERENCE_IMAGES = 3;
