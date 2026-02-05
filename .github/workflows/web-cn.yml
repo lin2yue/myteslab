@@ -30,3 +30,43 @@ jobs:
           push: true
           tags: |
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to ECS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USERNAME }}
+          key: ${{ secrets.ECS_PRIVATE_KEY }}
+          script: |
+            # 登录阿里云 ACR
+            docker login --username=${{ secrets.ACR_USERNAME }} --password=${{ secrets.ACR_PASSWORD }} ${{ secrets.ACR_REGISTRY }}
+            
+            # 停止并清理旧容器
+            docker stop web-cn || true
+            docker rm web-cn || true
+            
+            # 拉取最新镜像
+            docker pull ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:latest
+            
+            # 启动新容器
+            docker run -d \
+              --name web-cn \
+              --restart always \
+              -p 3000:3000 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e OSS_ACCESS_KEY_ID="${{ secrets.OSS_ACCESS_KEY_ID }}" \
+              -e OSS_ACCESS_KEY_SECRET="${{ secrets.OSS_ACCESS_KEY_SECRET }}" \
+              -e OSS_REGION="oss-cn-beijing" \
+              -e OSS_BUCKET="lock-sounds" \
+              -e DM_SMTP_HOST="smtpdm.aliyun.com" \
+              -e DM_SMTP_PORT="465" \
+              -e DM_SMTP_USER="no-reply@tewan.club" \
+              -e DM_SMTP_PASS="${{ secrets.DM_SMTP_PASS }}" \
+              -e DM_FROM_ALIAS="Tewan Club" \
+              -e NEXT_PUBLIC_APP_URL="https://tewan.club" \
+              -e NEXT_PUBLIC_CDN_URL="https://cdn.tewan.club" \
+              ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:latest
