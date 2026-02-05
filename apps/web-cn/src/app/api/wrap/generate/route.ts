@@ -31,6 +31,9 @@ const MODEL_NAMES: Record<string, string> = {
     'model-3-2024-plus': 'Model 3 2024+',
     'model-y-pre-2025': 'Model Y',
     'model-y-2025-plus': 'Model Y 2025+',
+    'model-y': 'Model Y', // Alias for general Model Y
+    'model-s': 'Model S',
+    'model-x': 'Model X',
 };
 
 const MAX_REFERENCE_IMAGES = 3;
@@ -289,7 +292,11 @@ export async function POST(request: NextRequest) {
         const currentModelSlug = modelSlug.toLowerCase();
         const modelName = MODEL_NAMES[currentModelSlug];
         if (!modelName) {
-            return NextResponse.json({ success: false, error: 'Invalid model' }, { status: 400 });
+            console.error(`[AI-GEN] Invalid model slug received: "${modelSlug}"`);
+            return NextResponse.json({
+                success: false,
+                error: `Invalid model: ${modelSlug}. 请检查数据库 slug 是否在允许列表中。`
+            }, { status: 400 });
         }
 
         // 3. 执行数据库原子扣费 RPC (带幂等支持)
