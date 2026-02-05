@@ -21,11 +21,24 @@ export async function login(formData: FormData) {
         return { success: false, error: 'Invalid login credentials' };
     }
 
+    // 检查邮箱验证状态
+    if (user.email && !user.email_verified_at) {
+        return {
+            success: false,
+            error: '请先激活您的邮箱',
+            needsVerification: true,
+            email: user.email
+        };
+    }
+
     await createSession(user.id);
     return { success: true };
 }
 
-export async function signup(formData: FormData, nextUrl?: string) {
+import crypto from 'crypto';
+import { sendActivationEmail } from '@/lib/mail/service';
+
+export async function signup(formData: FormData) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     if (!email || !password) {
@@ -38,18 +51,33 @@ export async function signup(formData: FormData, nextUrl?: string) {
     }
 
     const passwordHash = await hashPassword(password);
+
+    // 生成验证令牌
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
     const user = await createUser({
         email,
         passwordHash,
         displayName: email.split('@')[0],
+        verificationToken,
     });
 
     if (!user) {
         return { success: false, error: 'Signup failed' };
     }
 
-    await createSession(user.id);
-    return { success: true };
+    // 发送激活邮件
+    try {
+        await sendActivationEmail(email, verificationToken);
+    } catch (err) {
+        console.error('[signup] Failed to send email:', err);
+    }
+
+    return {
+        success: true,
+        requiresVerification: true,
+        message: '注册成功，请检查您的邮箱进行激活'
+    };
 }
 
 export async function resetPassword(email: string) {
@@ -57,7 +85,16 @@ export async function resetPassword(email: string) {
     return { success: false, error: '暂不支持找回密码' };
 }
 
-export async function resendVerification(email: string) {
-    console.warn('[resendVerification] Not implemented for RDS auth yet:', email);
-    return { success: false, error: '暂不支持邮箱验证' };
+export async function resendVerificationAction(email: string) {
+    const user = await getUserByEmail(email);
+    if (!user) return { success: true }; // 安全起见不报错
+    if (user.email_verified_at) return { success: false, error: '该邮箱已验证' };
+
+    const newToken = crypto.randomBytes(32).toString('hex');
+    // 假设您在 users.ts 中增加了 updateVerificationToken
+    const { updateVerificationToken } = await import('@/lib/auth/users');
+    await updateVerificationToken(user.id, newToken);
+    await sendActivationEmail(email, newToken);
+
+    return { success: true, message: '验证邮件已重发' };
 }

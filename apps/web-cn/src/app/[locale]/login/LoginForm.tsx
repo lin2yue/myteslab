@@ -3,7 +3,7 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { login, signup } from './actions';
+import { login, signup, resendVerificationAction } from './actions';
 import { trackLogin, trackSignUp } from '@/lib/analytics';
 import { Loader2, Mail, Lock, Phone, ShieldCheck, QrCode, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAlert } from '@/components/alert/AlertProvider';
@@ -28,6 +28,8 @@ export default function LoginForm() {
     const [code, setCode] = useState('');
     const [smsTimer, setSmsTimer] = useState(0);
     const [isSmsSending, setIsSmsSending] = useState(false);
+    const [isResending, setIsResending] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const [error, setError] = useState<string | null>(searchParams.get('error'));
     const [isPending, startTransition] = useTransition();
@@ -61,6 +63,11 @@ export default function LoginForm() {
             if (mode === 'LOGIN') {
                 const result = await login(formData);
                 if (!result?.success) {
+                    if (result?.needsVerification) {
+                        setError(`请先在邮箱 ${result.email} 中点击激活链接。没有收到？`);
+                        setSuccessMessage(null);
+                        return;
+                    }
                     setError(result?.error || t('error_invalid_credentials'));
                     return;
                 }
@@ -72,6 +79,14 @@ export default function LoginForm() {
                     setError(result?.error || t('error_default'));
                     return;
                 }
+
+                if (result.requiresVerification) {
+                    setSuccessMessage(result.message || '注册成功！请检查您的邮箱进行激活。');
+                    setError(null);
+                    setMode('LOGIN'); // 切换回登录模式让用户知道接下来要做什么
+                    return;
+                }
+
                 alert.success(t('signup_success') || 'Sign up successful!');
                 trackSignUp('email');
             }
@@ -82,6 +97,23 @@ export default function LoginForm() {
                 window.location.href = next;
             }
         });
+    };
+
+    const handleResend = async () => {
+        if (!email || isResending) return;
+        setIsResending(true);
+        try {
+            const result = await resendVerificationAction(email);
+            if (result.success) {
+                alert.success(result.message || '验证邮件已重发');
+            } else {
+                setError(result.error || '重发失败');
+            }
+        } catch (e) {
+            setError('网络错误');
+        } finally {
+            setIsResending(false);
+        }
     };
 
     const handleSendSms = async () => {
@@ -143,9 +175,27 @@ export default function LoginForm() {
     };
 
     const renderError = () => error && (
-        <div className="flex items-center gap-2 p-3 mb-6 text-sm text-red-600 bg-red-50/80 dark:bg-red-900/20 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg animate-in fade-in slide-in-from-top-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <p>{error}</p>
+        <div className="flex flex-col gap-2 p-3 mb-6 text-sm text-red-600 bg-red-50/80 dark:bg-red-900/20 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <p>{error}</p>
+            </div>
+            {error.includes('激活') && (
+                <button
+                    onClick={handleResend}
+                    disabled={isResending}
+                    className="text-left text-xs font-bold underline hover:text-red-700 disabled:opacity-50"
+                >
+                    {isResending ? '正在重发...' : '点击这里重发激活邮件'}
+                </button>
+            )}
+        </div>
+    );
+
+    const renderSuccess = () => successMessage && (
+        <div className="flex items-center gap-2 p-3 mb-6 text-sm text-green-600 bg-green-50/80 dark:bg-green-900/20 dark:text-green-400 border border-green-100 dark:border-green-900/50 rounded-lg animate-in fade-in slide-in-from-top-2">
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            <p>{successMessage}</p>
         </div>
     );
 
@@ -179,6 +229,7 @@ export default function LoginForm() {
             </div>
 
             {renderError()}
+            {renderSuccess()}
 
             {authTab === 'EMAIL' ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-4">
