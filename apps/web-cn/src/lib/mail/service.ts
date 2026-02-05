@@ -7,7 +7,7 @@ export async function sendActivationEmail(email: string, token: string) {
 
     const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-            <h2 style="color: #333;">激活您的特别版 Tesla Studio 账户</h2>
+            <h2 style="color: #333;">激活您的特别版 特玩 账户</h2>
             <p>感谢您注册！请点击下方的按钮来激活您的账户：</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${activationLink}" 
@@ -24,7 +24,7 @@ export async function sendActivationEmail(email: string, token: string) {
 
     return await sendMail({
         to: email,
-        subject: '激活您的 Tesla Studio 账户',
+        subject: '激活您的 特玩 账户',
         html,
     });
 }
