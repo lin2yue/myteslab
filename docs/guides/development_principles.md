@@ -75,3 +75,27 @@
 *   **参数合并支持 (`images.ts`)**: `getOptimizedImageUrl` 函数支持将业务层的动态缩放参数与数据库中的预设旋转参数进行智能合并。
 > [!IMPORTANT]
 > 此逻辑是系统性的，严禁在未同步修改生成端的情况下，为了修正某个车型的预览方向而调整 `ModelViewer.tsx` 或 `viewer-config.json`。
+---
+
+## 5. 暗黑模式可见性规范 (Dark Mode Visibility)
+
+**核心原则**：所有文本颜色必须支持暗黑模式适配，严禁使用纯硬编码的浅色模式深色类（如 `text-gray-900`）而不提供对应的 `dark:` 变体。
+
+### 推荐实践 (Best Practices)
+- **标题与正文**：优先使用 `text-gray-900 dark:text-zinc-100` 或直接使用全局定义的语义化类。
+- **辅助文本**：使用 `text-gray-500 dark:text-zinc-400` 保持一致的低对比度视觉层级。
+- **容器背景**：卡片等容器应使用 `bg-white dark:bg-zinc-900` 或配合 `dark:bg-white/10` 玻璃拟态效果。
+- **交互状态**：Tab 或按钮的选中状态在暗黑模式下应有明显的反色或亮度增强（如 `text-gray-950 dark:text-white`）。
+
+---
+
+## 6. API 安全与调试接口控制 (API Security & Debug Control)
+
+### 环境隔离 (Environment Isolation)
+- **调试接口限制**：所有暴露服务器环境信息（如 `.env`）、用户状态（Headers/Cookies）或文件系统路径的调试接口（`/api/debug/*`），**必须**在生产环境下完全禁用或严格限制仅限管理员访问。
+- **实现方式**：在 Route Handler 中检查 `process.env.NODE_ENV === 'production'` 并在符合条件时返回 `404` 或 `403`。
+
+### 权限与可见性校验
+- **越权访问防护**：涉及资源下载或详情查看的 API（如 `/api/download/[id]`），必须在数据库查询层面强制校验 `is_public` 状态，除非请求者是资源所有者。
+- **敏感信息屏蔽**：在生成 URL 或 Slug 时，严禁包含服务器内部路径、默认密钥（Default Secret）或可被暴力破解的非随机哈希。
+- **OTP/SMS 安全**：验证逻辑必须依赖强随机密钥（`OTP_HASH_SECRET`），严禁在代码中硬编码任何默认密钥，并在生产环境下对默认配置进行拦截报警。
