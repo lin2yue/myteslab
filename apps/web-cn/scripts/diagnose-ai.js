@@ -1,17 +1,13 @@
-const dotenv = require('dotenv');
-const path = require('path');
-
-// Try to load .env.local
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
-dotenv.config({ path: path.join(__dirname, '../.env.production') });
-dotenv.config();
+// Zero-dependency diagnostic script for AI connectivity
+// Run with: node diagnose-ai.js
 
 async function testConnectivity() {
-    console.log('--- 1. Testing Gemini API Connectivity (via Fetch) ---');
+    console.log('--- 1. Testing Gemini API Connectivity (Zero-Dep) ---');
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-        console.error('❌ GEMINI_API_KEY is not set in environment');
+        console.error('❌ GEMINI_API_KEY is not set in environment (process.env)');
+        console.log('Available env keys:', Object.keys(process.env).filter(k => k.includes('API') || k.includes('KEY') || k.includes('PROXY')));
     } else {
         console.log(`Using API Key: ${apiKey.substring(0, 8)}...`);
 
@@ -40,7 +36,8 @@ async function testConnectivity() {
                 console.log('✅ Gemini API Response:', text || 'Empty response but OK');
             } else {
                 const errText = await response.text();
-                console.error(`❌ Gemini API Error (${response.status}):`, errText);
+                // Mask sensitive info in error if any, but usually it's public
+                console.error(`❌ Gemini API Error (${response.status}):`, errText.substring(0, 500));
             }
         } catch (err) {
             console.error('❌ Connectivity Error:', err.message);
@@ -50,25 +47,10 @@ async function testConnectivity() {
         }
     }
 
-    console.log('\n--- 2. Checking Database Model Slugs ---');
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-        console.error('❌ DATABASE_URL is not set');
-    } else {
-        try {
-            const { Client } = require('pg');
-            const client = new Client({ connectionString: dbUrl });
-            await client.connect();
-            const res = await client.query('SELECT slug, name, is_active FROM wrap_models');
-            console.log('Database Slugs:');
-            res.rows.forEach(row => {
-                console.log(` - [${row.slug}] ${row.name} (Active: ${row.is_active})`);
-            });
-            await client.end();
-        } catch (err) {
-            console.error('❌ Database Check Skipped or Failed:', err.message);
-        }
-    }
+    console.log('\n--- 2. Environment Status ---');
+    console.log('DATABASE_URL set:', !!process.env.DATABASE_URL);
+    console.log('OSS_ACCESS_KEY_ID set:', !!process.env.OSS_ACCESS_KEY_ID);
+    console.log('NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
 }
 
 testConnectivity();
