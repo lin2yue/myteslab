@@ -1,5 +1,6 @@
 // Zero-dependency diagnostic script for AI connectivity
 // Run with: node diagnose-ai.js
+// Triggering deployment...
 
 async function testConnectivity() {
     console.log('--- 1. Testing Gemini API Connectivity (Zero-Dep) ---');
