@@ -6,7 +6,7 @@ import { Link } from '@/i18n/routing'
 import ThemedModelViewer from '@/components/ThemedModelViewer'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
-import { getOptimizedImageUrl } from '@/lib/images'
+import { getOptimizedImageUrl, ensureCdnUrl } from '@/lib/images'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import { CategoryBadge } from '@/components/CategoryBadge'
 import { RelatedWraps } from '@/components/RelatedWraps'
@@ -154,8 +154,9 @@ export default async function WrapDetailPage({
     const proxiedModelUrl = modelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(modelUrl)}` : modelUrl
 
     // 获取贴图 URL
-    const textureUrl = wrap.texture_url
-        ? (wrap.texture_url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(wrap.texture_url)}` : wrap.texture_url)
+    const textureUrlBase = ensureCdnUrl(wrap.texture_url)
+    const textureUrl = textureUrlBase
+        ? (textureUrlBase.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(textureUrlBase)}` : textureUrlBase)
         : undefined
 
     // 获取轮毂 URL

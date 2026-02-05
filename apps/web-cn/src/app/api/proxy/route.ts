@@ -10,7 +10,10 @@ export async function GET(request: NextRequest) {
 
     try {
         // 验证URL是否来自允许的域名
-        const allowedDomains = ['cdn.tewan.club']
+        const allowedDomains = [
+            'cdn.tewan.club',
+            'lock-sounds.oss-cn-beijing.aliyuncs.com'
+        ]
         const urlObj = new URL(url)
 
         if (!allowedDomains.includes(urlObj.hostname)) {

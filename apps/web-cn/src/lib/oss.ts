@@ -40,7 +40,7 @@ export async function uploadToOSS(
 
     const client = new OSS(config);
     const ossKey = `${folder}/${filename}`;
-    const cdnUrl = process.env.CDN_DOMAIN || `https://${config.bucket}.${config.region}.aliyuncs.com`;
+    const cdnUrl = process.env.CDN_DOMAIN || process.env.NEXT_PUBLIC_CDN_URL || `https://${config.bucket}.${config.region}.aliyuncs.com`;
 
     try {
         await client.put(ossKey, buffer, {
