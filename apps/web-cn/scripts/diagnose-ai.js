@@ -42,8 +42,23 @@ async function testConnectivity() {
             }
         } catch (err) {
             console.error('❌ Connectivity Error:', err.message);
+            if (err.stack) console.error('Stack Trace:', err.stack);
+
+            // DNS / Network checks
+            try {
+                const hostname = new URL(apiBaseUrl).hostname;
+                console.log(`Checking DNS for ${hostname}...`);
+                const { lookup } = require('dns').promises;
+                const addr = await lookup(hostname);
+                console.log(`✅ DNS Lookup: ${addr.address}`);
+            } catch (dnsErr) {
+                console.error(`❌ DNS Lookup Failed: ${dnsErr.message}`);
+            }
+
             if (err.message.includes('fetch failed')) {
-                console.error('👉 Suggestion: This is a network issue. Ensure your ECS can reach Google APIs.');
+                console.error('\n👉 诊断结论：您的服务器无法连接到代理域名。');
+                console.log('原因：Cloudflare 的 workers.dev 域名在境内经常被阻断。');
+                console.log('方案：请在 Cloudflare Worker 中绑定您的自定义域名（如 api.aievgo.com）。');
             }
         }
     }
