@@ -10,10 +10,10 @@ dotenv.config();
 
 async function testConnectivity() {
     console.log('--- 1. Testing Gemini API Connectivity ---');
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-        console.error('❌ GOOGLE_GENERATIVE_AI_API_KEY is not set in environment');
+        console.error('❌ GEMINI_API_KEY is not set in environment');
     } else {
         console.log(`Using API Key: ${apiKey.substring(0, 8)}...`);
 

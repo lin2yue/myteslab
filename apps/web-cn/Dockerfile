@@ -32,6 +32,7 @@ RUN apk add --no-cache libc6-compat
 COPY --from=builder /app/apps/web-cn/.next/standalone ./
 COPY --from=builder /app/apps/web-cn/.next/static /app/apps/web-cn/.next/static
 COPY --from=builder /app/apps/web-cn/public /app/apps/web-cn/public
+COPY --from=builder /app/apps/web-cn/scripts /app/apps/web-cn/scripts
 
 EXPOSE 3000
 CMD ["node", "apps/web-cn/server.js"]

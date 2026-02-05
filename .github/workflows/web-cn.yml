@@ -69,4 +69,7 @@ jobs:
               -e DM_FROM_ALIAS="Tewan Club" \
               -e NEXT_PUBLIC_APP_URL="https://tewan.club" \
               -e NEXT_PUBLIC_CDN_URL="https://cdn.tewan.club" \
+              -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+              -e HTTP_PROXY="${{ secrets.HTTP_PROXY }}" \
+              -e HTTPS_PROXY="${{ secrets.HTTPS_PROXY }}" \
               ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:latest
