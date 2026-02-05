@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyEmailByToken } from '@/lib/auth/users';
+import { createSession } from '@/lib/auth/session';
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -18,7 +19,10 @@ export async function GET(req: Request) {
             return NextResponse.redirect(`${appUrl}/zh/auth/verify-error`);
         }
 
-        // 验证成功，跳转到登录成功页或首页
+        // 验证成功，自动为用户创建会话并登录
+        await createSession(user.id);
+
+        // 验证成功，跳转到验证成功页
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tewan.club';
         return NextResponse.redirect(`${appUrl}/zh/auth/verify-success`);
 

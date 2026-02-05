@@ -141,7 +141,6 @@
         "prompt_placeholder": "请输入你想要生成的画面描述...",
         "generate_btn": "立即生成 (10 积分)",
         "generating": "正在生成中...",
-        "saving": "正在保存...",
         "publishing": "正在发布...",
         "day_mode": "日间模式",
         "night_mode": "夜间模式",
@@ -370,5 +369,13 @@
         "success_desc": "感谢您的支持！您的积分正在处理中，通常会在几秒钟内到账。",
         "back_to_generator": "返回开始创作",
         "view_balance": "查看余额"
+    },
+    "Auth": {
+        "verify_success_title": "账户激活成功",
+        "verify_success_desc": "您的邮箱已验证完成。系统已为您自动登录，点击下方按钮开始您的创作之旅吧。",
+        "go_to_login": "前往首页",
+        "verify_error_title": "链接无效或已过期",
+        "verify_error_desc": "激活链接已失效（有效期24小时）或已被使用。请尝试重新登录并申请重发。",
+        "back_to_login": "返回登录"
     }
 }

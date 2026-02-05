@@ -3,22 +3,24 @@
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { createSession } from '@/lib/auth/session';
 import { createUser, getUserByEmail } from '@/lib/auth/users';
+import crypto from 'crypto';
+import { sendActivationEmail } from '@/lib/mail/service';
 
 export async function login(formData: FormData) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     if (!email || !password) {
-        return { success: false, error: 'Invalid credentials' };
+        return { success: false, error: '请输入邮箱和密码' };
     }
 
     const user = await getUserByEmail(email);
     if (!user || !user.password_hash) {
-        return { success: false, error: 'Invalid login credentials' };
+        return { success: false, error: '该邮箱尚未注册或密码错误' };
     }
 
     const ok = await verifyPassword(password, user.password_hash);
     if (!ok) {
-        return { success: false, error: 'Invalid login credentials' };
+        return { success: false, error: '邮箱或密码错误' };
     }
 
     // 检查邮箱验证状态
@@ -35,19 +37,16 @@ export async function login(formData: FormData) {
     return { success: true };
 }
 
-import crypto from 'crypto';
-import { sendActivationEmail } from '@/lib/mail/service';
-
 export async function signup(formData: FormData) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     if (!email || !password) {
-        return { success: false, error: 'Invalid credentials' };
+        return { success: false, error: '请输入邮箱和密码' };
     }
 
     const existing = await getUserByEmail(email);
     if (existing) {
-        return { success: false, error: 'User already exists' };
+        return { success: false, error: '该邮箱已注册' };
     }
 
     const passwordHash = await hashPassword(password);
@@ -63,7 +62,7 @@ export async function signup(formData: FormData) {
     });
 
     if (!user) {
-        return { success: false, error: 'Signup failed' };
+        return { success: false, error: '注册失败，请稍后重试' };
     }
 
     // 发送激活邮件
@@ -87,11 +86,10 @@ export async function resetPassword(email: string) {
 
 export async function resendVerificationAction(email: string) {
     const user = await getUserByEmail(email);
-    if (!user) return { success: true }; // 安全起见不报错
+    if (!user) return { success: true };
     if (user.email_verified_at) return { success: false, error: '该邮箱已验证' };
 
     const newToken = crypto.randomBytes(32).toString('hex');
-    // 假设您在 users.ts 中增加了 updateVerificationToken
     const { updateVerificationToken } = await import('@/lib/auth/users');
     await updateVerificationToken(user.id, newToken);
     await sendActivationEmail(email, newToken);
