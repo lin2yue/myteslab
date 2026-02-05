@@ -45,9 +45,9 @@ export default function Navbar() {
                     <div className="flex items-center gap-6 lg:gap-10">
                         <Link href="/" className="flex items-center gap-2 group">
                             <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 shadow-[0_8px_16px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:ring-white/10">
-                                <span className="text-white dark:text-black font-black text-xl">特</span>
+                                <span className="text-white dark:text-black font-black text-xl">T</span>
                             </div>
-                            <span className="hidden sm:block text-xl font-black tracking-tighter text-gray-900 dark:text-white group-hover:text-gray-900 transition-colors">
+                            <span className="hidden sm:block text-xl font-black tracking-tighter text-gray-900 dark:text-white transition-colors">
                                 {t('title')}
                             </span>
                         </Link>
@@ -126,70 +126,70 @@ export default function Navbar() {
                             onClick={() => setIsMobileMenuOpen(false)}
                         />
                         <div className="absolute inset-0 bg-white/98 dark:bg-zinc-950/98 overflow-y-auto">
-                        <div className="h-16 px-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
-                            <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                更多
-                            </span>
-                            <button
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="inline-flex items-center justify-center w-9 h-9 text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
-                                aria-label="关闭"
-                            >
-                                <span className="text-lg leading-none">×</span>
-                            </button>
-                        </div>
+                            <div className="h-16 px-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                    更多
+                                </span>
+                                <button
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="inline-flex items-center justify-center w-9 h-9 text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+                                    aria-label="关闭"
+                                >
+                                    <span className="text-lg leading-none">×</span>
+                                </button>
+                            </div>
 
-                        <div className="p-5 space-y-6">
-                            {!creditsLoading && balance !== null && (
-                                <div className="rounded-2xl bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 px-4 py-3">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                                        积分
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
-                                            <Star className="w-4 h-4 text-gray-900 dark:text-white fill-gray-900 dark:fill-white" />
-                                        </div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-black text-gray-900 dark:text-white">{balance}</span>
-                                            <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400">
-                                                可用积分
-                                            </span>
+                            <div className="p-5 space-y-6">
+                                {!creditsLoading && balance !== null && (
+                                    <div className="rounded-2xl bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 px-4 py-3">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                                            积分
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                                                <Star className="w-4 h-4 text-gray-900 dark:text-white fill-gray-900 dark:fill-white" />
+                                            </div>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-2xl font-black text-gray-900 dark:text-white">{balance}</span>
+                                                <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400">
+                                                    可用积分
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                                    主题
-                                </p>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {([
-                                        { value: 'system', label: '系统', icon: <Monitor size={14} /> },
-                                        { value: 'light', label: '浅色', icon: <Sun size={14} /> },
-                                        { value: 'dark', label: '深色', icon: <Moon size={14} /> },
-                                    ] as { value: ThemeMode; label: string; icon: ReactNode }[]).map((option) => (
-                                        <button
-                                            key={option.value}
-                                            onClick={() => {
-                                                setMode(option.value);
-                                                setIsMobileMenuOpen(false);
-                                            }}
-                                            className={`px-3 py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${mode === option.value
-                                                ? 'bg-black/10 dark:bg-white/15 text-gray-900 dark:text-white'
-                                                : 'bg-black/5 dark:bg-white/10 text-gray-600 dark:text-zinc-300'
-                                                }`}
-                                        >
-                                            {option.icon}
-                                            {option.label}
-                                            {mode === option.value && <Check size={12} />}
-                                        </button>
-                                    ))}
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                                        主题
+                                    </p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {([
+                                            { value: 'system', label: '系统', icon: <Monitor size={14} /> },
+                                            { value: 'light', label: '浅色', icon: <Sun size={14} /> },
+                                            { value: 'dark', label: '深色', icon: <Moon size={14} /> },
+                                        ] as { value: ThemeMode; label: string; icon: ReactNode }[]).map((option) => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => {
+                                                    setMode(option.value);
+                                                    setIsMobileMenuOpen(false);
+                                                }}
+                                                className={`px-3 py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${mode === option.value
+                                                    ? 'bg-black/10 dark:bg-white/15 text-gray-900 dark:text-white'
+                                                    : 'bg-black/5 dark:bg-white/10 text-gray-600 dark:text-zinc-300'
+                                                    }`}
+                                            >
+                                                {option.icon}
+                                                {option.label}
+                                                {mode === option.value && <Check size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 </Portal>
             )}
         </header>

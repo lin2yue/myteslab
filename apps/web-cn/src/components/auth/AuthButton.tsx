@@ -117,7 +117,7 @@ export default function AuthButton() {
                     </button>
 
                     {isMenuOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-56 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] py-2 ring-1 ring-black/5 dark:ring-white/10 z-[100] animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur">
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white/98 dark:bg-zinc-900/98 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] p-1.5 ring-1 ring-black/5 dark:ring-white/10 z-[100] animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur no-scrollbar">
                             <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('email_label')}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
@@ -127,7 +127,7 @@ export default function AuthButton() {
                             <div className="py-1">
                                 <Link
                                     href="/profile"
-                                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                    className="flex items-center gap-3 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
                                     {tProfile('my_profile')}
@@ -136,7 +136,7 @@ export default function AuthButton() {
                                 {(user.role === 'admin' || user.role === 'super_admin') && (
                                     <Link
                                         href="/admin/tasks"
-                                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                        className="flex items-center gap-3 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg"
                                         onClick={() => setIsMenuOpen(false)}
                                     >
                                         {tProfile('admin_dashboard')}
@@ -146,7 +146,7 @@ export default function AuthButton() {
                             <div className="border-t border-gray-100 dark:border-zinc-800 mt-1 pt-1">
                                 <button
                                     onClick={handleSignOut}
-                                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    className="flex w-full items-center gap-3 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors rounded-lg"
                                 >
                                     {tProfile('sign_out')}
                                 </button>

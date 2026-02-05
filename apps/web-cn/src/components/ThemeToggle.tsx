@@ -49,7 +49,7 @@ export default function ThemeToggle() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-36 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] py-1 ring-1 ring-black/5 dark:ring-white/10 z-[100] backdrop-blur">
+                <div className="absolute right-0 mt-2 w-36 bg-white/98 dark:bg-zinc-900/98 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] p-1.5 ring-1 ring-black/5 dark:ring-white/10 z-[100] backdrop-blur no-scrollbar">
                     {options.map((option) => (
                         <button
                             key={option.value}
@@ -57,7 +57,7 @@ export default function ThemeToggle() {
                                 setMode(option.value);
                                 setIsOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 ${mode === option.value
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 rounded-lg ${mode === option.value
                                 ? 'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white font-medium'
                                 : 'text-gray-700 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                                 }`}

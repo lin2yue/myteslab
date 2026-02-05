@@ -315,7 +315,7 @@ export default async function WrapDetailPage({
                                     </p>
                                 </div>
                                 <div className="bg-black/5 dark:bg-white/10 rounded-xl p-3 border border-black/10 dark:border-white/10">
-                                    <p className="text-xs font-medium text-gray-600 italic leading-relaxed font-mono">
+                                    <p className="text-xs font-medium text-gray-600 dark:text-zinc-400 italic leading-relaxed font-mono">
                                         "{wrap.prompt}"
                                     </p>
                                 </div>

@@ -190,7 +190,7 @@
         "tos": {
             "title": "Terms of Service",
             "s1_title": "1. Acceptance of Terms",
-            "s1_content": "By accessing or using 特玩 (the \"Platform\"), you agree to be bound by these Terms of Service. This Platform is operated by Beijing Lanhu Technology Co., Ltd. (北京蓝壶科技有限公司) to provide AI-driven digital creative tools for Tesla owners.",
+            "s1_content": "By accessing or using 特玩 (the \"Platform\"), you agree to be bound by these Terms of Service. This Platform provides AI-driven digital creative tools for Tesla owners.",
             "s2_title": "2. Description of Service",
             "s2_content": "The Platform provides AIGC (Generative AI) technology for users to generate, upload, preview, and download digital sticker designs. All products are digital assets; no physical goods are delivered.",
             "s3_title": "3. Intellectual Property and User Content",
@@ -205,7 +205,7 @@
             "s4_title": "4. Copyright Policy and Takedown Procedure (DMCA)",
             "s4_content": "We respect intellectual property. If a rights holder finds infringing content on the Platform, please email support@tewan.club with: 1) Proof of rights and contact info; 2) Specific URL(s) of the infringing content; 3) A statement made in good faith. Upon a valid notice, we will follow a \"Notice-and-Takedown\" procedure. Repeat infringers will have their accounts permanently terminated.",
             "s5_title": "5. Official Disclaimer",
-            "s5_content": "MyTeslaLab is an independent third-party platform and is not affiliated with, associated with, endorsed by, or in any way officially connected with Tesla, Inc. References to \"Tesla\" and vehicle models are solely for descriptive purposes.",
+            "s5_content": "特玩 is an independent third-party platform and is not affiliated with, associated with, endorsed by, or in any way officially connected with Tesla, Inc. References to \"Tesla\" and vehicle models are solely for descriptive purposes.",
             "s6_title": "6. Payment Processing",
             "s6_content": "Payments on this platform are processed by Polar (Polar.sh), acting as our Merchant of Record. Polar is responsible for transaction security, tax compliance, and billing."
         },

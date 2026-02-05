@@ -66,11 +66,11 @@ export default function Select({
         <div
           role="listbox"
           className={cn(
-            'absolute z-50 mt-2 w-full rounded-xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-zinc-900/80 shadow-[0_12px_30px_rgba(0,0,0,0.18)] backdrop-blur',
+            'absolute z-50 mt-2 w-full rounded-xl border border-black/5 dark:border-white/10 bg-white/98 dark:bg-zinc-900/98 shadow-[0_12px_30px_rgba(0,0,0,0.18)] backdrop-blur',
             menuClassName
           )}
         >
-          <div className="max-h-64 overflow-y-auto py-1">
+          <div className="max-h-64 overflow-y-auto p-1.5 no-scrollbar">
             {options.map((opt) => {
               const isActive = opt.value === value;
               return (
@@ -85,7 +85,7 @@ export default function Select({
                     setOpen(false);
                   }}
                   className={cn(
-                    'w-full px-4 py-2 text-left text-sm flex items-center justify-between gap-2 transition-colors',
+                    'w-full px-3 py-2 text-left text-sm flex items-center justify-between gap-2 transition-colors rounded-lg',
                     isActive
                       ? 'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white'
                       : 'text-gray-700 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10',
