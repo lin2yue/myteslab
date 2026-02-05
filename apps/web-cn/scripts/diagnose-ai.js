@@ -18,11 +18,11 @@ async function testConnectivity() {
         }
 
         try {
-            const MODEL = 'gemini-1.5-flash';
+            const MODEL = 'gemini-1.5-flash-latest';
             const apiBaseUrl = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
-            const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+            const url = `${apiBaseUrl.replace(/\/$/, '')}/v1/models/${MODEL}:generateContent?key=${apiKey}`;
 
-            console.log(`Connecting to: ${apiBaseUrl}...`);
+            console.log(`Connecting to: ${apiBaseUrl} (Test Model: ${MODEL})...`);
 
             const response = await fetch(url, {
                 method: 'POST',
