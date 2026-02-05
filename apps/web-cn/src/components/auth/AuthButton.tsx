@@ -28,7 +28,7 @@ export default function AuthButton() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
 
-    const { balance, loading: creditsLoading } = useCredits();
+    const { balance, loading: creditsLoading, setBalance } = useCredits();
     const [isPricingOpen, setIsPricingOpen] = useState(false);
 
     useEffect(() => {
@@ -49,6 +49,9 @@ export default function AuthButton() {
 
     const handleSignOut = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
+        setUser(null);
+        setAvatarUrl(null);
+        setBalance(null);
         setIsMenuOpen(false);
         const sign_out_msg = t('sign_out_success') || 'Successfully signed out';
         alert.success(sign_out_msg);
