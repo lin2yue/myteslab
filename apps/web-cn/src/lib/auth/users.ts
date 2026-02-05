@@ -8,6 +8,9 @@ export type DbUser = {
     display_name: string | null;
     avatar_url: string | null;
     role: string | null;
+    email_verified_at: string | null;
+    verification_token: string | null;
+    verification_sent_at: string | null;
 };
 
 export async function getUserByEmail(email: string) {
@@ -40,13 +43,22 @@ export async function createUser(params: {
     passwordHash?: string | null;
     displayName?: string | null;
     avatarUrl?: string | null;
+    verificationToken?: string | null;
 }) {
-    const { email, phone, passwordHash, displayName, avatarUrl } = params;
+    const { email, phone, passwordHash, displayName, avatarUrl, verificationToken } = params;
     const { rows } = await dbQuery<DbUser>(
-        `INSERT INTO users (email, phone, password_hash, display_name, avatar_url)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO users (email, phone, password_hash, display_name, avatar_url, verification_token, verification_sent_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
-        [email || null, phone || null, passwordHash || null, displayName || null, avatarUrl || null]
+        [
+            email || null,
+            phone || null,
+            passwordHash || null,
+            displayName || null,
+            avatarUrl || null,
+            verificationToken || null,
+            verificationToken ? new Date().toISOString() : null
+        ]
     );
     const user = rows[0] || null;
 
@@ -88,4 +100,26 @@ export async function findUserByWechatOpenId(openId: string) {
         [openId]
     );
     return rows[0] || null;
+}
+
+export async function verifyEmailByToken(token: string) {
+    // 查找并更新用户
+    const { rows } = await dbQuery<DbUser>(
+        `UPDATE users 
+         SET email_verified_at = NOW(), verification_token = NULL 
+         WHERE verification_token = $1 
+         AND (verification_sent_at > NOW() - INTERVAL '24 hours')
+         RETURNING *`,
+        [token]
+    );
+    return rows[0] || null;
+}
+
+export async function updateVerificationToken(userId: string, token: string) {
+    await dbQuery(
+        `UPDATE users 
+         SET verification_token = $1, verification_sent_at = NOW() 
+         WHERE id = $2`,
+        [token, userId]
+    );
 }

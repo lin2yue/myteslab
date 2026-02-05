@@ -14,9 +14,16 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT,
   avatar_url TEXT,
   role VARCHAR(20) DEFAULT 'user',
+  email_verified_at TIMESTAMP WITH TIME ZONE,
+  verification_token TEXT,
+  verification_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Index for token lookup
+CREATE INDEX IF NOT EXISTS idx_users_verification_token ON users(verification_token);
+
 
 -- 兼容现有代码的 profiles 表
 CREATE TABLE IF NOT EXISTS profiles (
