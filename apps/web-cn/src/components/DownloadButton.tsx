@@ -4,19 +4,31 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { trackDownload } from '@/lib/analytics'
 import Button from '@/components/ui/Button'
+import { useRouter } from '@/i18n/routing'
 
 interface DownloadButtonProps {
     wrapId: string
     wrapName: string
     wrapSlug: string
     locale: string
+    isLoggedIn?: boolean // Optional, if not provided will check internally or just fail gracefully
 }
 
-export function DownloadButton({ wrapId, wrapName, wrapSlug, locale }: DownloadButtonProps) {
+export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn }: DownloadButtonProps) {
     const [isDownloading, setIsDownloading] = useState(false)
     const t = useTranslations('Common')
+    const router = useRouter()
 
     const handleDownload = async () => {
+        if (!isLoggedIn) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
+
         setIsDownloading(true)
 
         try {

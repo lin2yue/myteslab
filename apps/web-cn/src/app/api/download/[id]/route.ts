@@ -23,7 +23,13 @@ export async function GET(
 
         // 2. 检查可见性与所有权
         const user = await getSessionUser();
-        const isOwner = user && user.id === wrap.user_id;
+
+        // 强制登录限制：必须登录才能下载
+        if (!user) {
+            return NextResponse.json({ error: '请登录后下载' }, { status: 401 });
+        }
+
+        const isOwner = user.id === wrap.user_id;
         const isPubliclyAvailable = wrap.is_public && wrap.is_active;
 
         if (!isOwner && !isPubliclyAvailable) {

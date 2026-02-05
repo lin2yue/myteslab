@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
+import { getSessionUser } from '@/lib/auth/session'
 import { Link } from '@/i18n/routing'
 import ThemedModelViewer from '@/components/ThemedModelViewer'
 import { DownloadButton } from '@/components/DownloadButton'
@@ -289,6 +290,7 @@ export default async function WrapDetailPage({
                                     wrapName={name}
                                     wrapSlug={wrap.slug || wrap.id}
                                     locale={locale}
+                                    isLoggedIn={!!(await getSessionUser())}
                                 />
                             </div>
 

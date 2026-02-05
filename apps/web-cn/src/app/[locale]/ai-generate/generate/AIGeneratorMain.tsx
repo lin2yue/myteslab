@@ -372,6 +372,15 @@ export default function AIGeneratorMain({
     }
 
     const handleDownload = async () => {
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
+
         if (!currentTexture) return;
 
         // 如果有作品 ID，直接使用专门的下载接口（解决跨域和文件名问题）
