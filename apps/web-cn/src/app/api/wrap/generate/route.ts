@@ -286,7 +286,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const modelName = MODEL_NAMES[modelSlug];
+        const currentModelSlug = modelSlug.toLowerCase();
+        const modelName = MODEL_NAMES[currentModelSlug];
         if (!modelName) {
             return NextResponse.json({ success: false, error: 'Invalid model' }, { status: 400 });
         }
@@ -345,7 +346,6 @@ export async function POST(request: NextRequest) {
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
-        const currentModelSlug = modelSlug.toLowerCase();
         let maskImageBase64: string | null = null;
         try {
             console.log(`[AI-GEN] Fetching mask for ${currentModelSlug}...`);

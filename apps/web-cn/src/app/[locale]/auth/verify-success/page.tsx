@@ -16,12 +16,12 @@ export default function VerifySuccessPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
                 {t('verify_success_desc') || '您的邮箱已验证完成。现在您可以登录特玩并开始您的创作之旅了。'}
             </p>
-            <Link
-                href="/login"
+            <button
+                onClick={() => window.location.href = '/'}
                 className="btn-primary px-8 py-3"
             >
-                {t('go_to_login') || '前往登录'}
-            </Link>
+                {t('go_to_home') || '直接跳转首页'}
+            </button>
         </div>
     );
 }
