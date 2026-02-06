@@ -64,26 +64,37 @@ export async function POST(request: Request) {
 
             console.log(`[wechat-mp] User found in DB: ${user ? user.id : 'NO'}`);
 
-            // 2. 如果没找到用户，才去调微信接口（这个最慢）
-            if (!user) {
+            // 2. 如果没找到用户，或者用户名还是默认的，才去调微信接口
+            if (!user || user.display_name === '微信用户' || !user.display_name) {
                 const userInfoStart = Date.now();
                 const userInfo = await getMPUserInfo(openid);
                 console.log(`[wechat-mp] getMPUserInfo took ${Date.now() - userInfoStart}ms`, userInfo);
 
-                unionid = userInfo?.unionid || null;
+                if (userInfo) {
+                    unionid = userInfo.unionid || unionid;
+                    const nickname = userInfo.nickname;
+                    const avatar = userInfo.headimgurl;
 
-                if (unionid) {
-                    user = await findUserByWechatUnionId(unionid);
-                    console.log(`[wechat-mp] User found by UnionID: ${user ? user.id : 'NO'}`);
-                }
+                    if (!user && unionid) {
+                        user = await findUserByWechatUnionId(unionid);
+                        console.log(`[wechat-mp] User found by UnionID: ${user ? user.id : 'NO'}`);
+                    }
 
-                if (!user) {
-                    // 创建新用户
-                    user = await createUser({
-                        displayName: userInfo?.nickname || '微信用户',
-                        avatarUrl: userInfo?.headimgurl || null,
-                    });
-                    console.log(`[wechat-mp] Created new user: ${user.id}`);
+                    if (!user) {
+                        // 创建新用户
+                        user = await createUser({
+                            displayName: nickname || '微信用户',
+                            avatarUrl: avatar || null,
+                        });
+                        console.log(`[wechat-mp] Created new user: ${user.id}`);
+                    } else if (nickname && (user.display_name === '微信用户' || !user.display_name)) {
+                        // 更新已有用户的昵称和头像
+                        await dbQuery(
+                            `UPDATE users SET display_name = $1, avatar_url = $2 WHERE id = $3`,
+                            [nickname, avatar || user.avatar_url, user.id]
+                        );
+                        console.log(`[wechat-mp] Updated existing user info for: ${user.id}`);
+                    }
                 }
             }
 
@@ -105,9 +116,12 @@ export async function POST(request: Request) {
         }
 
         console.log(`[wechat-mp] Callback total time: ${Date.now() - start}ms`);
-        return new Response('success');
+        // 显式设置 Content-Type 以确保微信能正确识别
+        return new Response('success', {
+            headers: { 'Content-Type': 'text/plain' }
+        });
     } catch (error) {
         console.error('[wechat-mp] Callback error', error);
-        return new Response('error', { status: 500 });
+        return new Response('success'); // 即使发生内部错误，也对微信返回 success，避免手机端报错
     }
 }

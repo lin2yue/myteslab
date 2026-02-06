@@ -11,6 +11,7 @@ export type DbUser = {
     email_verified_at: string | null;
     verification_token: string | null;
     verification_sent_at: string | null;
+    union_id?: string | null;
 };
 
 export async function getUserByEmail(email: string) {
@@ -92,7 +93,7 @@ export async function linkWechatIdentity(userId: string, openId: string, unionId
 
 export async function findUserByWechatOpenId(openId: string) {
     const { rows } = await dbQuery<DbUser>(
-        `SELECT u.*
+        `SELECT u.*, i.union_id
          FROM user_identities i
          JOIN users u ON u.id = i.user_id
          WHERE i.provider = 'wechat' AND (i.provider_user_id = $1 OR i.openid_mp = $1)
