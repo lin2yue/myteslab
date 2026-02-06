@@ -223,11 +223,15 @@ async function refundTaskCredits(taskId: string, reason: string) {
         await client.query(
             `UPDATE generation_tasks
              SET status = 'failed_refunded',
-                 steps = COALESCE(steps, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('step','refunded','ts', NOW(), 'reason', $2)),
-                 error_message = COALESCE(error_message, $2),
+                 steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
+                 error_message = COALESCE(error_message, $3),
                  updated_at = NOW()
              WHERE id = $1`,
-            [taskId, reason]
+            [
+                taskId,
+                JSON.stringify([{ step: 'refunded', ts: new Date().toISOString(), reason }]),
+                reason
+            ]
         );
 
         await client.query('COMMIT');
