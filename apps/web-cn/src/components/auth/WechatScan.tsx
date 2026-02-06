@@ -14,7 +14,7 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
     const [sceneId, setSceneId] = useState<string | null>(null);
     const [status, setStatus] = useState<'LOADING' | 'READY' | 'SCANNED' | 'EXPIRED' | 'ERROR'>('LOADING');
     const [error, setError] = useState<string | null>(null);
-    const pollTimer = useRef<NodeJS.Timeout>();
+    const pollTimer = useRef<NodeJS.Timeout | null>(null);
 
     const fetchTicket = async () => {
         setStatus('LOADING');
