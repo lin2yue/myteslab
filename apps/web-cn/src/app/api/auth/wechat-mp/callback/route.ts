@@ -66,23 +66,24 @@ export async function POST(request: Request) {
             let user = await findUserByWechatOpenId(openid) as DbUser | null;
             let unionid = user?.union_id || null;
 
-            console.log(`[wechat-mp] User found in DB: ${user ? user.id : 'NO'}, name: ${user?.display_name}`);
+            console.log(`[wechat-mp] User lookup: id=${user?.id}, name=${user?.display_name}, unionid=${unionid}`);
 
             // 2. 如果没找到用户，或者用户名还是默认的，才去调微信接口
-            const needsUpdate = !user || user.display_name === '微信用户' || !user.display_name;
-            if (needsUpdate) {
+            const isGenericName = !user?.display_name || user.display_name === '微信用户';
+            if (!user || isGenericName) {
+                console.log(`[wechat-mp] Fetching user info for ${openid}...`);
                 const userInfoStart = Date.now();
                 const userInfo = await getMPUserInfo(openid);
-                console.log(`[wechat-mp] getMPUserInfo result:`, JSON.stringify(userInfo));
+                console.log(`[wechat-mp] getMPUserInfo took ${Date.now() - userInfoStart}ms. Data:`, JSON.stringify(userInfo));
 
-                if (userInfo) {
+                if (userInfo && userInfo.openid) {
                     unionid = userInfo.unionid || unionid;
                     const nickname = userInfo.nickname;
                     const avatar = userInfo.headimgurl;
 
                     if (!user && unionid) {
                         user = await findUserByWechatUnionId(unionid);
-                        console.log(`[wechat-mp] User found by UnionID: ${user ? user.id : 'NO'}`);
+                        console.log(`[wechat-mp] User found via UnionID: ${user?.id}`);
                     }
 
                     if (!user) {
@@ -91,25 +92,27 @@ export async function POST(request: Request) {
                             displayName: nickname || '微信用户',
                             avatarUrl: avatar || null,
                         });
-                        console.log(`[wechat-mp] Created new user: ${user.id} with name ${nickname}`);
-                    } else if (nickname && (user.display_name === '微信用户' || !user.display_name)) {
+                        console.log(`[wechat-mp] Created new user: ${user.id} (${nickname || 'no nickname'})`);
+                    } else if (nickname && isGenericName) {
                         // 更新已有用户的昵称和头像
                         await dbQuery(
                             `UPDATE users SET display_name = $1, avatar_url = $2 WHERE id = $3`,
                             [nickname, avatar || user.avatar_url, user.id]
                         );
-                        console.log(`[wechat-mp] Updated user ${user.id} name to ${nickname}`);
+                        console.log(`[wechat-mp] Updated user ${user.id} name to: ${nickname}`);
                     }
                 } else {
-                    console.log(`[wechat-mp] Could not get userInfo, using fallback`);
+                    console.log(`[wechat-mp] Failed to get meaningful userInfo. Data:`, userInfo);
                     if (!user) {
                         user = await createUser({ displayName: '微信用户' });
+                        console.log(`[wechat-mp] Created fallback user: ${user.id}`);
                     }
                 }
             }
 
             // 3. 关联身份并更新会话状态
             if (user) {
+                const dbOpsStart = Date.now();
                 // 并行执行数据库更新
                 await Promise.all([
                     linkWechatMPIdentity(user.id, openid, unionid),
@@ -120,19 +123,23 @@ export async function POST(request: Request) {
                         [user.id, sceneId]
                     )
                 ]);
+                console.log(`[wechat-mp] DB updates took ${Date.now() - dbOpsStart}ms`);
 
                 // 4. 返回自动回复消息 (严格的 XML 格式)
-                // 注意：ToUserName 和 FromUserName 必须正确
+                // 必须严格遵守大小写和结构
                 const replyXml = `<xml><ToUserName><![CDATA[${openid}]]></ToUserName><FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName><CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[登录成功！]]></Content></xml>`;
 
-                console.log(`[wechat-mp] Callback total ${Date.now() - start}ms, replying with XML`);
+                console.log(`[wechat-mp] Callback total ${Date.now() - start}ms. Returning XML reply.`);
                 return new Response(replyXml, {
-                    headers: { 'Content-Type': 'text/xml' }
+                    headers: {
+                        'Content-Type': 'text/xml',
+                        'Cache-Control': 'no-cache'
+                    }
                 });
             }
         }
 
-        console.log(`[wechat-mp] Callback end (no action) total ${Date.now() - start}ms`);
+        console.log(`[wechat-mp] Callback total ${Date.now() - start}ms. Returning success.`);
         return new Response('success');
     } catch (error) {
         console.error('[wechat-mp] Callback error', error);
