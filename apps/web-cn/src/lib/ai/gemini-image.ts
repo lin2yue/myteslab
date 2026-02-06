@@ -157,7 +157,7 @@ export async function generateWrapTexture(
         const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for Cloudflare proxy
 
         try {
             const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
