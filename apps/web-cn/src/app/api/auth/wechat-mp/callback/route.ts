@@ -36,9 +36,12 @@ export async function POST(request: Request) {
     }
 
     try {
+        const start = Date.now();
         const xml = await request.text();
         const result = parser.parse(xml);
         const msg = result.xml;
+
+        console.log(`[wechat-mp] Received ${msg.Event || msg.MsgType} from ${msg.FromUserName}`);
 
         // MsgType: event, Event: subscribe 或 SCAN
         if (msg.MsgType === 'event' && (msg.Event === 'subscribe' || msg.Event === 'SCAN')) {
@@ -48,19 +51,30 @@ export async function POST(request: Request) {
                 sceneId = sceneId.replace('qrscene_', '');
             }
 
-            if (!sceneId) return new Response('success'); // 没有场景值，普通关注
+            if (!sceneId) {
+                console.log('[wechat-mp] No sceneId, normal subscribe');
+                return new Response('success');
+            }
+
+            console.log(`[wechat-mp] Processing scene: ${sceneId}`);
 
             // 1. 先通过 openid 尝试快速查找用户
             let user = await findUserByWechatOpenId(openid);
-            let unionid = null; // 我们后面并行更新时会处理
+            let unionid = user?.union_id || null;
+
+            console.log(`[wechat-mp] User found in DB: ${user ? user.id : 'NO'}`);
 
             // 2. 如果没找到用户，才去调微信接口（这个最慢）
             if (!user) {
+                const userInfoStart = Date.now();
                 const userInfo = await getMPUserInfo(openid);
+                console.log(`[wechat-mp] getMPUserInfo took ${Date.now() - userInfoStart}ms`, userInfo);
+
                 unionid = userInfo?.unionid || null;
 
                 if (unionid) {
                     user = await findUserByWechatUnionId(unionid);
+                    console.log(`[wechat-mp] User found by UnionID: ${user ? user.id : 'NO'}`);
                 }
 
                 if (!user) {
@@ -69,11 +83,13 @@ export async function POST(request: Request) {
                         displayName: userInfo?.nickname || '微信用户',
                         avatarUrl: userInfo?.headimgurl || null,
                     });
+                    console.log(`[wechat-mp] Created new user: ${user.id}`);
                 }
             }
 
             // 3. 关联身份并更新会话状态
             if (user) {
+                const dbStart = Date.now();
                 // 并行执行数据库更新
                 await Promise.all([
                     linkWechatMPIdentity(user.id, openid, unionid),
@@ -84,9 +100,11 @@ export async function POST(request: Request) {
                         [user.id, sceneId]
                     )
                 ]);
+                console.log(`[wechat-mp] DB operations took ${Date.now() - dbStart}ms`);
             }
         }
 
+        console.log(`[wechat-mp] Callback total time: ${Date.now() - start}ms`);
         return new Response('success');
     } catch (error) {
         console.error('[wechat-mp] Callback error', error);
