@@ -53,8 +53,7 @@ export default function AuthButton() {
         setAvatarUrl(null);
         setBalance(null);
         setIsMenuOpen(false);
-        const sign_out_msg = t('sign_out_success') || 'Successfully signed out';
-        alert.success(sign_out_msg);
+        alert.success(t('logout_success') || '已退出登录');
         router.refresh();
     };
 
