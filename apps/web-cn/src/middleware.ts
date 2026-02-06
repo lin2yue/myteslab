@@ -53,11 +53,12 @@ export const config = {
          * - sitemap.* (sitemap files)
          * - robots.txt
          * - MP_verify_*.txt (WeChat verification)
+         * - baidu_verify_*.html (Baidu webmaster verification)
          * - models/ (3D models)
          * - textures/ (static textures)
          * - assets/ (shared assets)
          * - Any file with a common extension (images, fonts, etc.)
          */
-        '/((?!_next/static|_next/image|favicon.ico|sitemap.*|robots\\.txt|MP_verify_.*\\.txt|models/|textures/|assets/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|woff2?|ttf|eot)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sitemap.*|robots\\.txt|MP_verify_.*\\.txt|baidu_verify_.*\\.html|models/|textures/|assets/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|woff2?|ttf|eot)$).*)',
     ],
 };
