@@ -372,20 +372,8 @@ export async function POST(request: NextRequest) {
                 maskImageBase64 = maskBuffer.toString('base64');
 
                 if (process.env.NODE_ENV === 'development') {
-                    // 【调试部分】仅本地保存发送给 AI 的 Mask
-                    try {
-                        const debugBaseDir = join(process.cwd(), '../../dev-studio/test-previews');
-                        const taskDebugDir = join(debugBaseDir, taskId as string);
-                        console.log(`[AI-GEN] Saving debug mask to ${taskDebugDir}...`);
-                        if (!existsSync(debugBaseDir)) await mkdir(debugBaseDir, { recursive: true });
-                        if (!existsSync(taskDebugDir)) await mkdir(taskDebugDir, { recursive: true });
-
-                        const inputMaskPath = join(taskDebugDir, 'input-mask.png');
-                        await writeFile(inputMaskPath, maskBuffer);
-                        console.log(`[AI-DEBUG] Input mask saved to: ${inputMaskPath}`);
-                    } catch (debugErr) {
-                        console.error('[AI-DEBUG] Failed to save input mask for debug:', debugErr);
-                    }
+                    // Dev only logging if needed, but file writes removed for safety
+                    console.log(`[AI-DEBUG] Mask processed.`);
                 }
             } else {
                 console.error(`[AI-GEN] Failed to fetch mask from: ${maskUrl}, Status: ${maskResponse.status}`);
