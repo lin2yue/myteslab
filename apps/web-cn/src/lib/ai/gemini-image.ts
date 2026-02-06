@@ -1,10 +1,11 @@
-/**
- * Gemini Image Generation API wrapper for wrap texture generation
- * Uses Gemini 3 Pro Image Preview with Image Editing mode
- */
-
 import { buildWrapPrompt, WRAP_GENERATION_SYSTEM_PROMPT } from './prompts';
 import { getMaskDimensions } from './mask-config';
+import dns from 'dns';
+
+// 强制优先使用 IPv4, 防止容器 IPv6 路由缺失导致的秒级超时 (ETIMEDOUT)
+if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 /**
  * Build editing prompt for Image Editing mode
@@ -109,7 +110,7 @@ export interface GenerateWrapResult {
 export async function generateWrapTexture(
     params: GenerateWrapParams
 ): Promise<GenerateWrapResult> {
-    const VERSION = "V1.1.0";
+    const VERSION = "V1.1.1";
     const { modelSlug, modelName, prompt, maskImageBase64, referenceImagesBase64 } = params;
 
     const maskDimensions = getMaskDimensions(modelSlug);
@@ -167,6 +168,7 @@ export async function generateWrapTexture(
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 },
                 body: JSON.stringify({
                     contents: [{ parts }],
@@ -227,6 +229,9 @@ export async function generateWrapTexture(
 
     } catch (error) {
         console.error('Error calling Gemini API:', error);
+        if (error instanceof Error && (error as any).cause) {
+            console.error('[AI-DEBUG] Error Cause:', (error as any).cause);
+        }
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -283,7 +288,7 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
     description: string;
     description_en: string;
 }> {
-    const VERSION = "V1.1.0";
+    const VERSION = "V1.1.1";
     try {
         const apiKey = (process.env.GEMINI_API_KEY || '').trim();
         if (!apiKey) throw new Error('GEMINI_API_KEY missing');
@@ -308,7 +313,10 @@ Keep titles under 15 characters and descriptions under 50 characters.`;
         try {
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: `User Prompt: ${userPrompt}\nModel: ${modelName}` }] }],
                     systemInstruction: { parts: [{ text: systemInstruction }] },

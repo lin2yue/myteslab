@@ -1,4 +1,9 @@
 import { dbQuery } from '@/lib/db';
+import dns from 'dns';
+
+if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 /**
  * Robustly logs a step for an AI generation task.
