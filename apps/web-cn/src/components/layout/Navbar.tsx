@@ -44,8 +44,8 @@ export default function Navbar() {
                     {/* Left: Logo & Navigation */}
                     <div className="flex items-center gap-6 lg:gap-10">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 shadow-[0_8px_16px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:ring-white/10">
-                                <span className="text-white dark:text-black font-black text-xl">T</span>
+                            <div className="w-8 h-8 bg-[#E31937] dark:bg-[#E31937] rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 shadow-[0_8px_16px_rgba(227,25,55,0.25)] ring-1 ring-black/10 dark:ring-white/10">
+                                <span className="text-white font-black text-xl">T</span>
                             </div>
                             <span className="hidden sm:block text-xl font-black tracking-tighter text-gray-900 dark:text-white transition-colors">
                                 {t('title')}
