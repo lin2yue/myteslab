@@ -39,6 +39,9 @@ jobs:
           context: .
           file: apps/web-cn/Dockerfile
           push: true
+          build-args: |
+            NEXT_PUBLIC_GA_ID=${{ secrets.NEXT_PUBLIC_GA_ID }}
+            NEXT_PUBLIC_BAIDU_ANALYTICS_ID=${{ secrets.NEXT_PUBLIC_BAIDU_ANALYTICS_ID }}
           tags: |
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:${{ steps.set_env.outputs.IMAGE_TAG }}
 

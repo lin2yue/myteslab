@@ -20,6 +20,12 @@ COPY . .
 RUN pnpm config set network-timeout 300000
 RUN pnpm install --no-frozen-lockfile --prefer-offline
 
+# 接收构建参数并设置为环境变量(Next.js 构建时需要)
+ARG NEXT_PUBLIC_GA_ID
+ARG NEXT_PUBLIC_BAIDU_ANALYTICS_ID
+ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID
+ENV NEXT_PUBLIC_BAIDU_ANALYTICS_ID=$NEXT_PUBLIC_BAIDU_ANALYTICS_ID
+
 RUN pnpm --filter web-cn build
 
 FROM node:20-alpine AS runner
