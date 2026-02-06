@@ -50,38 +50,40 @@ export async function POST(request: Request) {
 
             if (!sceneId) return new Response('success'); // 没有场景值，普通关注
 
-            // 1. 获取用户信息 (主要是 UnionID)
-            const userInfo = await getMPUserInfo(openid);
-            const unionid = userInfo?.unionid || null;
+            // 1. 先通过 openid 尝试快速查找用户
+            let user = await findUserByWechatOpenId(openid);
+            let unionid = null; // 我们后面并行更新时会处理
 
-            // 2. 查找或创建用户 (身份统一逻辑)
-            let user = null;
-            if (unionid) {
-                user = await findUserByWechatUnionId(unionid);
-            }
+            // 2. 如果没找到用户，才去调微信接口（这个最慢）
             if (!user) {
-                user = await findUserByWechatOpenId(openid);
+                const userInfo = await getMPUserInfo(openid);
+                unionid = userInfo?.unionid || null;
+
+                if (unionid) {
+                    user = await findUserByWechatUnionId(unionid);
+                }
+
+                if (!user) {
+                    // 创建新用户
+                    user = await createUser({
+                        displayName: userInfo?.nickname || '微信用户',
+                        avatarUrl: userInfo?.headimgurl || null,
+                    });
+                }
             }
 
-            if (!user) {
-                // 创建新用户
-                user = await createUser({
-                    displayName: userInfo?.nickname || '微信用户',
-                    avatarUrl: userInfo?.headimgurl || null,
-                });
-            }
-
-            // 3. 关联身份
+            // 3. 关联身份并更新会话状态
             if (user) {
-                await linkWechatMPIdentity(user.id, openid, unionid);
-
-                // 4. 更新扫码会话状态
-                await dbQuery(
-                    `UPDATE wechat_qr_sessions 
-                     SET status = 'COMPLETED', user_id = $1 
-                     WHERE scene_id = $2`,
-                    [user.id, sceneId]
-                );
+                // 并行执行数据库更新
+                await Promise.all([
+                    linkWechatMPIdentity(user.id, openid, unionid),
+                    dbQuery(
+                        `UPDATE wechat_qr_sessions 
+                         SET status = 'COMPLETED', user_id = $1 
+                         WHERE scene_id = $2`,
+                        [user.id, sceneId]
+                    )
+                ]);
             }
         }
 
