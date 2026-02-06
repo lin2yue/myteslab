@@ -55,6 +55,15 @@ export async function POST(request: NextRequest) {
             console.error('[Confirm-Publish] Cache revalidation error (non-blocking):', revalidateErr);
         }
 
+        // 推送到百度搜索引擎(异步,不阻塞响应)
+        const wrap = rows[0];
+        if (wrap.slug) {
+            const { pushWrapToBaidu } = await import('@/lib/seo/baidu-push');
+            pushWrapToBaidu(wrap.slug).catch(err => {
+                console.error('[Confirm-Publish] Baidu push failed (non-blocking):', err);
+            });
+        }
+
         return NextResponse.json({
             success: true,
             previewUrl,
