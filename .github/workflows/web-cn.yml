@@ -85,7 +85,8 @@ jobs:
             docker run -d \
               --name ${{ steps.set_env.outputs.CONTAINER_NAME }} \
               --restart always \
-              -p ${{ steps.set_env.outputs.HOST_PORT }}:3000 \
+              --network host \
+              -e PORT=${{ steps.set_env.outputs.HOST_PORT }} \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e CDN_DOMAIN="https://cdn.tewan.club" \
               -e OSS_ACCESS_KEY_ID="${{ secrets.OSS_ACCESS_KEY_ID }}" \
