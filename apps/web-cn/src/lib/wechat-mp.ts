@@ -107,3 +107,38 @@ export async function getMPUserInfo(openid: string) {
 
     return data;
 }
+
+export function getMPOAuthUrl(redirectUri: string, state: string = '', scope: 'snsapi_base' | 'snsapi_userinfo' = 'snsapi_userinfo') {
+    const appId = process.env.WECHAT_MP_APP_ID;
+    const encodedUri = encodeURIComponent(redirectUri);
+    return `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appId}&redirect_uri=${encodedUri}&response_type=code&scope=${scope}&state=${state}#wechat_redirect`;
+}
+
+export async function getMPOAuthUserInfo(code: string) {
+    const appId = process.env.WECHAT_MP_APP_ID;
+    const appSecret = process.env.WECHAT_MP_APP_SECRET;
+
+    // 1. 获取网页授权 access_token
+    const tokenUrl = `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${appId}&secret=${appSecret}&code=${code}&grant_type=authorization_code`;
+    const tokenRes = await fetch(tokenUrl, { cache: 'no-store' });
+    const tokenData = await tokenRes.json();
+
+    if (tokenData.errcode) {
+        console.error('[wechat-mp] Failed to get OAuth token', tokenData);
+        return null;
+    }
+
+    const { access_token, openid } = tokenData;
+
+    // 2. 获取用户详细信息 (snsapi_userinfo)
+    const userInfoUrl = `https://api.weixin.qq.com/sns/userinfo?access_token=${access_token}&openid=${openid}&lang=zh_CN`;
+    const userInfoRes = await fetch(userInfoUrl, { cache: 'no-store' });
+    const userInfoData = await userInfoRes.json();
+
+    if (userInfoData.errcode) {
+        console.error('[wechat-mp] Failed to get OAuth user info', userInfoData);
+        return null;
+    }
+
+    return userInfoData;
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyWechatSignature, getMPUserInfo } from '@/lib/wechat-mp';
+import { verifyWechatSignature, getMPUserInfo, getMPOAuthUrl } from '@/lib/wechat-mp';
 import { XMLParser } from 'fast-xml-parser';
 import { dbQuery } from '@/lib/db';
 import { findUserByWechatOpenId, findUserByWechatUnionId, createUser, linkWechatMPIdentity, DbUser } from '@/lib/auth/users';
@@ -126,10 +126,12 @@ export async function POST(request: Request) {
                 console.log(`[wechat-mp] DB updates took ${Date.now() - dbOpsStart}ms`);
 
                 // 4. 返回自动回复消息 (严格的 XML 格式)
-                // 必须严格遵守大小写和结构
-                const replyXml = `<xml><ToUserName><![CDATA[${openid}]]></ToUserName><FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName><CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[登录成功！]]></Content></xml>`;
+                // 增加同步昵称头像的链接
+                const syncUrl = getMPOAuthUrl(`https://tewan.club/api/auth/wechat-mp/sync`, user.id);
+                const replyContent = `登录成功！\n\n<a href="${syncUrl}">[点我同步昵称头像]</a>`;
+                const replyXml = `<xml><ToUserName><![CDATA[${openid}]]></ToUserName><FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName><CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[${replyContent}]]></Content></xml>`;
 
-                console.log(`[wechat-mp] Callback total ${Date.now() - start}ms. Returning XML reply.`);
+                console.log(`[wechat-mp] Callback total ${Date.now() - start}ms. Returning XML reply with sync link.`);
                 return new Response(replyXml, {
                     headers: {
                         'Content-Type': 'text/xml',
