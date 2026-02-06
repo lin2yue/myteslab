@@ -539,7 +539,7 @@ export async function POST(request: NextRequest) {
                 texture_url, preview_url, is_public, category, reference_images, generation_task_id, slug
             ) VALUES (
                 $1,$2,$3,$4,$5,$6,
-                $7,$8,$9,$10,$11,$12,$13
+                $7,$8,$9,$10,$11::text[],$12,$13
             ) RETURNING id, slug`,
             [
                 user.id,
