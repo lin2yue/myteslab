@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { verifyWechatSignature, getMPOAuthQRUrl } from '@/lib/wechat-mp'; // Import the QR OAuth helper
+import { verifyWechatSignature, getMPOAuthQRUrl } from '@/lib/wechat-mp';
 import { XMLParser } from 'fast-xml-parser';
 import { dbQuery } from '@/lib/db';
+import { findUserByWechatOpenId } from '@/lib/auth/users';
 
 const parser = new XMLParser();
 
@@ -78,15 +79,45 @@ export async function POST(request: Request) {
 
             // Only proceed if we have a valid sceneId (which maps to a pending login session)
             if (sceneId) {
-                // Generate the OAuth URL that links to our 'callback-oauth' route
-                // Crucially, we pass the 'sceneId' as the 'state' param
-                const oauthLoginUrl = getMPOAuthQRUrl(sceneId);
+                // 1. Check if user already exists
+                const existingUser = await findUserByWechatOpenId(openid);
 
-                // Construct the auto-reply message
-                // Note: We do NOT complete the session here. The session completes only when they click the link.
-                const replyContent = `欢迎来到 Tewan Club！\n\n<a href="${oauthLoginUrl}">👉 点击此处一键安全登录</a>\n\n(登录成功后将自动获取您的头像和昵称)`;
+                if (existingUser) {
+                    // --- Scenario A: Existing User (Auto Login) ---
+                    await Promise.all([
+                        // Update session to COMPLETED immediately
+                        dbQuery(
+                            `UPDATE wechat_qr_sessions 
+                             SET status = 'COMPLETED', user_id = $1 
+                             WHERE scene_id = $2`,
+                            [existingUser.id, sceneId]
+                        ),
+                        // Log the event
+                        logDebug('wechat_login_smart', 'Existing user auto-login', { userId: existingUser.id, openid })
+                    ]);
 
-                const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
+                    const replyContent = `欢迎回来，${existingUser.display_name || '旧友'}！\n\n✅ 网页端已自动登录`;
+
+                    const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<ToUserName><![CDATA[${openid}]]></ToUserName>
+<FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName>
+<CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+<MsgType><![CDATA[text]]></MsgType>
+<Content><![CDATA[${replyContent}]]></Content>
+</xml>`;
+                    return new NextResponse(replyXml, {
+                        headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
+                    });
+
+                } else {
+                    // --- Scenario B: New User (Requires Registration/OAuth) ---
+                    // Generate the OAuth URL that links to our 'callback-oauth' route
+                    const oauthLoginUrl = getMPOAuthQRUrl(sceneId);
+
+                    const replyContent = `欢迎来到 Tewan Club！\n\n为了给您提供更好的服务（同步头像昵称），请点击下方链接完成注册：\n\n<a href="${oauthLoginUrl}">👉 点击此处一键安全登录</a>`;
+
+                    const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
 <xml>
 <ToUserName><![CDATA[${openid}]]></ToUserName>
 <FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName>
@@ -95,14 +126,12 @@ export async function POST(request: Request) {
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
 
-                await logDebug('wechat_reply', 'Sending Login Link', { sceneId, openid });
+                    await logDebug('wechat_reply', 'Sending New User Registration Link', { sceneId, openid });
 
-                return new NextResponse(replyXml, {
-                    headers: {
-                        'Content-Type': 'text/xml',
-                        'Cache-Control': 'no-cache'
-                    }
-                });
+                    return new NextResponse(replyXml, {
+                        headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
+                    });
+                }
             }
         }
 
