@@ -115,7 +115,7 @@ export async function generateWrapTexture(
     let textPrompt = '';
 
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = (process.env.GEMINI_API_KEY || '').trim();
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY is not defined');
         }
@@ -123,6 +123,12 @@ export async function generateWrapTexture(
         textPrompt = maskImageBase64
             ? buildEditingPrompt(prompt, modelName)
             : buildWrapPrompt(modelName, prompt);
+
+        const MODEL = 'gemini-3-pro-image-preview';
+        const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
+        const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
+
+        console.log(`[AI-GEN] Requesting Gemini Image: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
 
         const parts: any[] = [
             { text: textPrompt }
@@ -152,12 +158,8 @@ export async function generateWrapTexture(
             });
         }
 
-        const MODEL = 'gemini-3-pro-image-preview';
-        const apiBaseUrl = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
-        const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
-
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for Cloudflare proxy
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout per user request
 
         try {
             const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
@@ -217,7 +219,7 @@ export async function generateWrapTexture(
         } catch (error: any) {
             clearTimeout(timeoutId);
             if (error.name === 'AbortError') {
-                throw new Error('AI 生成超时 (超过 45s)');
+                throw new Error('AI 生成超时 (超过 60s)');
             }
             throw error;
         }
@@ -281,12 +283,12 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
     description_en: string;
 }> {
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = (process.env.GEMINI_API_KEY || '').trim();
         if (!apiKey) throw new Error('GEMINI_API_KEY missing');
 
         // Note: Using flash-latest for fast and cheap text generation
         const MODEL = 'gemini-flash-latest';
-        const apiBaseUrl = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
+        const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
 
         const systemInstruction = `You are a professional automotive wrap titler. 
@@ -296,25 +298,38 @@ Based on the user's prompt (which could be in Chinese, English, or any other lan
 Return ONLY a JSON object with keys: name, name_en, description, description_en. 
 Keep titles under 15 characters and descriptions under 50 characters.`;
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: `User Prompt: ${userPrompt}\nModel: ${modelName}` }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                }
-            })
-        });
+        console.log(`[AI-GEN] Requesting Gemini Metadata: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
 
-        if (!response.ok) throw new Error(`Metadata AI failed: ${response.status}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for metadata
 
-        const content = await response.json();
-        const text = content.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error('No text in metadata response');
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `User Prompt: ${userPrompt}\nModel: ${modelName}` }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                    }
+                }),
+                signal: controller.signal
+            });
 
-        return JSON.parse(text);
+            clearTimeout(timeoutId);
+
+            if (!response.ok) throw new Error(`Metadata AI failed: ${response.status}`);
+
+            const content = await response.json();
+            const text = content.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) throw new Error('No text in metadata response');
+
+            return JSON.parse(text);
+        } catch (error: any) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
     } catch (err) {
         console.error('Failed to generate bilingual metadata:', err);
         // Fallback
