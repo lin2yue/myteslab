@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { verifyWechatSignature, getMPUserInfo, getMPOAuthUrl } from '@/lib/wechat-mp';
+import { verifyWechatSignature, getMPOAuthQRUrl } from '@/lib/wechat-mp'; // Import the QR OAuth helper
 import { XMLParser } from 'fast-xml-parser';
 import { dbQuery } from '@/lib/db';
-import { findUserByWechatOpenId, findUserByWechatUnionId, createUser, linkWechatMPIdentity, DbUser } from '@/lib/auth/users';
 
 const parser = new XMLParser();
 
@@ -42,15 +41,13 @@ export async function POST(request: Request) {
     const nonce = searchParams.get('nonce');
 
     if (!signature || !timestamp || !nonce || !verifyWechatSignature(timestamp, nonce, signature)) {
-        await logDebug('auth_error', 'Invalid signature', { signature, timestamp, nonce });
         return new Response('Invalid signature', { status: 403 });
     }
 
     try {
-        const start = Date.now();
         const xml = await request.text();
 
-        // 1. 快速检查是否是加密模式
+        // 1. Check for encrypted messages (just return success for now to avoid errors)
         if (xml.includes('<Encrypt>')) {
             await logDebug('wechat_callback', 'RECEIVED ENCRYPTED MESSAGE (Safe Mode)', { rawXml: xml });
             return new Response('success');
@@ -60,55 +57,36 @@ export async function POST(request: Request) {
         const msg = result.xml;
 
         if (!msg) {
-            await logDebug('wechat_callback', 'Empty or invalid XML', { rawXml: xml });
             return new Response('success');
         }
 
         await logDebug('wechat_callback', `Received ${msg.Event || msg.MsgType}`, {
             from: msg.FromUserName,
-            to: msg.ToUserName,
             event: msg.Event,
             eventKey: msg.EventKey
         });
 
-        // MsgType: event, Event: subscribe 或 SCAN
+        // Handle 'subscribe' (new follow) and 'SCAN' (already followed)
         if (msg.MsgType === 'event' && (msg.Event === 'subscribe' || msg.Event === 'SCAN')) {
             const openid = msg.FromUserName;
             let sceneId = msg.EventKey;
+
+            // 'subscribe' event keys start with 'qrscene_'
             if (msg.Event === 'subscribe' && typeof sceneId === 'string' && sceneId.startsWith('qrscene_')) {
                 sceneId = sceneId.replace('qrscene_', '');
             }
 
-            if (!sceneId) {
-                return new Response('success');
-            }
+            // Only proceed if we have a valid sceneId (which maps to a pending login session)
+            if (sceneId) {
+                // Generate the OAuth URL that links to our 'callback-oauth' route
+                // Crucially, we pass the 'sceneId' as the 'state' param
+                const oauthLoginUrl = getMPOAuthQRUrl(sceneId);
 
-            // 2. 极简用户处理：只查找或创建基础记录，不调微信获取昵称接口 (避免超时)
-            let user = await findUserByWechatOpenId(openid) as DbUser | null;
-            let unionid = user?.union_id || null;
+                // Construct the auto-reply message
+                // Note: We do NOT complete the session here. The session completes only when they click the link.
+                const replyContent = `欢迎来到 Tewan Club！\n\n<a href="${oauthLoginUrl}">👉 点击此处一键安全登录</a>\n\n(登录成功后将自动获取您的头像和昵称)`;
 
-            if (!user) {
-                // 仅创建带默认名称的用户，由后续同步流程更新
-                user = await createUser({
-                    displayName: '微信用户',
-                });
-            }
-
-            // 3. 关联身份并更新会话状态
-            await Promise.all([
-                linkWechatMPIdentity(user.id, openid, unionid),
-                dbQuery(
-                    `UPDATE wechat_qr_sessions
-                     SET status = 'COMPLETED', user_id = $1
-                     WHERE scene_id = $2`,
-                    [user.id, sceneId]
-                )
-            ]);
-
-            // 4. 返回自动回复消息 (严格遵循官方文档格式，带 XML 声明)
-            const syncUrl = getMPOAuthUrl(`https://tewan.club/api/auth/wechat-mp/sync`, user.id);
-            const replyContent = `登录成功！\n\n<a href="${syncUrl}">[点我同步昵称头像]</a>`;
-            const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
+                const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
 <xml>
 <ToUserName><![CDATA[${openid}]]></ToUserName>
 <FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName>
@@ -117,14 +95,15 @@ export async function POST(request: Request) {
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
 
-            await logDebug('wechat_reply', 'Sending formal XML reply', { replyXml });
+                await logDebug('wechat_reply', 'Sending Login Link', { sceneId, openid });
 
-            return new NextResponse(replyXml, {
-                headers: {
-                    'Content-Type': 'text/xml',
-                    'Cache-Control': 'no-cache'
-                }
-            });
+                return new NextResponse(replyXml, {
+                    headers: {
+                        'Content-Type': 'text/xml',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+            }
         }
 
         return new Response('success');

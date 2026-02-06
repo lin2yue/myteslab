@@ -10,7 +10,8 @@ export async function POST() {
 
         // 2. 同时生成传统 Ticket (用于 PC 扫码关注) 和 Direct OAuth 链接 (用于直达授权)
         const { ticket, qrUrl } = await createQRScene(sceneId);
-        const oauthUrl = getMPOAuthQRUrl(sceneId);
+        // We do NOT want the direct OAuth URL here anymore, because we want scheme B:
+        // Scan -> Follow -> Auto-reply -> Click Link
 
         // 3. 将会话信息存入数据库
         await dbQuery(
@@ -22,8 +23,7 @@ export async function POST() {
         return NextResponse.json({
             success: true,
             sceneId,
-            qrUrl,
-            oauthUrl,
+            qrUrl, // This is the mp.weixin.qq.com/cgi-bin/showqrcode URL
         });
     } catch (error: any) {
         console.error('[wechat-mp] Failed to generate ticket', error);

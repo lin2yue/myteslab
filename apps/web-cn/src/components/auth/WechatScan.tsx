@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -14,20 +14,19 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
     const [sceneId, setSceneId] = useState<string | null>(null);
     const [status, setStatus] = useState<'LOADING' | 'READY' | 'SCANNED' | 'EXPIRED' | 'ERROR'>('LOADING');
     const [error, setError] = useState<string | null>(null);
+    const pollTimer = useRef<NodeJS.Timeout>();
 
     const fetchTicket = async () => {
         setStatus('LOADING');
         setError(null);
+        if (pollTimer.current) clearInterval(pollTimer.current);
+
         try {
             const res = await fetch('/api/auth/wechat-mp/ticket', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                // 优先使用直接授权链接生成二维码 (更好的用户体验)
-                const finalQrUrl = data.oauthUrl
-                    ? `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data.oauthUrl)}`
-                    : data.qrUrl;
-
-                setQrUrl(finalQrUrl);
+                // Revert to standard WeChat QR (Scheme B: Scan -> Follow -> Click)
+                setQrUrl(data.qrUrl);
                 setSceneId(data.sceneId);
                 setStatus('READY');
             } else {
@@ -40,41 +39,40 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
         }
     };
 
+    const pollStatus = async (currentSceneId: string) => {
+        try {
+            const res = await fetch(`/api/auth/wechat-mp/check?sceneId=${currentSceneId}`);
+            const data = await res.json();
+
+            if (data.status === 'COMPLETED') {
+                setStatus('SCANNED');
+                if (pollTimer.current) clearInterval(pollTimer.current);
+                setTimeout(() => onSuccess(), 1000);
+                return;
+            }
+
+            if (data.status === 'EXPIRED') {
+                setStatus('EXPIRED');
+                if (pollTimer.current) clearInterval(pollTimer.current);
+                return;
+            }
+        } catch (err) {
+            console.error('Polling error', err);
+        }
+    };
+
     useEffect(() => {
         fetchTicket();
+        return () => {
+            if (pollTimer.current) clearInterval(pollTimer.current);
+        };
     }, []);
 
     useEffect(() => {
-        if (status !== 'READY' || !sceneId) return;
-
-        let timer: NodeJS.Timeout;
-        const checkStatus = async () => {
-            try {
-                const res = await fetch(`/api/auth/wechat-mp/check?sceneId=${sceneId}`);
-                const data = await res.json();
-
-                if (data.status === 'COMPLETED') {
-                    setStatus('SCANNED');
-                    setTimeout(() => onSuccess(), 1000);
-                    return;
-                }
-
-                if (data.status === 'EXPIRED') {
-                    setStatus('EXPIRED');
-                    return;
-                }
-
-                // Continue polling
-                timer = setTimeout(checkStatus, 2000);
-            } catch (err) {
-                console.error('Polling error', err);
-                timer = setTimeout(checkStatus, 5000);
-            }
-        };
-
-        timer = setTimeout(checkStatus, 2000);
-        return () => clearTimeout(timer);
-    }, [status, sceneId, onSuccess]);
+        if (status === 'READY' && sceneId) {
+            pollTimer.current = setInterval(() => pollStatus(sceneId), 2000);
+        }
+    }, [status, sceneId]);
 
     return (
         <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-zinc-900/50 rounded-2xl border border-black/5 dark:border-white/5 shadow-inner">
