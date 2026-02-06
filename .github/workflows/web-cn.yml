@@ -98,6 +98,10 @@ jobs:
               -e NEXT_PUBLIC_CDN_URL="https://cdn.tewan.club" \
               -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
               -e GEMINI_API_BASE_URL="${{ secrets.GEMINI_API_BASE_URL }}" \
+              -e WECHAT_MP_APP_ID="${{ secrets.WECHAT_MP_APP_ID }}" \
+              -e WECHAT_MP_APP_SECRET="${{ secrets.WECHAT_MP_APP_SECRET }}" \
+              -e WECHAT_MP_TOKEN="${{ secrets.WECHAT_MP_TOKEN }}" \
+              -e WECHAT_MP_AES_KEY="${{ secrets.WECHAT_MP_AES_KEY }}" \
               -e HTTP_PROXY="${{ secrets.HTTP_PROXY }}" \
               -e HTTPS_PROXY="${{ secrets.HTTPS_PROXY }}" \
               ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:${{ steps.set_env.outputs.IMAGE_TAG }}

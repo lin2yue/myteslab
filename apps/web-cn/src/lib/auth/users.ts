@@ -95,11 +95,49 @@ export async function findUserByWechatOpenId(openId: string) {
         `SELECT u.*
          FROM user_identities i
          JOIN users u ON u.id = i.user_id
-         WHERE i.provider = 'wechat' AND i.provider_user_id = $1
+         WHERE i.provider = 'wechat' AND (i.provider_user_id = $1 OR i.openid_mp = $1)
          LIMIT 1`,
         [openId]
     );
     return rows[0] || null;
+}
+
+export async function findUserByWechatUnionId(unionId: string) {
+    const { rows } = await dbQuery<DbUser>(
+        `SELECT u.*
+         FROM user_identities i
+         JOIN users u ON u.id = i.user_id
+         WHERE i.provider = 'wechat' AND i.union_id = $1
+         LIMIT 1`,
+        [unionId]
+    );
+    return rows[0] || null;
+}
+
+export async function linkWechatMPIdentity(userId: string, openIdMp: string, unionId?: string | null) {
+    // Try to find existing identity record for this user and provider
+    const { rows: existing } = await dbQuery(
+        `SELECT * FROM user_identities WHERE user_id = $1 AND provider = 'wechat'`,
+        [userId]
+    );
+
+    if (existing.length > 0) {
+        // Update existing record
+        await dbQuery(
+            `UPDATE user_identities 
+             SET openid_mp = $1, union_id = COALESCE(union_id, $2)
+             WHERE user_id = $3 AND provider = 'wechat'`,
+            [openIdMp, unionId || null, userId]
+        );
+    } else {
+        // Insert new record
+        await dbQuery(
+            `INSERT INTO user_identities (user_id, provider, openid_mp, union_id)
+             VALUES ($1, 'wechat', $2, $3)
+             ON CONFLICT (provider, provider_user_id) DO NOTHING`,
+            [userId, openIdMp, unionId || null]
+        );
+    }
 }
 
 export async function verifyEmailByToken(token: string) {

@@ -7,6 +7,7 @@ import { login, signup, resendVerificationAction } from './actions';
 import { trackLogin, trackSignUp } from '@/lib/analytics';
 import { Loader2, Mail, Lock, Phone, ShieldCheck, QrCode, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAlert } from '@/components/alert/AlertProvider';
+import WechatScan from '@/components/auth/WechatScan';
 
 type AuthMode = 'LOGIN' | 'SIGNUP';
 type AuthTab = 'EMAIL' | 'PHONE';
@@ -33,6 +34,7 @@ export default function LoginForm() {
 
     const [error, setError] = useState<string | null>(searchParams.get('error'));
     const [isPending, startTransition] = useTransition();
+    const [showWechatScan, setShowWechatScan] = useState(false);
 
     useEffect(() => {
         if (smsTimer <= 0) return;
@@ -168,9 +170,14 @@ export default function LoginForm() {
     };
 
     const handleWechatLogin = () => {
+        setShowWechatScan(true);
+    };
+
+    const handleWechatSuccess = () => {
         const next = getNext();
         if (typeof window !== 'undefined') {
-            window.location.href = `/api/auth/wechat/login?next=${encodeURIComponent(next)}`;
+            localStorage.removeItem('auth_redirect_next');
+            window.location.href = next;
         }
     };
 
@@ -231,7 +238,7 @@ export default function LoginForm() {
             {renderError()}
             {renderSuccess()}
 
-            {authTab === 'EMAIL' ? (
+            {(!showWechatScan && authTab === 'EMAIL') ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-4">
                     <div className="relative group">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-gray-900 dark:group-focus-within:text-white transition-colors" />
@@ -271,7 +278,7 @@ export default function LoginForm() {
                         {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === 'LOGIN' ? (t('continue') || '登录') : (t('create_account_btn') || '注册'))}
                     </button>
                 </form>
-            ) : (
+            ) : !showWechatScan ? (
                 <form onSubmit={handlePhoneLogin} className="space-y-4">
                     <div className="relative group">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-gray-900 dark:group-focus-within:text-white transition-colors" />
@@ -314,6 +321,19 @@ export default function LoginForm() {
                         {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (t('phone_login') || '验证码登录')}
                     </button>
                 </form>
+            ) : null}
+
+            {showWechatScan && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <WechatScan onSuccess={handleWechatSuccess} />
+                    <button
+                        type="button"
+                        onClick={() => setShowWechatScan(false)}
+                        className="w-full py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    >
+                        {t('back') || '返回主登录方式'}
+                    </button>
+                </div>
             )}
 
             <div className="relative my-6">
@@ -327,14 +347,16 @@ export default function LoginForm() {
                 </div>
             </div>
 
-            <button
-                type="button"
-                onClick={handleWechatLogin}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-black/10 dark:border-white/10 rounded-xl bg-white/90 dark:bg-zinc-900/70 text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shadow-[0_8px_18px_rgba(0,0,0,0.08)]"
-            >
-                <QrCode className="w-5 h-5" />
-                {t('wechat_login') || '微信扫码登录'}
-            </button>
+            {!showWechatScan && (
+                <button
+                    type="button"
+                    onClick={handleWechatLogin}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-black/10 dark:border-white/10 rounded-xl bg-white/90 dark:bg-zinc-900/70 text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shadow-[0_8px_18px_rgba(0,0,0,0.08)]"
+                >
+                    <QrCode className="w-5 h-5" />
+                    {t('wechat_login') || '微信扫码登录'}
+                </button>
+            )}
 
             <div className="mt-8 text-center">
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
