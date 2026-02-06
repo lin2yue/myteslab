@@ -7,13 +7,21 @@ import Script from 'next/script'
  * 用于追踪和分析网站流量
  */
 export function BaiduAnalytics() {
-    const BAIDU_ID = process.env.NEXT_PUBLIC_BAIDU_ANALYTICS_ID
+  // 使用 NEXT_PUBLIC_ 前缀的环境变量,客户端可访问
+  // 注意:这个值在构建时被注入,不是运行时读取
+  const BAIDU_ID = process.env.NEXT_PUBLIC_BAIDU_ANALYTICS_ID
 
-    if (!BAIDU_ID) return null
+  // 如果没有配置 ID,不渲染
+  if (!BAIDU_ID) {
+    console.warn('[Baidu Analytics] NEXT_PUBLIC_BAIDU_ANALYTICS_ID not configured')
+    return null
+  }
 
-    return (
-        <Script id="baidu-analytics" strategy="afterInteractive">
-            {`
+  console.log('[Baidu Analytics] Initializing with ID:', BAIDU_ID)
+
+  return (
+    <Script id="baidu-analytics" strategy="afterInteractive">
+      {`
         var _hmt = _hmt || [];
         (function() {
           var hm = document.createElement("script");
@@ -22,6 +30,6 @@ export function BaiduAnalytics() {
           s.parentNode.insertBefore(hm, s);
         })();
       `}
-        </Script>
-    )
+    </Script>
+  )
 }
