@@ -21,7 +21,8 @@ export async function logTaskStep(
     }
 
     try {
-        console.log(`[TASK-LOG] 📝 Task ${taskId}: ${step}${status ? ` -> ${status}` : ''}`);
+        const VERSION = "V1.1.0"; // 用于验证部署
+        console.log(`[TASK-LOG] [${VERSION}] 📝 Task ${taskId}: ${step}${status ? ` -> ${status}` : ''}`);
 
         // Build step object
         const stepObj: any = { step, ts: new Date().toISOString() };
@@ -30,7 +31,7 @@ export async function logTaskStep(
         await dbQuery(
             `UPDATE generation_tasks
              SET steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
-                 status = COALESCE($3::text, status::text)::generation_status,
+                 status = CASE WHEN $3::text IS NOT NULL THEN $3::generation_status ELSE status END,
                  updated_at = NOW(),
                  error_message = CASE WHEN $4::text IS NOT NULL THEN COALESCE(error_message, $4::text) ELSE error_message END
              WHERE id = $1`,

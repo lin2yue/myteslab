@@ -109,6 +109,7 @@ export interface GenerateWrapResult {
 export async function generateWrapTexture(
     params: GenerateWrapParams
 ): Promise<GenerateWrapResult> {
+    const VERSION = "V1.1.0";
     const { modelSlug, modelName, prompt, maskImageBase64, referenceImagesBase64 } = params;
 
     const maskDimensions = getMaskDimensions(modelSlug);
@@ -128,7 +129,7 @@ export async function generateWrapTexture(
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
 
-        console.log(`[AI-GEN] Requesting Gemini Image: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
+        console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
 
         const parts: any[] = [
             { text: textPrompt }
@@ -282,6 +283,7 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
     description: string;
     description_en: string;
 }> {
+    const VERSION = "V1.1.0";
     try {
         const apiKey = (process.env.GEMINI_API_KEY || '').trim();
         if (!apiKey) throw new Error('GEMINI_API_KEY missing');
