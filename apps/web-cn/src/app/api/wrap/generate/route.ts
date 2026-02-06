@@ -519,10 +519,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Image correction failed' }, { status: 500 });
         }
 
-        // 记录步骤：准备保存至作品表
+        // 记录步骤:准备保存至作品表
         await logStep('database_save_start');
 
-        // 等待并获取元数据结果（元数据任务在后台可能已经跑完了）
+        // 等待并获取元数据结果(元数据任务在后台可能已经跑完了)
         const metadata = await metadataPromise;
 
         // 插入到统一的作品表 wraps
@@ -533,35 +533,54 @@ export async function POST(request: NextRequest) {
             modelSlug
         });
         const slug = await ensureUniqueSlug(slugBase);
-        const { rows: wrapRows } = await dbQuery(
-            `INSERT INTO wraps (
-                user_id, name, name_en, description_en, prompt, model_slug,
-                texture_url, preview_url, is_public, category, reference_images, generation_task_id, slug
-            ) VALUES (
-                $1,$2,$3,$4,$5,$6,
-                $7,$8,$9,$10,$11::text[],$12,$13
-            ) RETURNING id, slug`,
-            [
-                user.id,
-                metadata.name,
-                metadata.name_en,
-                metadata.description_en,
-                prompt,
-                modelSlug,
-                savedUrl,
-                savedUrl,
-                false,
-                WRAP_CATEGORY.AI_GENERATED,
-                savedReferenceUrls,
-                taskId,
-                slug
-            ]
-        );
 
-        const wrapId = wrapRows[0]?.id;
-        if (!wrapId) {
-            await logStep('database_save_failed', undefined, 'Failed to save result');
-            return NextResponse.json({ success: false, error: 'Failed to save result' }, { status: 500 });
+        let wrapId: string | undefined;
+
+        try {
+            const { rows: wrapRows } = await dbQuery(
+                `INSERT INTO wraps (
+                    user_id, name, name_en, description_en, prompt, model_slug,
+                    texture_url, preview_url, is_public, category, reference_images, generation_task_id, slug
+                ) VALUES (
+                    $1,$2,$3,$4,$5,$6,
+                    $7,$8,$9,$10,$11::text[],$12,$13
+                ) RETURNING id, slug`,
+                [
+                    user.id,
+                    metadata.name,
+                    metadata.name_en,
+                    metadata.description_en,
+                    prompt,
+                    modelSlug,
+                    savedUrl,
+                    savedUrl,
+                    false,
+                    WRAP_CATEGORY.AI_GENERATED,
+                    savedReferenceUrls,
+                    taskId,
+                    slug
+                ]
+            );
+
+            wrapId = wrapRows[0]?.id;
+
+            if (!wrapId) {
+                throw new Error('Failed to get wrap ID from database');
+            }
+        } catch (dbErr) {
+            console.error(`❌ [AI-GEN] Database save failed for task ${taskId}, user ${user.id}:`, dbErr);
+            await logStep('database_save_failed', undefined, dbErr instanceof Error ? dbErr.message : 'Database error');
+            await markTaskFailed(`Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
+
+            // 数据库保存失败,自动退款
+            if (taskId) {
+                await refundTaskCredits(taskId, `Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
+            }
+
+            return NextResponse.json({
+                success: false,
+                error: 'Failed to save result to database'
+            }, { status: 500 });
         }
 
         if (taskId && wrapId) {
@@ -573,10 +592,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 记录步骤：作品保存成功
+        // 记录步骤:作品保存成功
         await logStep('database_save_success');
 
-        // 记录步骤：任务最终完成
+        // 记录步骤:任务最终完成
         await logStep('completed', 'completed');
 
         return NextResponse.json({
