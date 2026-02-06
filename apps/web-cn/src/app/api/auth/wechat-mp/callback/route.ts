@@ -112,6 +112,21 @@ export async function POST(request: Request) {
                     )
                 ]);
                 console.log(`[wechat-mp] DB operations took ${Date.now() - dbStart}ms`);
+
+                // 4. 返回自动回复消息 (XML 格式)
+                const replyXml = `
+<xml>
+  <ToUserName><![CDATA[${openid}]]></ToUserName>
+  <FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName>
+  <CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+  <MsgType><![CDATA[text]]></MsgType>
+  <Content><![CDATA[登录成功！]]></Content>
+</xml>`.trim();
+
+                console.log(`[wechat-mp] Callback total time: ${Date.now() - start}ms (with reply)`);
+                return new Response(replyXml, {
+                    headers: { 'Content-Type': 'text/xml' }
+                });
             }
         }
 
