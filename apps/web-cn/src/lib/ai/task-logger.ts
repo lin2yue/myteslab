@@ -30,7 +30,7 @@ export async function logTaskStep(
         await dbQuery(
             `UPDATE generation_tasks
              SET steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
-                 status = COALESCE($3::text, status),
+                 status = COALESCE($3::text, status::text)::generation_status,
                  updated_at = NOW(),
                  error_message = CASE WHEN $4::text IS NOT NULL THEN COALESCE(error_message, $4::text) ELSE error_message END
              WHERE id = $1`,
