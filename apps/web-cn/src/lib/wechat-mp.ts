@@ -114,6 +114,14 @@ export function getMPOAuthUrl(redirectUri: string, state: string = '', scope: 's
     return `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appId}&redirect_uri=${encodedUri}&response_type=code&scope=${scope}&state=${state}#wechat_redirect`;
 }
 
+/**
+ * 生成直接用于扫码授权的 URL (无感关注或直接授权)
+ */
+export function getMPOAuthQRUrl(sceneId: string) {
+    const redirectUri = `https://tewan.club/api/auth/wechat-mp/callback-oauth`;
+    return getMPOAuthUrl(redirectUri, sceneId, 'snsapi_userinfo');
+}
+
 export async function getMPOAuthUserInfo(code: string) {
     const appId = process.env.WECHAT_MP_APP_ID;
     const appSecret = process.env.WECHAT_MP_APP_SECRET;

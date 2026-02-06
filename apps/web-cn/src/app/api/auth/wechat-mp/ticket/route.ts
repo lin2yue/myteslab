@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { createQRScene } from '@/lib/wechat-mp';
+import { createQRScene, getMPOAuthQRUrl } from '@/lib/wechat-mp';
 import { dbQuery } from '@/lib/db';
 
 export async function POST() {
@@ -8,8 +8,9 @@ export async function POST() {
         // 1. 生成场景 ID (scene_id)
         const sceneId = crypto.randomUUID();
 
-        // 2. 调用微信 API 获取 Ticket
+        // 2. 同时生成传统 Ticket (用于 PC 扫码关注) 和 Direct OAuth 链接 (用于直达授权)
         const { ticket, qrUrl } = await createQRScene(sceneId);
+        const oauthUrl = getMPOAuthQRUrl(sceneId);
 
         // 3. 将会话信息存入数据库
         await dbQuery(
@@ -22,6 +23,7 @@ export async function POST() {
             success: true,
             sceneId,
             qrUrl,
+            oauthUrl,
         });
     } catch (error: any) {
         console.error('[wechat-mp] Failed to generate ticket', error);

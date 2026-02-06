@@ -22,7 +22,12 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
             const res = await fetch('/api/auth/wechat-mp/ticket', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                setQrUrl(data.qrUrl);
+                // 优先使用直接授权链接生成二维码 (更好的用户体验)
+                const finalQrUrl = data.oauthUrl
+                    ? `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data.oauthUrl)}`
+                    : data.qrUrl;
+
+                setQrUrl(finalQrUrl);
                 setSceneId(data.sceneId);
                 setStatus('READY');
             } else {
