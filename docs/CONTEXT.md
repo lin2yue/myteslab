@@ -15,6 +15,19 @@
 - **Miniprogram:** ⏸️ Maintenance mode.
 - **Documentation:** ✅ Reorganized into `docs/`.
 
+## 2.1 Deployment (web-cn)
+- **Platform:** Aliyun ECS + Docker
+- **CI/CD:** GitHub Actions (`.github/workflows/web-cn.yml`)
+- **Trigger:** Push to `pre` or `main` branch
+- **Flow:** Build → Push to ACR → SSH to ECS → Pull & Run
+- **Environments:**
+  - Production: `main` → `https://tewan.club` (port 3000)
+  - Pre-production: `pre` → `https://pre.tewan.club` (port 3001)
+- **⚠️ IMPORTANT:** All environment variables MUST be configured in **GitHub Secrets**, NOT hardcoded!
+  - Required Secrets: `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_BAIDU_ANALYTICS_ID`, `DATABASE_URL`, `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `GEMINI_API_KEY`, `WECHAT_MP_*`, etc.
+  - Location: GitHub Repo → Settings → Secrets and variables → Actions
+
+
 ## 3. Tech Stack Constraints
 - **Framework:** Next.js 16 (App Router), React Server Components.
 - **Database:** Supabase (PostgreSQL). Schema shared conceptually but managed via `apps/web/database/schema.sql`.
