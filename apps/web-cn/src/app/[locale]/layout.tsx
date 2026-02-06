@@ -80,6 +80,9 @@ export async function generateMetadata({
     verification: {
       google: 'ePlud_UhwMRjIZzM4kHYXLL3TuhADQs1dMCeYguF00w',
     },
+    other: {
+      'baidu-site-verification': 'codeva-owLmaXQfzs',
+    },
   }
 }
 
