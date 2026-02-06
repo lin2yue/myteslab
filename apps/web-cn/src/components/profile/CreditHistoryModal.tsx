@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import { PRICING_TIERS } from '@/lib/constants/credits';
 import Portal from '@/components/Portal';
 

@@ -1,7 +1,8 @@
 'use client';
 
-import { Link, usePathname } from '@/i18n/routing';
-import { useTranslations } from 'next-intl';
+import Link from 'next/link'
+import { usePathname } from 'next/navigation';
+import { useTranslations } from '@/lib/i18n';
 import AuthButton from '@/components/auth/AuthButton';
 import ThemeToggle from '@/components/ThemeToggle';
 import Portal from '@/components/Portal';

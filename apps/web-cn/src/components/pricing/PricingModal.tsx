@@ -1,7 +1,7 @@
 'use client';
 
 import { X, Check } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PRICING_TIERS, type PricingTier } from '@/lib/constants/credits';

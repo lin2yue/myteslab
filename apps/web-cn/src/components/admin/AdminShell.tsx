@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale } from 'next-intl';
+import { useLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, History, Wallet, RefreshCcw, ShieldCheck, Users } from 'lucide-react';

@@ -1,7 +1,7 @@
 import { getWraps } from '@/lib/api'
 import { WrapCard } from './WrapCard'
-import { getTranslations } from 'next-intl/server'
-import { Link } from '@/i18n/routing'
+import { getTranslations } from '@/lib/i18n'
+import Link from 'next/link'
 
 interface RelatedWrapsProps {
     modelSlug: string

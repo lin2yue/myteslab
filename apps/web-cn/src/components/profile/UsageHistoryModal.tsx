@@ -1,7 +1,7 @@
 'use client';
 
 import { X, ImageIcon } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import Portal from '@/components/Portal';
 

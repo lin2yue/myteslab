@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { WrapCard } from './WrapCard'
 import { fetchMoreWraps } from '@/lib/actions'
 import type { Wrap } from '@/lib/types'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '@/lib/i18n'
 
 interface WrapListProps {
     initialWraps: Wrap[]

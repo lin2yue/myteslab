@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
 
 interface CategoryBadgeProps {

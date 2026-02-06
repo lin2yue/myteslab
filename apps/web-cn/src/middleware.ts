@@ -1,46 +1,29 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import createIntlMiddleware from 'next-intl/middleware';
-import { routing } from './i18n/routing';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/constants';
-
-const intlMiddleware = createIntlMiddleware(routing);
 
 export default async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const isApiRoute = pathname.startsWith('/api/');
 
     // Admin Protection (route check)
-    const isAdminRoute = pathname.match(/^\/(zh\/)?admin/) || pathname.startsWith('/admin');
-    const isProfileRoute = pathname.match(/^\/(zh\/)?profile/) || pathname.startsWith('/profile');
-    const isCheckoutRoute = pathname.match(/^\/(zh\/)?checkout/) || pathname.startsWith('/checkout');
-    const isAuthRoute = pathname.match(/^\/(zh\/)?(login|auth)/) || pathname.startsWith('/login') || pathname.startsWith('/auth');
-
-    const requiresAuthCheck = isApiRoute || isAdminRoute || isProfileRoute || isCheckoutRoute || isAuthRoute;
+    const isAdminRoute = pathname.startsWith('/admin');
+    const isProfileRoute = pathname.startsWith('/profile');
+    const isCheckoutRoute = pathname.startsWith('/checkout');
+    const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth');
 
     if (isApiRoute) {
         return NextResponse.next();
     }
 
-    if (!requiresAuthCheck) {
-        const response = intlMiddleware(request);
-        response.headers.set('Vary', 'Accept-Language');
-        return response;
-    }
-
     const hasAuthCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
     if ((isAdminRoute || isProfileRoute || isCheckoutRoute) && !hasAuthCookie) {
-        const loginUrl = new URL('/zh/login', request.url);
+        const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('next', pathname);
         return NextResponse.redirect(loginUrl);
     }
 
-    const response = intlMiddleware(request);
-
-    // 7. Add Vary: Accept-Language header for International SEO
-    response.headers.set('Vary', 'Accept-Language');
-
-    return response;
+    return NextResponse.next();
 }
 
 export const config = {

@@ -1,6 +1,6 @@
 import Image from 'next/image'
-import { useLocale } from 'next-intl'
-import { Link } from '@/i18n/routing'
+import { useLocale } from '@/lib/i18n'
+import Link from 'next/link'
 import type { Wrap } from '@/lib/types'
 import { getOptimizedImageUrl } from '@/lib/images'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'

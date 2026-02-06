@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '@/lib/i18n'
 
 import viewerConfig from '@/config/viewer-config.json'
 

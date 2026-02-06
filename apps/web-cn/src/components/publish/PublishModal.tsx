@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '@/lib/i18n'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
 import { X, Loader2, Globe, ShieldCheck, DownloadCloud } from 'lucide-react'
 import Portal from '../Portal';

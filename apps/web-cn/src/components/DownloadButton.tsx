@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '@/lib/i18n'
 import { trackDownload } from '@/lib/analytics'
 import Button from '@/components/ui/Button'
-import { useRouter } from '@/i18n/routing'
+import { useRouter } from 'next/navigation'
 
 interface DownloadButtonProps {
     wrapId: string

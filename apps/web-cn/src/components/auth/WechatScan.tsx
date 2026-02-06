@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 
 interface WechatScanProps {
     onSuccess: () => void;

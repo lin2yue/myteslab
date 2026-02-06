@@ -1,8 +1,8 @@
 'use client';
 
-import { Link } from '@/i18n/routing';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useAlert } from '@/components/alert/AlertProvider';

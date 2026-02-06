@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations, useLocale } from '@/lib/i18n'
 import { getMaskUrl } from '@/lib/ai/mask-config'
 import { useRouter } from 'next/navigation'
 import { useAlert } from '@/components/alert/AlertProvider'

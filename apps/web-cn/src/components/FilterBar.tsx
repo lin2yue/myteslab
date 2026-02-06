@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
-import { useRouter, usePathname } from '@/i18n/routing'
+import { useTranslations, useLocale } from '@/lib/i18n'
+import { useRouter, usePathname } from 'next/navigation'
 import { useSearchParams, useParams } from 'next/navigation'
 import type { Model } from '@/lib/types'
 

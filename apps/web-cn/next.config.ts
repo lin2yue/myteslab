@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
-import createNextIntlPlugin from 'next-intl/plugin';
-
-const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+import bundleAnalyzer from '@next/bundle-analyzer'
 
 const isAnalyze = process.env.ANALYZE === 'true'
 
@@ -42,10 +40,23 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // www -> non-www redirect
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'www.tewan.club' }],
         destination: 'https://tewan.club/:path*',
+        permanent: true,
+      },
+      // /zh/* -> /* redirect for SEO (301 permanent redirect)
+      {
+        source: '/zh/:path*',
+        destination: '/:path*',
+        permanent: true,
+      },
+      // /zh -> / redirect
+      {
+        source: '/zh',
+        destination: '/',
         permanent: true,
       },
     ];
@@ -100,10 +111,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-const configWithIntl = withNextIntl(nextConfig)
-
-import bundleAnalyzer from '@next/bundle-analyzer'
-
 const withBundleAnalyzer = bundleAnalyzer({ enabled: isAnalyze })
 
-export default withBundleAnalyzer(configWithIntl)
+export default withBundleAnalyzer(nextConfig)
