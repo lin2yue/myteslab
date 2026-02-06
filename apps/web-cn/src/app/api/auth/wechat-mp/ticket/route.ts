@@ -28,11 +28,11 @@ export async function POST() {
             sceneId,
             qrUrl,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[wechat-mp] Failed to generate ticket', error);
         return NextResponse.json({
             success: false,
-            error: 'Failed to generate QR code',
+            error: error.message || 'Failed to generate QR code',
         }, { status: 500 });
     }
 }
