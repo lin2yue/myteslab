@@ -5,6 +5,11 @@ const isAnalyze = process.env.ANALYZE === 'true'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  env: {
+    // 确保这些环境变量在构建时被注入
+    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+    NEXT_PUBLIC_BAIDU_ANALYTICS_ID: process.env.NEXT_PUBLIC_BAIDU_ANALYTICS_ID,
+  },
   images: {
     unoptimized: true,
     formats: ['image/avif', 'image/webp'],
