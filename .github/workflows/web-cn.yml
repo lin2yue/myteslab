@@ -86,6 +86,8 @@ jobs:
               --name ${{ steps.set_env.outputs.CONTAINER_NAME }} \
               --restart always \
               --network host \
+              --dns 223.5.5.5 \
+              --dns 8.8.8.8 \
               -e PORT=${{ steps.set_env.outputs.HOST_PORT }} \
               -e HOSTNAME="0.0.0.0" \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
