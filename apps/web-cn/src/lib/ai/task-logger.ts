@@ -22,14 +22,19 @@ export async function logTaskStep(
 
     try {
         console.log(`[TASK-LOG] 📝 Task ${taskId}: ${step}${status ? ` -> ${status}` : ''}`);
+
+        // Build step object
+        const stepObj: any = { step, ts: new Date().toISOString() };
+        if (reason) stepObj.reason = reason;
+
         await dbQuery(
             `UPDATE generation_tasks
-             SET steps = COALESCE(steps, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('step', $2, 'ts', NOW(), 'reason', $3)),
-                 status = COALESCE($4, status),
+             SET steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
+                 status = COALESCE($3, status),
                  updated_at = NOW(),
-                 error_message = CASE WHEN $3 IS NOT NULL THEN COALESCE(error_message, $3) ELSE error_message END
+                 error_message = CASE WHEN $4 IS NOT NULL THEN COALESCE(error_message, $4) ELSE error_message END
              WHERE id = $1`,
-            [taskId, step, reason || null, status || null]
+            [taskId, JSON.stringify([stepObj]), status || null, reason || null]
         );
     } catch (err) {
         console.error(`[TASK-LOG] ❌ Global error logging step ${step}:`, err);
