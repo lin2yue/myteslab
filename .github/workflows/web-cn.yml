@@ -96,8 +96,10 @@ jobs:
               -e DM_FROM_ALIAS="Tewan Club" \
               -e NEXT_PUBLIC_APP_URL="${{ steps.set_env.outputs.APP_URL }}" \
               -e NEXT_PUBLIC_CDN_URL="https://cdn.tewan.club" \
-              -e NEXT_PUBLIC_GA_ID="G-PS401WFMVN" \
-              -e NEXT_PUBLIC_BAIDU_ANALYTICS_ID="84a65c9a2348ff056d9f890f8e82d610" \
+              -e NEXT_PUBLIC_GA_ID="${{ secrets.NEXT_PUBLIC_GA_ID }}" \
+              -e NEXT_PUBLIC_BAIDU_ANALYTICS_ID="${{ secrets.NEXT_PUBLIC_BAIDU_ANALYTICS_ID }}" \
+              -e BAIDU_PUSH_TOKEN="${{ secrets.BAIDU_PUSH_TOKEN }}" \
+              -e BAIDU_PUSH_SITE="tewan.club" \
               -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
               -e GEMINI_API_BASE_URL="${{ secrets.GEMINI_API_BASE_URL }}" \
               -e WECHAT_MP_APP_ID="${{ secrets.WECHAT_MP_APP_ID }}" \
