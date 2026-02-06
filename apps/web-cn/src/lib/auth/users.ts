@@ -126,15 +126,15 @@ export async function linkWechatMPIdentity(userId: string, openIdMp: string, uni
         // Update existing record
         await dbQuery(
             `UPDATE user_identities 
-             SET openid_mp = $1, union_id = COALESCE(union_id, $2)
+             SET openid_mp = $1, provider_user_id = COALESCE(provider_user_id, $1), union_id = COALESCE(union_id, $2)
              WHERE user_id = $3 AND provider = 'wechat'`,
             [openIdMp, unionId || null, userId]
         );
     } else {
         // Insert new record
         await dbQuery(
-            `INSERT INTO user_identities (user_id, provider, openid_mp, union_id)
-             VALUES ($1, 'wechat', $2, $3)
+            `INSERT INTO user_identities (user_id, provider, provider_user_id, openid_mp, union_id)
+             VALUES ($1, 'wechat', $2, $2, $3)
              ON CONFLICT (provider, provider_user_id) DO NOTHING`,
             [userId, openIdMp, unionId || null]
         );

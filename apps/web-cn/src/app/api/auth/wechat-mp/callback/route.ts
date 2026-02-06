@@ -105,14 +105,24 @@ export async function POST(request: Request) {
                 )
             ]);
 
-            // 4. 返回自动回复消息 (最简格式：无换行，无链接)
-            const replyXml = `<xml><ToUserName><![CDATA[${openid}]]></ToUserName><FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName><CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[登录成功]]></Content></xml>`;
+            // 4. 返回自动回复消息 (严格遵循官方文档格式，带 XML 声明)
+            const syncUrl = getMPOAuthUrl(`https://tewan.club/api/auth/wechat-mp/sync`, user.id);
+            const replyContent = `登录成功！\n\n<a href="${syncUrl}">[点我同步昵称头像]</a>`;
+            const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<ToUserName><![CDATA[${openid}]]></ToUserName>
+<FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName>
+<CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+<MsgType><![CDATA[text]]></MsgType>
+<Content><![CDATA[${replyContent}]]></Content>
+</xml>`;
 
-            await logDebug('wechat_reply', 'Sending SIMPLE XML reply', { replyXml });
+            await logDebug('wechat_reply', 'Sending formal XML reply', { replyXml });
 
-            return new Response(replyXml, {
+            return new NextResponse(replyXml, {
                 headers: {
-                    'Content-Type': 'text/xml; charset=utf-8'
+                    'Content-Type': 'text/xml',
+                    'Cache-Control': 'no-cache'
                 }
             });
         }
