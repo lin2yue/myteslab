@@ -4,6 +4,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
+import { BaiduAnalytics } from '@/components/BaiduAnalytics';
+import { BaiduPush } from '@/components/BaiduPush';
 import { AlertProvider } from '@/components/alert/AlertProvider';
 import { CreditsProvider } from '@/components/credits/CreditsProvider';
 import Navbar from '@/components/layout/Navbar';
@@ -84,8 +86,31 @@ export default function RootLayout({
     return (
         <html lang="zh" suppressHydrationWarning>
             <head>
+                {/* DNS 预解析 - CDN 和分析服务 */}
                 <link rel="dns-prefetch" href="https://cdn.tewan.club" />
+                <link rel="dns-prefetch" href="https://hm.baidu.com" />
+                <link rel="dns-prefetch" href="https://zz.bdstatic.com" />
                 <link rel="preconnect" href="https://cdn.tewan.club" crossOrigin="anonymous" />
+
+                {/* 移动端优化 */}
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+                <meta name="format-detection" content="telephone=no, email=no" />
+                <meta name="applicable-device" content="pc,mobile" />
+
+                {/* 百度禁止转码 - 重要! */}
+                <meta httpEquiv="Cache-Control" content="no-transform" />
+                <meta httpEquiv="Cache-Control" content="no-siteapp" />
+
+                {/* 移动端适配声明 */}
+                <meta name="mobile-agent" content="format=html5; url=https://tewan.club" />
+
+                {/* iOS Safari */}
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+                {/* 主题色 */}
+                <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+                <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
                 <Script
                     id="theme-init"
                     strategy="beforeInteractive"
@@ -112,6 +137,8 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 flex flex-col`}
             >
                 <GoogleAnalytics />
+                <BaiduAnalytics />
+                <BaiduPush />
                 <Analytics />
                 <SpeedInsights />
                 <AlertProvider>

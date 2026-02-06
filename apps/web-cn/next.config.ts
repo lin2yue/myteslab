@@ -64,11 +64,11 @@ const nextConfig: NextConfig = {
   async headers() {
     const cspHeader = `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com;
+      script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://hm.baidu.com https://zz.bdstatic.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src 'self' data: blob: https://cdn.tewan.club https://www.googletagmanager.com https://www.google-analytics.com https://www.tewan.club https://tewan.club;
       font-src 'self' https://fonts.gstatic.com;
-      connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://vitals.vercel-insights.com https://*.paddle.com;
+      connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://hm.baidu.com https://vitals.vercel-insights.com https://*.paddle.com;
       frame-ancestors 'self';
       upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim();
@@ -82,6 +82,10 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Content-Security-Policy-Report-Only', value: cspHeader },
+          // 移动端优化响应头
+          { key: 'Cache-Control', value: 'no-transform' }, // 百度禁止转码
+          { key: 'MobileOptimized', value: 'width' },
+          { key: 'HandheldFriendly', value: 'true' },
         ],
       },
       {
