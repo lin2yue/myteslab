@@ -130,7 +130,7 @@ export async function generateWrapTexture(
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
 
-        console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
+        console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${currentGeminiApiUrl}`);
 
         const parts: any[] = [
             { text: textPrompt }
