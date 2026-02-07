@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   credits_spent INTEGER DEFAULT 10,
   error_message TEXT,
   wrap_id UUID REFERENCES wraps(id) ON DELETE SET NULL,
-  idempotency_key UUID UNIQUE,
+  idempotency_key TEXT UNIQUE,
   steps JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

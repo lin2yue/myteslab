@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   credits_spent INTEGER DEFAULT 10,
   error_message TEXT,
   wrap_id UUID REFERENCES wraps(id) ON DELETE SET NULL,
-  idempotency_key UUID UNIQUE,              -- 防止重复提交的唯一键
+  idempotency_key TEXT UNIQUE,              -- 防止重复提交的唯一键
   steps JSONB DEFAULT '[]'::jsonb,          -- 颗粒度详细步骤追踪
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -221,7 +221,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION deduct_credits_for_generation(
   p_prompt TEXT,
   p_amount INTEGER DEFAULT 10,
-  p_idempotency_key UUID DEFAULT NULL
+  p_idempotency_key TEXT DEFAULT NULL
 )
 RETURNS TABLE (
   task_id UUID,
