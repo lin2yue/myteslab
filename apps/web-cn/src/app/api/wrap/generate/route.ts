@@ -107,7 +107,7 @@ async function deductCreditsForGeneration(params: {
 
         if (idempotencyKey) {
             const { rows: existing } = await client.query(
-                `SELECT id FROM generation_tasks WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1`,
+                `SELECT id, status FROM generation_tasks WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1`,
                 [idempotencyKey, userId]
             );
             if (existing[0]) {
@@ -119,6 +119,7 @@ async function deductCreditsForGeneration(params: {
                 return {
                     success: true,
                     taskId: existing[0].id as string,
+                    status: existing[0].status,
                     remainingBalance: balanceRows[0]?.balance ?? 0,
                     errorMsg: 'Idempotent hit'
                 };
@@ -326,37 +327,59 @@ export async function POST(request: NextRequest) {
 
         taskId = deductResultRaw.taskId;
 
-        // 如果是幂等命中，且任务已经完成，直接返回结果 (理想情况下这里应该查询任务结果)
+        // 3.1 幂等碰撞处理 (Idempotency Handling)
         if (deductResultRaw.errorMsg === 'Idempotent hit') {
-            console.log(`[AI-GEN] ♻️ Idempotency hit: ${taskId}`);
-            const { rows } = await dbQuery(
-                `SELECT id, slug, texture_url, preview_url
-                 FROM wraps
-                 WHERE generation_task_id = $1 AND user_id = $2
-                 LIMIT 1`,
-                [taskId, user.id]
-            );
-            const existingWrap = rows[0];
-            if (existingWrap?.texture_url) {
+            const taskStatus = (deductResultRaw as any).status;
+            console.log(`[AI-GEN] ♻️ Idempotency hit: ${taskId}, Existing Status: ${taskStatus}`);
+
+            // 如果已成功，尝试返回作品
+            if (taskStatus === 'completed') {
+                const { rows } = await dbQuery(
+                    `SELECT id, slug, texture_url, preview_url
+                     FROM wraps
+                     WHERE generation_task_id = $1 AND user_id = $2
+                     LIMIT 1`,
+                    [taskId, user.id]
+                );
+                const existingWrap = rows[0];
+                if (existingWrap?.texture_url) {
+                    return NextResponse.json({
+                        success: true,
+                        taskId,
+                        wrapId: existingWrap.id,
+                        image: {
+                            dataUrl: existingWrap.preview_url || existingWrap.texture_url,
+                            mimeType: 'image/png',
+                            savedUrl: existingWrap.texture_url
+                        },
+                        remainingBalance: deductResultRaw?.remainingBalance ?? 0
+                    });
+                }
+            }
+
+            // 如果正在处理中，告诉前端继续等待
+            if (taskStatus === 'pending' || taskStatus === 'processing') {
                 return NextResponse.json({
                     success: true,
                     taskId,
-                    wrapId: existingWrap.id,
-                    image: {
-                        dataUrl: existingWrap.preview_url || existingWrap.texture_url,
-                        mimeType: 'image/png',
-                        savedUrl: existingWrap.texture_url
-                    },
+                    status: 'pending',
                     remainingBalance: deductResultRaw?.remainingBalance ?? 0
-                });
+                }, { status: 202 });
             }
 
-            return NextResponse.json({
-                success: true,
-                taskId,
-                status: 'pending',
-                remainingBalance: deductResultRaw?.remainingBalance ?? 0
-            }, { status: 202 });
+            // 如果之前失败了，且在同一个幂等时窗内，返回之前的错误
+            if (taskStatus === 'failed' || taskStatus === 'failed_refunded') {
+                const { rows: taskRows } = await dbQuery(
+                    `SELECT error_message FROM generation_tasks WHERE id = $1 LIMIT 1`,
+                    [taskId]
+                );
+                return NextResponse.json({
+                    success: false,
+                    error: taskRows[0]?.error_message || 'Task failed previously',
+                    taskId,
+                    status: 'failed'
+                }, { status: 200 }); // 返回 200 但 success: false，由前端处理
+            }
         }
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);

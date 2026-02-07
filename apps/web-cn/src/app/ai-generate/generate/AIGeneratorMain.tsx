@@ -108,6 +108,7 @@ export default function AIGeneratorMain({
     const pollAttemptsRef = useRef(0)
     const pollStartRef = useRef<number | null>(null)
     const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const sessionGuidRef = useRef<string>(Math.random().toString(36).substring(2, 15))
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -306,18 +307,25 @@ export default function AIGeneratorMain({
 
         setIsGenerating(true)
         try {
+            // 生成幂等键 (5分钟时窗 + Prompt + 模型 + 会话标识)
+            const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000));
+            const idempotencyRaw = `${sessionGuidRef.current}-${selectedModel}-${prompt.trim()}-${timeBucket}`;
+            // 简单的客户端哈希或直接编码
+            const idempotencyKey = btoa(unescape(encodeURIComponent(idempotencyRaw))).substring(0, 64);
+
             // Check payload size estimate
             const payload = JSON.stringify({
                 modelSlug: selectedModel,
                 prompt: prompt.trim(),
-                referenceImages: referenceImages
+                referenceImages: referenceImages,
+                idempotencyKey
             });
 
             if (payload.length > 4 * 1024 * 1024) { // 4MB safety limit
                 throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`);
             }
 
-            console.log(`[AI-GEN] Requesting with payload size: ${(payload.length / 1024).toFixed(2)} KB`);
+            console.log(`[AI-GEN] Requesting with idempotencyKey: ${idempotencyKey}, size: ${(payload.length / 1024).toFixed(2)} KB`);
 
             const res = await fetch('/api/wrap/generate', {
                 method: 'POST',
