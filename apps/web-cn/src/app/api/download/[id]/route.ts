@@ -40,7 +40,18 @@ export async function GET(
             url: wrap.texture_url,
             slug: wrap.slug || `wrap-${id.substring(0, 8)}`
         };
-        const fileNamePrefix = wrapData.slug;
+
+        // Align with Tesla requirements: max 30 characters, alphanumeric, _, -, space.
+        // ".png" is 4 characters, so prefix must be <= 26 characters.
+        const sanitizeTeslaFilename = (input: string) => {
+            return input
+                .replace(/[^a-zA-Z0-9_\-\s]/g, '') // Only alphanumeric, _, -, space
+                .substring(0, 26)                // Max 26 chars to allow .png suffix
+                .replace(/[_\-\s]+$/, '')        // Remove trailing special chars
+                .trim();
+        };
+
+        const fileNamePrefix = sanitizeTeslaFilename(wrapData.slug) || 'wrap';
         const downloadFilename = `${fileNamePrefix}.png`;
 
         if (!wrapData || !wrapData.url) {
@@ -142,3 +153,4 @@ async function compressImage(input: Buffer): Promise<Buffer> {
         })
         .toBuffer();
 }
+
