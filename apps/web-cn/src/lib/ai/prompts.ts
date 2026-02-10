@@ -22,9 +22,11 @@ Create finished wrap artwork for a real vehicle using the provided UV mask.
 ABSOLUTE MASK RULES (NON-NEGOTIABLE)
 ────────────────────────────────
 WHITE = paintable surface, BLACK = void.
+Light gray (e.g., RGB ~239) is also paintable.
 Only draw inside WHITE. Keep BLACK pure #000000.
 No bleed, no shape changes, crisp edges aligned to the mask.
 Any content outside WHITE = failure.
+The FIRST provided image is the UV mask. Any additional images are references.
 `.trim();
 
 const DESIGN_MODE_PROMPT = (isPattern: boolean) => `
@@ -59,12 +61,13 @@ REFERENCES
 If reference images are provided, use them for style, color palette, mood, or thematic inspiration.
 `.trim();
 
-const OUTPUT_REQUIREMENTS = `
+const OUTPUT_REQUIREMENTS = (width: number, height: number) => `
 ────────────────────────────────
 OUTPUT
 ────────────────────────────────
 Single image at requested resolution. Background outside mask = #000000.
 Orientation: FRONT faces BOTTOM, REAR faces TOP.
+Output exactly ${width}x${height} pixels and respect the UV mask boundaries.
 `.trim();
 
 const REAR_COVERAGE_V2 = `
@@ -83,10 +86,13 @@ export function buildWrapPrompt(params: {
   userPrompt: string;
   modelName: string;
   version?: string;
+  outputSize?: { width: number; height: number };
 }): string {
-  const { userPrompt, modelName, version } = params;
+  const { userPrompt, modelName, version, outputSize } = params;
   const promptVersion = normalizeVersion(version);
   const isPattern = isPatternPrompt(userPrompt);
+  const width = outputSize?.width ?? 1024;
+  const height = outputSize?.height ?? 1024;
 
   const sections = [
     BASE_SYSTEM_PROMPT,
@@ -95,10 +101,9 @@ export function buildWrapPrompt(params: {
     promptVersion === 'v2' ? REAR_COVERAGE_V2 : '',
     STYLE_QUALITY,
     REFERENCES,
-    OUTPUT_REQUIREMENTS,
+    OUTPUT_REQUIREMENTS(width, height),
     `Model: ${modelName}`,
     `User Request: "${userPrompt}"`,
-    `Output exactly 1024x768 pixels and respect the UV mask boundaries.`
   ].filter(Boolean);
 
   return sections.join('\n\n').trim();

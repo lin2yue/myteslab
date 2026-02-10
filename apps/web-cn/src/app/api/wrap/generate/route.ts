@@ -301,6 +301,12 @@ async function processGenerationTask(params: {
             console.error('[AI-GEN] ❌ Mask processing failed:', error);
         }
 
+        if (!maskImageBase64) {
+            await markTaskFailed('Mask fetch failed');
+            await refundTaskCredits(taskId, 'Mask fetch failed');
+            return;
+        }
+
         // 3. 参考图上传
         const savedReferenceUrls: string[] = [];
         if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
@@ -628,7 +634,7 @@ export async function POST(request: NextRequest) {
         void processGenerationTask({
             taskId,
             userId: user.id,
-            modelSlug,
+            modelSlug: currentModelSlug,
             modelName,
             prompt,
             referenceImages,

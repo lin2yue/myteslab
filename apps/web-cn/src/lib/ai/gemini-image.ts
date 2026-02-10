@@ -109,7 +109,8 @@ export async function generateWrapTexture(
         textPrompt = buildWrapPrompt({
             userPrompt: prompt,
             modelName,
-            version: promptVersion
+            version: promptVersion,
+            outputSize: { width: maskDimensions.width, height: maskDimensions.height }
         });
 
         const MODEL = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
