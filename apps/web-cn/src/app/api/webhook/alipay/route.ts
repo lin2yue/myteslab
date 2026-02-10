@@ -69,8 +69,9 @@ export async function POST(request: Request) {
             }
 
             // Check if this transaction has already been processed (Idempotency)
+            // Note: transaction_id is stored in metadata in credit_ledger
             const { rows: existingLogs } = await dbQuery(
-                'SELECT * FROM credit_logs WHERE transaction_id = $1',
+                `SELECT * FROM credit_ledger WHERE metadata->>'transaction_id' = $1`,
                 [tradeNo]
             );
 
