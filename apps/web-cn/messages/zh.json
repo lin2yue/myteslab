@@ -254,7 +254,7 @@
         "tiers": {
             "starter": "轻量体验包",
             "explorer": "进阶创作包",
-            "advanced": "全能进阶包",
+            "advanced": "量型优选包",
             "collector": "终极收藏包"
         },
         "descriptions": {
@@ -272,17 +272,17 @@
             "explorer": [
                 "{count} 次 AI 生成",
                 "包含高清贴图下载",
-                "更优的单次生成成本"
+                "单次成本更优"
             ],
             "advanced": [
                 "{count} 次 AI 生成",
                 "包含高清贴图下载",
-                "大容量点数，无忧创作"
+                "无忧创作大容量"
             ],
             "collector": [
                 "{count} 次 AI 生成",
                 "包含高清贴图下载",
-                "最低的单次生成成本"
+                "最低单次生成成本"
             ]
         },
         "choose_plan": "立即购买",
