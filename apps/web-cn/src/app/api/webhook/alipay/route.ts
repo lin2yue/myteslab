@@ -89,13 +89,20 @@ export async function POST(request: Request) {
 
             console.log(`[Alipay Webhook] Processing payment: amount=${totalAmount}, matchedCredits=${creditsToAdd}`);
 
+            // --- DEBUG: Log matching result ---
+            await dbQuery(
+                `UPDATE webhook_events SET error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
+                [`Matching: paid=${paidAmount}, matched=${matchedTier?.id}, credits=${creditsToAdd}`, JSON.stringify(params)]
+            );
+            // ----------------------------------
+
             if (creditsToAdd === 0) {
                 console.error(`[Alipay Webhook] Could not match price ${totalAmount} to any tier.`);
-                // We return success to Alipay to stop retries, but log the error for manual intervention
-                // return new Response('success'); 
-                // For now, let's return fail so we can retry if it's a transient issue, 
-                // but if it's a logic error, retrying won't help. 
-                // Let's actually fail so we see it in logs if we have retry logic.
+                // --- DEBUG: Log zero credits ---
+                await dbQuery(
+                    `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
+                    [`No tier matched for amount ${totalAmount}`, JSON.stringify(params)]
+                );
                 return new Response('fail', { status: 400 });
             }
 
@@ -133,8 +140,19 @@ export async function POST(request: Request) {
                 );
 
                 console.log(`[Alipay Webhook] Success: Added ${creditsToAdd} credits to user ${userId} and logged transaction ${tradeNo}`);
-            } catch (dbError) {
+
+                // --- DEBUG: Log success ---
+                await dbQuery(
+                    `UPDATE webhook_events SET status = 'success', error = 'Credits Added' WHERE provider = 'alipay' AND payload::text = $1::text`,
+                    [JSON.stringify(params)]
+                );
+            } catch (dbError: any) {
                 console.error('[Alipay Webhook] Database update failed:', dbError);
+                // --- DEBUG: Log DB failure ---
+                await dbQuery(
+                    `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
+                    [`DB Error: ${dbError.message}`, JSON.stringify(params)]
+                );
                 return new Response('fail', { status: 500 });
             }
         }
@@ -142,6 +160,19 @@ export async function POST(request: Request) {
         return new Response('success');
     } catch (error: any) {
         console.error('[Alipay Webhook] Error:', error);
+        // --- DEBUG: Log top-level error ---
+        try {
+            const formData = await request.clone().formData();
+            const params: Record<string, string> = {};
+            formData.forEach((value, key) => { params[key] = value.toString(); });
+
+            await dbQuery(
+                `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
+                [`Top-level Error: ${error.message}`, JSON.stringify(params)]
+            );
+        } catch (e) {
+            console.error('Failed to log top-level error:', e);
+        }
         return new Response('fail', { status: 500 });
     }
 }
