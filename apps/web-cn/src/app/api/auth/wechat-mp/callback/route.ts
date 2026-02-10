@@ -6,17 +6,6 @@ import { findUserByWechatOpenId } from '@/lib/auth/users';
 
 const parser = new XMLParser();
 
-async function logDebug(category: string, message: string, data: any = null) {
-    try {
-        await dbQuery(
-            'INSERT INTO debug_logs (category, message, data) VALUES ($1, $2, $3)',
-            [category, message, data ? JSON.stringify(data) : null]
-        );
-    } catch (e) {
-        console.error('Failed to log debug info', e);
-    }
-}
-
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const signature = searchParams.get('signature');
@@ -50,7 +39,6 @@ export async function POST(request: Request) {
 
         // 1. Check for encrypted messages (just return success for now to avoid errors)
         if (xml.includes('<Encrypt>')) {
-            await logDebug('wechat_callback', 'RECEIVED ENCRYPTED MESSAGE (Safe Mode)', { rawXml: xml });
             return new Response('success');
         }
 
@@ -60,12 +48,6 @@ export async function POST(request: Request) {
         if (!msg) {
             return new Response('success');
         }
-
-        await logDebug('wechat_callback', `Received ${msg.Event || msg.MsgType}`, {
-            from: msg.FromUserName,
-            event: msg.Event,
-            eventKey: msg.EventKey
-        });
 
         // Handle 'subscribe' (new follow) and 'SCAN' (already followed)
         if (msg.MsgType === 'event' && (msg.Event === 'subscribe' || msg.Event === 'SCAN')) {
@@ -84,17 +66,12 @@ export async function POST(request: Request) {
 
                 if (existingUser) {
                     // --- Scenario A: Existing User (Auto Login) ---
-                    await Promise.all([
-                        // Update session to COMPLETED immediately
-                        dbQuery(
-                            `UPDATE wechat_qr_sessions 
-                             SET status = 'COMPLETED', user_id = $1 
-                             WHERE scene_id = $2`,
-                            [existingUser.id, sceneId]
-                        ),
-                        // Log the event
-                        logDebug('wechat_login_smart', 'Existing user auto-login', { userId: existingUser.id, openid })
-                    ]);
+                    await dbQuery(
+                        `UPDATE wechat_qr_sessions 
+                         SET status = 'COMPLETED', user_id = $1 
+                         WHERE scene_id = $2`,
+                        [existingUser.id, sceneId]
+                    );
 
                     const replyContent = `欢迎回来，${existingUser.display_name || '旧友'}！\n\n✅ 网页端已自动登录`;
 
@@ -126,8 +103,6 @@ export async function POST(request: Request) {
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
 
-                    await logDebug('wechat_reply', 'Sending New User Registration Link', { sceneId, openid });
-
                     return new NextResponse(replyXml, {
                         headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
                     });
@@ -137,7 +112,6 @@ export async function POST(request: Request) {
 
         return new Response('success');
     } catch (error: any) {
-        await logDebug('wechat_callback_error', error.message, { stack: error.stack });
         return new Response('success');
     }
 }

@@ -277,7 +277,6 @@ async function processGenerationTask(params: {
                 console.log(`[AI-GEN] Mask fetched, size: ${maskBuffer.length} bytes`);
                 maskImageBase64 = maskBuffer.toString('base64');
                 if (process.env.NODE_ENV === 'development') {
-                    console.log(`[AI-DEBUG] Mask processed.`);
                 }
             } else {
                 console.error(`[AI-GEN] Failed to fetch mask from: ${maskUrl}, Status: ${maskResponse.status}`);

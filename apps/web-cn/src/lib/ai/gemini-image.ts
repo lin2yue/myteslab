@@ -220,7 +220,6 @@ export async function generateWrapTexture(
     } catch (error) {
         console.error('Error calling Gemini API:', error);
         if (error instanceof Error && (error as any).cause) {
-            console.error('[AI-DEBUG] Error Cause:', (error as any).cause);
         }
         return {
             success: false,
