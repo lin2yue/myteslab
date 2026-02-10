@@ -174,6 +174,35 @@ export default function AdminTasksPage() {
         }
     };
 
+    const getGenerationDuration = (task: GenerationTask): string | null => {
+        // 只有已完成或失败的任务才计算耗时
+        if (task.status !== 'completed' && task.status !== 'failed' && task.status !== 'failed_refunded') {
+            return null;
+        }
+
+        // 从 steps 中找到最后一步的时间戳
+        if (!Array.isArray(task.steps) || task.steps.length === 0) {
+            return null;
+        }
+
+        const lastStep = task.steps[task.steps.length - 1];
+        const startTime = new Date(task.created_at).getTime();
+        const endTime = new Date(lastStep.ts).getTime();
+        const durationMs = endTime - startTime;
+
+        // 转换为秒
+        const durationSec = Math.round(durationMs / 1000);
+
+        if (durationSec < 60) {
+            return `${durationSec}s`;
+        } else {
+            const minutes = Math.floor(durationSec / 60);
+            const seconds = durationSec % 60;
+            return `${minutes}m ${seconds}s`;
+        }
+    };
+
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             {/* Header */}
@@ -272,6 +301,18 @@ export default function AdminTasksPage() {
                                                 <span className="text-[10px] text-gray-400 uppercase font-black">
                                                     {format(new Date(task.created_at), 'MMM dd')}
                                                 </span>
+                                                {(() => {
+                                                    const duration = getGenerationDuration(task);
+                                                    if (duration) {
+                                                        return (
+                                                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                                                                <Clock size={10} />
+                                                                {duration}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
