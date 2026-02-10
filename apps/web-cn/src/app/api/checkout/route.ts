@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { getSessionUser } from '@/lib/auth/session';
 import { getAlipaySdk } from '@/lib/alipay';
+import { dbQuery } from '@/lib/db';
 import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
@@ -60,6 +61,18 @@ export async function POST(request: Request) {
         });
 
         // result is the URL for GET method
+
+        // --- DEBUG: Log checkout initiation ---
+        try {
+            await dbQuery(
+                `INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`,
+                ['checkout', JSON.stringify({ userId: user.id, tierId: tier.id, amount: tier.price, outTradeNo }), 'initiated']
+            );
+        } catch (e) {
+            console.error('Failed to log checkout initiation:', e);
+        }
+        // --------------------------------------
+
         return NextResponse.json({ url: result });
     } catch (error: any) {
         console.error('Alipay checkout error:', error);
