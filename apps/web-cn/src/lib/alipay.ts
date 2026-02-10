@@ -8,8 +8,8 @@ export function getAlipaySdk() {
     }
 
     const appId = process.env.ALIPAY_APP_ID;
-    const privateKey = process.env.ALIPAY_PRIVATE_KEY;
-    const alipayPublicKey = process.env.ALIPAY_PUBLIC_KEY;
+    const privateKey = process.env.ALIPAY_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const alipayPublicKey = process.env.ALIPAY_PUBLIC_KEY?.replace(/\\n/g, '\n');
     const gateway = process.env.ALIPAY_GATEWAY || 'https://openapi.alipay.com/gateway.do';
 
     if (!appId || !privateKey || !alipayPublicKey) {
