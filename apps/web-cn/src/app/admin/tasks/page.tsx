@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import {
     Clock,
     CheckCircle2,

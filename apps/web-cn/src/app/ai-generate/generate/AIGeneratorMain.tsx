@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '@/lib/i18n'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
-import { Link } from '@/i18n/routing'
+import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import Image from 'next/image'
 import StickerEditor from '@/components/sticker/StickerEditor'
@@ -12,7 +12,7 @@ import {
     Sparkles, X, Plus, Palette, ArrowRight, ZoomIn
 } from 'lucide-react'
 import PricingModal from '@/components/pricing/PricingModal'
-import { useRouter } from '@/i18n/routing'
+import { useRouter } from 'next/navigation'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import PublishModal from '@/components/publish/PublishModal'
 import { useAlert } from '@/components/alert/AlertProvider'
