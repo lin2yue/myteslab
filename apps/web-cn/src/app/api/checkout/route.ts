@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
-import alipaySdk from '@/lib/alipay';
+import { getAlipaySdk } from '@/lib/alipay';
 import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
     try {
+        const alipaySdk = getAlipaySdk();
         const user = await getSessionUser();
 
         if (!user) {

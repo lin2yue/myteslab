@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import alipaySdk from '@/lib/alipay';
+import { getAlipaySdk } from '@/lib/alipay';
 import { dbQuery } from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
+        const alipaySdk = getAlipaySdk();
         const formData = await request.formData();
         const params: Record<string, string> = {};
         formData.forEach((value, key) => {
