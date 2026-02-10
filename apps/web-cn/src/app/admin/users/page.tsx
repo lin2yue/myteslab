@@ -36,6 +36,8 @@ interface UserProfile {
     user_credits?: {
         balance: number;
     };
+    download_count: number;
+    total_top_up: number;
 }
 
 export default function AdminUsersPage() {
@@ -186,6 +188,8 @@ export default function AdminUsersPage() {
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">User Details</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Role</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Balance</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Top Up</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Downloads</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Joined</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                             </tr>
@@ -253,6 +257,26 @@ export default function AdminUsersPage() {
                                                 {user.user_credits?.balance ?? 0}
                                             </span>
                                         )}
+                                    </td>
+
+                                    {/* Top Up */}
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={cn(
+                                            "text-sm font-mono font-medium",
+                                            user.total_top_up > 0 ? "text-purple-600 dark:text-purple-400" : "text-gray-400"
+                                        )}>
+                                            {user.total_top_up > 0 ? `+${user.total_top_up}` : '-'}
+                                        </span>
+                                    </td>
+
+                                    {/* Downloads */}
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={cn(
+                                            "text-sm font-mono font-medium",
+                                            user.download_count > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
+                                        )}>
+                                            {user.download_count > 0 ? user.download_count : '-'}
+                                        </span>
                                     </td>
 
                                     {/* Joined */}

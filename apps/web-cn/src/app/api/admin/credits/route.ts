@@ -10,18 +10,27 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Number(searchParams.get('limit') || 100), 200);
+    const type = searchParams.get('type');
 
-    const { rows } = await dbQuery(
-        `SELECT
+    let query = `
+        SELECT
             l.*,
             p.display_name AS profile_display_name,
             p.email AS profile_email
          FROM credit_ledger l
          LEFT JOIN profiles p ON p.id = l.user_id
-         ORDER BY l.created_at DESC
-         LIMIT $1`,
-        [limit]
-    );
+    `;
+
+    const queryParams: any[] = [limit];
+
+    if (type && type !== 'all') {
+        query += ` WHERE l.type = $2`;
+        queryParams.push(type);
+    }
+
+    query += ` ORDER BY l.created_at DESC LIMIT $1`;
+
+    const { rows } = await dbQuery(query, queryParams);
 
     const logs = rows.map((row: any) => ({
         ...row,

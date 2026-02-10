@@ -368,7 +368,11 @@
         "transaction": "交易类型",
         "lifetime_generated": "累计生成任务",
         "total_refunded": "累计退款积分",
-        "total_rewarded": "累计赠送积分"
+        "total_rewarded": "累计赠送积分",
+        "filter_all": "全部",
+        "filter_generation": "消耗",
+        "filter_top_up": "支付宝充值",
+        "filter_adjustment": "手动充值"
     },
     "NotFound": {
         "title": "页面未找到",
