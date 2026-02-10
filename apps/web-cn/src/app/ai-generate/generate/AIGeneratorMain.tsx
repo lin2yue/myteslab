@@ -287,6 +287,8 @@ export default function AIGeneratorMain({
     }, [pendingTaskId, fetchHistory])
 
     // 生成逻辑
+    const isBusy = isGenerating || !!pendingTaskId
+
     const handleGenerate = async () => {
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
@@ -296,7 +298,7 @@ export default function AIGeneratorMain({
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }
-        if (!prompt.trim() || isGenerating) return
+        if (!prompt.trim() || isBusy) return
 
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
         const currentBalance = balance ?? 0
@@ -976,13 +978,13 @@ export default function AIGeneratorMain({
 
                                     <button
                                         onClick={handleGenerate}
-                                        disabled={isGenerating || isUploadingRefs || !prompt.trim()}
-                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all ${isGenerating
+                                        disabled={isBusy || isUploadingRefs || !prompt.trim()}
+                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all ${isBusy
                                             ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed shadow-none'
                                             : 'bg-black text-white dark:bg-white dark:text-black shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]'
                                             }`}
                                     >
-                                        {isGenerating ? (
+                                        {isBusy ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                 {tGen('generating')}
