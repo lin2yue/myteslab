@@ -7,6 +7,65 @@ if (typeof dns.setDefaultResultOrder === 'function') {
     dns.setDefaultResultOrder('ipv4first');
 }
 
+function readEnvInt(name: string, fallback: number): number {
+    const raw = (process.env[name] || '').trim();
+    if (!raw) return fallback;
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number): boolean {
+    return status === 408 || status === 409 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function isRetryableError(error: any): boolean {
+    if (!error) return false;
+    if (error.name === 'AbortError') return true;
+    if (typeof error.message === 'string' && error.message.includes('fetch failed')) return true;
+    const cause: any = (error as any).cause;
+    const code = cause?.code || error.code;
+    return ['ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED'].includes(code);
+}
+
+async function fetchWithRetry(url: string, options: RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string; }) {
+    const { timeoutMs, maxRetries, retryBaseMs, retryMaxMs, logPrefix, ...rest } = options;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            if (attempt > 0 && logPrefix) {
+                console.warn(`${logPrefix} Retry attempt ${attempt}/${maxRetries}`);
+            }
+            const response = await fetch(url, { ...rest, signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok && attempt < maxRetries && isRetryableStatus(response.status)) {
+                await response.text().catch(() => undefined);
+                const delay = Math.min(retryMaxMs, Math.round(retryBaseMs * Math.pow(1.6, attempt)));
+                await sleep(delay);
+                continue;
+            }
+            return response;
+        } catch (error: any) {
+            clearTimeout(timeoutId);
+            const retryable = isRetryableError(error);
+            if (retryable && attempt < maxRetries) {
+                const delay = Math.min(retryMaxMs, Math.round(retryBaseMs * Math.pow(1.6, attempt)));
+                await sleep(delay);
+                continue;
+            }
+            if (error?.name === 'AbortError') {
+                throw new Error(`AI 生成超时 (超过 ${Math.round(timeoutMs / 1000)}s)`);
+            }
+            throw error;
+        }
+    }
+    throw new Error('Retry attempts exhausted');
+}
+
 /**
  * Build editing prompt for Image Editing mode
  * Uses professional UV layout and inpainting terminology for better mask adherence
@@ -163,11 +222,13 @@ export async function generateWrapTexture(
             });
         }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout per user request
+        const imageTimeoutMs = readEnvInt('GEMINI_IMAGE_TIMEOUT_MS', 60000);
+        const imageMaxRetries = readEnvInt('GEMINI_IMAGE_RETRIES', 2);
+        const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
+        const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
 
         try {
-            const response = await fetch(`${currentGeminiApiUrl}?key=${apiKey}`, {
+            const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -182,10 +243,12 @@ export async function generateWrapTexture(
                         }
                     },
                 }),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
+                timeoutMs: imageTimeoutMs,
+                maxRetries: imageMaxRetries,
+                retryBaseMs,
+                retryMaxMs,
+                logPrefix: '[AI-GEN]'
+            } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -223,10 +286,6 @@ export async function generateWrapTexture(
             return { success: false, error: 'No image found in response' };
 
         } catch (error: any) {
-            clearTimeout(timeoutId);
-            if (error.name === 'AbortError') {
-                throw new Error('AI 生成超时 (超过 60s)');
-            }
             throw error;
         }
 
@@ -311,11 +370,13 @@ Keep titles under 15 characters and descriptions under 50 characters.`;
 
         console.log(`[AI-GEN] Requesting Gemini Metadata: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for metadata
+        const textTimeoutMs = readEnvInt('GEMINI_TEXT_TIMEOUT_MS', 60000);
+        const textMaxRetries = readEnvInt('GEMINI_TEXT_RETRIES', 1);
+        const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
+        const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
 
         try {
-            const response = await fetch(url, {
+            const response = await fetchWithRetry(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -328,10 +389,12 @@ Keep titles under 15 characters and descriptions under 50 characters.`;
                         responseMimeType: "application/json",
                     }
                 }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
+                timeoutMs: textTimeoutMs,
+                maxRetries: textMaxRetries,
+                retryBaseMs,
+                retryMaxMs,
+                logPrefix: '[AI-GEN]'
+            } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
 
             if (!response.ok) throw new Error(`Metadata AI failed: ${response.status}`);
 
@@ -341,7 +404,6 @@ Keep titles under 15 characters and descriptions under 50 characters.`;
 
             return JSON.parse(text);
         } catch (error: any) {
-            clearTimeout(timeoutId);
             throw error;
         }
     } catch (err) {

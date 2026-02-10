@@ -28,6 +28,12 @@
 - `GEMINI_API_BASE_URL`（使用代理时）
 - `GEMINI_IMAGE_MODEL`（例如：`gemini-2.5-flash-image`）
 - `GEMINI_TEXT_MODEL`（例如：`gemini-2.5-flash`）
+- `GEMINI_IMAGE_TIMEOUT_MS`（可选，默认 60000）
+- `GEMINI_IMAGE_RETRIES`（可选，默认 2）
+- `GEMINI_TEXT_TIMEOUT_MS`（可选，默认 60000）
+- `GEMINI_TEXT_RETRIES`（可选，默认 1）
+- `GEMINI_RETRY_BASE_MS`（可选，默认 800）
+- `GEMINI_RETRY_MAX_MS`（可选，默认 5000）
 - `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET`
 
 ### 本地运行

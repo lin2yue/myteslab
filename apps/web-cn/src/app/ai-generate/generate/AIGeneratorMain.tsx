@@ -109,6 +109,7 @@ export default function AIGeneratorMain({
     const pollStartRef = useRef<number | null>(null)
     const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const sessionGuidRef = useRef<string>(Math.random().toString(36).substring(2, 15))
+    const retrySeedRef = useRef<number>(0)
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -306,10 +307,11 @@ export default function AIGeneratorMain({
         }
 
         setIsGenerating(true)
+        let bumpIdempotency = false
         try {
             // 生成幂等键 (5分钟时窗 + Prompt + 模型 + 会话标识)
             const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000));
-            const idempotencyRaw = `${sessionGuidRef.current}-${selectedModel}-${prompt.trim()}-${timeBucket}`;
+            const idempotencyRaw = `${sessionGuidRef.current}-${selectedModel}-${prompt.trim()}-${timeBucket}-${retrySeedRef.current}`;
             // 简单的客户端哈希或直接编码
             const idempotencyKey = btoa(unescape(encodeURIComponent(idempotencyRaw))).substring(0, 64);
 
@@ -334,6 +336,9 @@ export default function AIGeneratorMain({
             })
 
             if (!res.ok) {
+                if (res.status >= 500 && res.status !== 504) {
+                    bumpIdempotency = true
+                }
                 if (res.status === 413) {
                     throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`);
                 }
@@ -353,7 +358,10 @@ export default function AIGeneratorMain({
             }
 
             const data = await res.json()
-            if (!data.success) throw new Error(data.error)
+            if (!data.success) {
+                bumpIdempotency = true
+                throw new Error(data.error)
+            }
 
             if (data.status === 'pending') {
                 setPendingTaskId(data.taskId)
@@ -372,6 +380,9 @@ export default function AIGeneratorMain({
             setTimeout(fetchHistory, 1000)
 
         } catch (err) {
+            if (bumpIdempotency) {
+                retrySeedRef.current += 1
+            }
             const message = err instanceof Error ? err.message : String(err)
             alert.error(`生成失败: ${message}`)
         } finally {
