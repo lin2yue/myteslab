@@ -75,7 +75,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
                 }`}
         >
             {tier.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-xl border border-zinc-800 dark:border-zinc-200">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-xl border border-red-500">
                     {t('most_popular')}
                 </div>
             )}
