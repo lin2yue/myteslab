@@ -42,7 +42,7 @@ const DEFAULT_MODELS = [
     },
     {
         slug: 'model-3',
-        name: 'Model 3 (经典款)',
+        name: 'Model 3',
         name_en: 'Model 3 (Classic)',
         model_3d_url: 'https://cdn.tewan.club/models/model3/body.glb',
         wheel_url: 'https://cdn.tewan.club/models/wheels/stiletto.glb',
@@ -60,7 +60,7 @@ const DEFAULT_MODELS = [
     },
     {
         slug: 'model-y',
-        name: 'Model Y (经典款)',
+        name: 'Model Y',
         name_en: 'Model Y (Classic)',
         model_3d_url: 'https://cdn.tewan.club/models/modely/body.glb',
         wheel_url: 'https://cdn.tewan.club/models/wheels/induction.glb',
@@ -69,8 +69,8 @@ const DEFAULT_MODELS = [
     },
     {
         slug: 'model-y-2025-standard',
-        name: 'Model Y 标准版',
-        name_en: 'Model Y (Standard)',
+        name: 'Model Y 基础版',
+        name_en: 'Model Y Juniper',
         model_3d_url: 'https://cdn.tewan.club/models/modely-2025-base/body.glb',
         wheel_url: 'https://cdn.tewan.club/models/wheels/induction.glb',
         sort_order: 5,
@@ -105,7 +105,7 @@ const DEFAULT_MODELS = [
     },
     {
         slug: 'model-y-2025-premium',
-        name: 'Model Y 焕新版 (Premium)',
+        name: 'Model Y 焕新版',
         name_en: 'Model Y Juniper Premium',
         model_3d_url: 'https://cdn.tewan.club/models/modely-2025-premium/body.glb',
         wheel_url: 'https://cdn.tewan.club/models/wheels/induction.glb',

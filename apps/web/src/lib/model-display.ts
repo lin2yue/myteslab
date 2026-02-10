@@ -1,28 +1,5 @@
 import type { Model } from '@/lib/types'
 
-const MODEL_DISPLAY_OVERRIDES: Record<string, { zh: string; en: string }> = {
-    'model-3-2024': {
-        zh: 'Model 3 焕新版',
-        en: 'Model 3 Highland'
-    },
-    'model-y': {
-        zh: 'Model Y 经典款',
-        en: 'Model Y (Classic)'
-    },
-    'model-y-2025-standard': {
-        zh: 'Model Y 焕新版（标准版）',
-        en: 'Model Y Juniper (Standard)'
-    },
-    'model-y-2025-performance': {
-        zh: 'Model Y 焕新版（Performance）',
-        en: 'Model Y Juniper (Performance)'
-    },
-    'model-y-2025-premium': {
-        zh: 'Model Y 焕新版（Premium）',
-        en: 'Model Y Juniper (Premium)'
-    }
-}
-
 export function formatModelSlug(slug?: string): string {
     if (!slug) return ''
     return slug.replace(/-/g, ' ')
@@ -44,10 +21,6 @@ export function getModelDisplayName(options: {
     } = options
 
     const isEn = (locale || '').startsWith('en')
-
-    if (slug && MODEL_DISPLAY_OVERRIDES[slug]) {
-        return isEn ? MODEL_DISPLAY_OVERRIDES[slug].en : MODEL_DISPLAY_OVERRIDES[slug].zh
-    }
 
     if (isEn) {
         if (modelNameEn) return modelNameEn
@@ -75,10 +48,7 @@ export function createModelNameResolver(
     const isEn = (locale || '').startsWith('en')
     const map = new Map<string, string>()
     models.forEach((m) => {
-        const override = MODEL_DISPLAY_OVERRIDES[m.slug]
-        const name = override
-            ? (isEn ? override.en : override.zh)
-            : (isEn ? (m.name_en || m.name) : (m.name || m.name_en || ''))
+        const name = isEn ? (m.name_en || m.name) : (m.name || m.name_en || '')
         if (name) map.set(m.slug, name)
     })
 
