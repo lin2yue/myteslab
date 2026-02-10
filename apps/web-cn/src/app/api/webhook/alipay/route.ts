@@ -1,7 +1,40 @@
-import { NextResponse } from 'next/server';
 import { getAlipaySdk } from '@/lib/alipay';
 import { dbQuery } from '@/lib/db';
 import { PRICING_TIERS } from '@/lib/constants/credits';
+
+async function safeWebhookLog(query: string, params: any[] = []) {
+    try {
+        await dbQuery(query, params);
+    } catch (err) {
+        console.warn('[Alipay Webhook] webhook_events log failed:', err);
+    }
+}
+
+function safeDecodeURIComponent(value: string) {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+}
+
+function parsePassbackParams(raw?: string) {
+    if (!raw) return {};
+    const candidates: string[] = [];
+    candidates.push(raw);
+    const once = safeDecodeURIComponent(raw);
+    if (once !== raw) candidates.push(once);
+    const twice = safeDecodeURIComponent(once);
+    if (twice !== once) candidates.push(twice);
+
+    for (const candidate of candidates) {
+        try {
+            const parsed = JSON.parse(candidate);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch { }
+    }
+    return {};
+}
 
 export async function POST(request: Request) {
     console.log('[Alipay Webhook] Received request');
@@ -9,7 +42,10 @@ export async function POST(request: Request) {
     let params: Record<string, string> = {}; // Declare outside try for error logging usage
 
     try {
-        await dbQuery(`INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`, ['alipay', '{}', 'entry_point_hit']);
+        await safeWebhookLog(
+            `INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`,
+            ['alipay', '{}', 'entry_point_hit']
+        );
 
         const alipaySdk = getAlipaySdk();
         const formData = await request.formData();
@@ -18,13 +54,16 @@ export async function POST(request: Request) {
             params[key] = value.toString();
         });
 
-        await dbQuery(`INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`, ['alipay', JSON.stringify(params), 'params_parsed']);
+        await safeWebhookLog(
+            `INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`,
+            ['alipay', JSON.stringify(params), 'params_parsed']
+        );
 
         console.log('[Alipay Webhook] Received params:', params);
 
         // --- DEBUG: Log raw request to DB ---
         try {
-            await dbQuery(
+            await safeWebhookLog(
                 `INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`,
                 ['alipay', JSON.stringify(params), 'received']
             );
@@ -35,7 +74,10 @@ export async function POST(request: Request) {
 
         // --- DEBUG: Log signature check start ---
         try {
-            await dbQuery(`INSERT INTO webhook_events(provider, payload, status) VALUES($1, $2, $3)`, ['alipay', '{}', 'verifying_signature']);
+            await safeWebhookLog(
+                `INSERT INTO webhook_events(provider, payload, status) VALUES($1, $2, $3)`,
+                ['alipay', '{}', 'verifying_signature']
+            );
         } catch (e) { }
         // ----------------------------------------
 
@@ -44,7 +86,7 @@ export async function POST(request: Request) {
         if (!isValid) {
             console.error('[Alipay Webhook] Invalid signature');
             // Log failure
-            await dbQuery(
+            await safeWebhookLog(
                 `UPDATE webhook_events SET status = 'failed', error = 'Invalid Signature' 
                  WHERE provider = 'alipay' AND payload::text = $1::text AND created_at > NOW() - INTERVAL '1 minute'`,
                 [JSON.stringify(params)]
@@ -62,12 +104,19 @@ export async function POST(request: Request) {
             // 3. Process Business Logic (Idempotent)
             // Extract metadata from passback_params
             let metadata: any = {};
-            try {
-                if (params.passback_params) {
-                    metadata = JSON.parse(decodeURIComponent(params.passback_params));
+            if (params.passback_params) {
+                metadata = parsePassbackParams(params.passback_params);
+                if (!metadata || Object.keys(metadata).length === 0) {
+                    console.error('[Alipay Webhook] Failed to parse passback_params');
                 }
-            } catch (e) {
-                console.error('[Alipay Webhook] Failed to parse passback_params:', e);
+            }
+
+            // Fallback: try body (if present) for userId
+            if ((!metadata || !metadata.userId) && params.body) {
+                const parsedBody = parsePassbackParams(params.body);
+                if (parsedBody && parsedBody.userId) {
+                    metadata = parsedBody;
+                }
             }
 
             const userId = metadata.userId;
@@ -104,7 +153,7 @@ export async function POST(request: Request) {
             console.log(`[Alipay Webhook] Processing payment: amount=${totalAmount}, matchedCredits=${creditsToAdd}`);
 
             // --- DEBUG: Log matching result ---
-            await dbQuery(
+            await safeWebhookLog(
                 `UPDATE webhook_events SET error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
                 [`Matching: paid=${paidAmount}, matched=${matchedTier?.id}, credits=${creditsToAdd}`, JSON.stringify(params)]
             );
@@ -113,7 +162,7 @@ export async function POST(request: Request) {
             if (creditsToAdd === 0) {
                 console.error(`[Alipay Webhook] Could not match price ${totalAmount} to any tier.`);
                 // --- DEBUG: Log zero credits ---
-                await dbQuery(
+                await safeWebhookLog(
                     `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
                     [`No tier matched for amount ${totalAmount}`, JSON.stringify(params)]
                 );
@@ -156,14 +205,14 @@ export async function POST(request: Request) {
                 console.log(`[Alipay Webhook] Success: Added ${creditsToAdd} credits to user ${userId} and logged transaction ${tradeNo}`);
 
                 // --- DEBUG: Log success ---
-                await dbQuery(
+                await safeWebhookLog(
                     `UPDATE webhook_events SET status = 'success', error = 'Credits Added' WHERE provider = 'alipay' AND payload::text = $1::text`,
                     [JSON.stringify(params)]
                 );
             } catch (dbError: any) {
                 console.error('[Alipay Webhook] Database update failed:', dbError);
                 // --- DEBUG: Log DB failure ---
-                await dbQuery(
+                await safeWebhookLog(
                     `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
                     [`DB Error: ${dbError.message}`, JSON.stringify(params)]
                 );
@@ -178,7 +227,7 @@ export async function POST(request: Request) {
         try {
             // FORCE INSERT error log to guarantee visibility
             // Don't rely on UPDATE matching complex JSON
-            await dbQuery(
+            await safeWebhookLog(
                 `INSERT INTO webhook_events (provider, payload, status, error) VALUES ($1, $2, $3, $4)`,
                 ['alipay', JSON.stringify(params), 'failed', `Top-level Crash: ${error.message}`]
             );
