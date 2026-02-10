@@ -618,6 +618,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        if (!taskId) {
+            throw new Error('Task ID is missing');
+        }
+
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
         // 异步处理，立即返回 pending
