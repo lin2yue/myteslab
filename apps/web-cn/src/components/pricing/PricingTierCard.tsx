@@ -33,7 +33,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    productId: tier.polarProductId,
+                    productId: tier.id,
                     locale: locale,
                     metadata: {
                         tier_name: tier.nameKey, // Use key as stable identifier
