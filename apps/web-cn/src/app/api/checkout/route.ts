@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { getSessionUser } from '@/lib/auth/session';
 import { getAlipaySdk } from '@/lib/alipay';
 import { PRICING_TIERS } from '@/lib/constants/credits';
@@ -25,12 +26,21 @@ export async function POST(request: Request) {
         // Generate a unique out_trade_no (User ID + Timestamp)
         const outTradeNo = `${user.id.slice(0, 8)}-${Date.now()}`;
 
+        // Detect device type
+        const headersList = await headers();
+        const userAgent = headersList.get('user-agent') || '';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+
+        // Select Alipay product code and method based on device
+        const productCode = isMobile ? 'QUICK_WAP_WAY' : 'FAST_INSTANT_TRADE_PAY';
+        const method = isMobile ? 'alipay.trade.wap.pay' : 'alipay.trade.page.pay';
+
         // Create Alipay trade
-        const result = await alipaySdk.pageExec('alipay.trade.page.pay', {
+        const result = await alipaySdk.pageExec(method, {
             method: 'GET', // Returns a redirect URL
             bizContent: {
                 out_trade_no: outTradeNo,
-                product_code: 'FAST_INSTANT_TRADE_PAY',
+                product_code: productCode,
                 total_amount: tier.price,
                 subject: `特玩积分充值 - ${tier.credits} 积分`,
                 body: JSON.stringify({
