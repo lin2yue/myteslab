@@ -28,7 +28,7 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     onClick={onClose}
                 />
 
-                <div className="relative w-full max-w-5xl bg-white/90 dark:bg-zinc-900/80 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-black/5 dark:border-white/10 backdrop-blur">
+                <div className="relative w-full max-w-7xl bg-white/90 dark:bg-zinc-900/80 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-black/5 dark:border-white/10 backdrop-blur">
 
                     {/* Header */}
                     <div className="flex flex-col items-center justify-center pt-10 pb-6 px-6 text-center">
@@ -43,8 +43,8 @@ export default function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto px-10 pb-10">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-4xl mx-auto pt-4 leading-none">
+                    <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch max-w-6xl mx-auto pt-4 leading-none">
                             {tiers.map((tier) => (
                                 <PricingTierCard key={tier.id} tier={tier} />
                             ))}
