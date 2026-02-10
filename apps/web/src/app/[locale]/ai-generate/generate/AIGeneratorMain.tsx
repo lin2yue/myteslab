@@ -9,7 +9,7 @@ import Image from 'next/image'
 import StickerEditor from '@/components/sticker/StickerEditor'
 import {
     Sun, Moon, RotateCw, Pause, Camera, Download, Globe, Check, Loader2,
-    Sparkles, X, Plus, Palette, ArrowRight
+    Sparkles, X, Plus, Palette, ArrowRight, ZoomIn
 } from 'lucide-react'
 import PricingModal from '@/components/pricing/PricingModal'
 import { useRouter } from '@/i18n/routing'
@@ -111,6 +111,7 @@ export default function AIGeneratorMain({
     const pollAttemptsRef = useRef(0)
     const pollStartRef = useRef<number | null>(null)
     const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -1068,6 +1069,15 @@ export default function AIGeneratorMain({
                                                             setSelectedModel(item.model_slug);
                                                             setActiveWrapId(item.id);
                                                         }}
+                                                        onImageClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const itemCdnUrl = getCdnUrl(item.texture_url);
+                                                            let displayUrl = itemCdnUrl;
+                                                            if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`;
+                                                            }
+                                                            setImagePreviewUrl(displayUrl);
+                                                        }}
                                                     />
                                                 ))}
                                             </>
@@ -1121,6 +1131,32 @@ export default function AIGeneratorMain({
                 textureUrl={currentTexture || ''}
                 isPublishing={isPublishing}
             />
+
+            {/* Image Preview Modal */}
+            {imagePreviewUrl && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                    onClick={() => setImagePreviewUrl(null)}
+                >
+                    <div className="relative max-w-5xl max-h-[90vh] w-full">
+                        <button
+                            onClick={() => setImagePreviewUrl(null)}
+                            className="absolute -top-12 right-0 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                        <div className="relative w-full h-full flex items-center justify-center">
+                            <Image
+                                src={imagePreviewUrl}
+                                alt="Preview"
+                                width={2048}
+                                height={2048}
+                                className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
@@ -1129,12 +1165,14 @@ function HistoryItem({
     item,
     activeWrapId,
     onClick,
+    onImageClick,
     getCdnUrl,
     getModelName
 }: {
     item: GenerationHistory;
     activeWrapId: string | null;
     onClick: () => void;
+    onImageClick?: (e: React.MouseEvent) => void;
     getCdnUrl: (url: string) => string;
     getModelName: (slug: string) => string;
 }) {
@@ -1146,7 +1184,8 @@ function HistoryItem({
             className={`flex gap-3 p-2.5 rounded-lg border transition-all group cursor-pointer bg-white/70 dark:bg-zinc-900/70 backdrop-blur ${activeWrapId === item.id ? 'border-zinc-900 bg-zinc-50' : 'border-black/5 dark:border-white/10 hover:border-black/15 hover:bg-white/90'}`}
         >
             <div
-                className="w-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0"
+                onClick={onImageClick}
+                className="w-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative cursor-zoom-in group/image"
                 style={{ aspectRatio: '4 / 3' }}
             >
                 <ResponsiveOSSImage
@@ -1156,6 +1195,9 @@ function HistoryItem({
                     height={48} // 64 / (4/3) = 48
                     className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-all flex items-center justify-center">
+                    <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover/image:opacity-100 transition-all drop-shadow-lg" />
+                </div>
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">
