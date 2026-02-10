@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAlipaySdk } from '@/lib/alipay';
 import { dbQuery } from '@/lib/db';
+import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
     try {
@@ -60,19 +61,23 @@ export async function POST(request: Request) {
                 return new Response('success');
             }
 
-            // Determine credits based on total_amount (Safe fallback if metadata lost)
-            // Better yet, we could have saved the order in a DB table first.
-            // For now, let's look up the price map.
-            const creditMap: Record<string, number> = {
-                '19.9': 60,
-                '59.0': 200,
-                '128.0': 500,
-                '288.0': 1200
-            };
-            const creditsToAdd = creditMap[totalAmount] || 0;
+
+
+            // Determine credits based on total_amount
+            const paidAmount = parseFloat(totalAmount);
+            // Use a small epsilon for float comparison
+            const matchedTier = PRICING_TIERS.find(t => Math.abs(parseFloat(t.price) - paidAmount) < 0.01);
+            const creditsToAdd = matchedTier ? matchedTier.credits : 0;
+
+            console.log(`[Alipay Webhook] Processing payment: amount=${totalAmount}, matchedCredits=${creditsToAdd}`);
 
             if (creditsToAdd === 0) {
-                console.error('[Alipay Webhook] Could not determine credits for amount:', totalAmount);
+                console.error(`[Alipay Webhook] Could not match price ${totalAmount} to any tier.`);
+                // We return success to Alipay to stop retries, but log the error for manual intervention
+                // return new Response('success'); 
+                // For now, let's return fail so we can retry if it's a transient issue, 
+                // but if it's a logic error, retrying won't help. 
+                // Let's actually fail so we see it in logs if we have retry logic.
                 return new Response('fail', { status: 400 });
             }
 
