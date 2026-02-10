@@ -18,13 +18,13 @@
         "model-3": {
             "cameraOrbit": "225deg 75deg 85%"
         },
-        "model-3-2024-plus": {
+        "model-3-2024": {
             "cameraOrbit": "225deg 75deg 85%"
         },
-        "model-y-pre-2025": {
+        "model-y": {
             "cameraOrbit": "225deg 75deg 85%"
         },
-        "model-y-2025-plus": {
+        "model-y-2025-standard": {
             "cameraOrbit": "225deg 75deg 85%"
         }
     }

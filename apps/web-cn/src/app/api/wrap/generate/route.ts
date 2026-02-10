@@ -15,6 +15,7 @@ import { WRAP_CATEGORY } from '@/lib/constants/category';
 import { ServiceType, getServiceCost } from '@/lib/constants/credits';
 import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
 import { db, dbQuery } from '@/lib/db';
+import { getModelBySlug } from '@/config/models';
 import { getSessionUser } from '@/lib/auth/session';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import { join } from 'path';
@@ -23,22 +24,6 @@ import crypto from 'crypto';
 
 // Allow longer execution time for AI generation (Vercel Pro: 300s, Hobby: 60s max)
 export const maxDuration = 300;
-
-// Model slug to display name mapping
-const MODEL_NAMES: Record<string, string> = {
-    'cybertruck': 'Cybertruck',
-    'model-3': 'Model 3',
-    'model-3-2024-plus': 'Model 3 2024+',
-    'model3-l': 'Model 3',
-    'model-y-pre-2025': 'Model Y',
-    'model-y-2025-plus': 'Model Y 2025+',
-    'model-y': 'Model Y',
-    'modely-l': 'Model Y',
-    'model-s': 'Model S',
-    'models-l': 'Model S',
-    'model-x': 'Model X',
-    'modelx-l': 'Model X',
-};
 
 const MAX_REFERENCE_IMAGES = 3;
 const MAX_REFERENCE_IMAGE_BYTES = 1.5 * 1024 * 1024;
@@ -540,8 +525,28 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const currentModelSlug = modelSlug.toLowerCase();
-        const modelName = MODEL_NAMES[currentModelSlug];
+        const currentModelSlug = modelSlug.toLowerCase().trim();
+        let modelName: string | undefined;
+        try {
+            const { rows } = await dbQuery<{ name: string; name_en: string }>(
+                `SELECT name, name_en
+                 FROM wrap_models
+                 WHERE is_active = true AND slug = $1
+                 LIMIT 1`,
+                [currentModelSlug]
+            );
+            if (rows[0]) {
+                modelName = rows[0].name || rows[0].name_en;
+            }
+        } catch (dbErr) {
+            console.error('[AI-GEN] Failed to load model from DB, fallback to config:', dbErr);
+        }
+
+        if (!modelName) {
+            const fallback = getModelBySlug(currentModelSlug);
+            modelName = fallback?.name;
+        }
+
         if (!modelName) {
             console.error(`[AI-GEN] Invalid model slug received: "${modelSlug}"`);
             return NextResponse.json({

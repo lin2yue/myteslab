@@ -103,7 +103,7 @@ Checking table: audios...
       "description_en": "Aggressive biomorphic strain. Ultimate oceanic predator.",
       "author_id": null,
       "user_id": "18f8fe6d-1796-4f9b-ae95-66bddf04c78f",
-      "model_slug": "model-y-pre-2025",
+      "model_slug": "model-y",
       "is_public": true,
       "prompt": "变异鲨鱼",
       "download_count": 0,

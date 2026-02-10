@@ -26,6 +26,8 @@ Light gray (e.g., RGB ~239) is also paintable.
 Only draw inside WHITE. Keep BLACK pure #000000.
 No bleed, no shape changes, crisp edges aligned to the mask.
 Any content outside WHITE = failure.
+Fill EVERY paintable island completely. No blank/white gaps inside islands.
+Treat the mask as a stencil: if it’s white/gray, it must be fully covered by the design.
 The FIRST provided image is the UV mask. Any additional images are references.
 `.trim();
 
@@ -68,6 +70,7 @@ OUTPUT
 Single image at requested resolution. Background outside mask = #000000.
 Orientation: FRONT faces BOTTOM, REAR faces TOP.
 Output exactly ${width}x${height} pixels and respect the UV mask boundaries.
+No white canvas background. Anything outside the mask must be solid black.
 `.trim();
 
 const REAR_COVERAGE_V2 = `
