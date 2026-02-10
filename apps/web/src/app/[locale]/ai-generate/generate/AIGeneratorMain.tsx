@@ -885,7 +885,7 @@ export default function AIGeneratorMain({
                                             value={selectedModel}
                                             options={models.map((m: any) => ({
                                                 value: m.slug,
-                                                label: _locale === 'en' ? (m.name_en || m.name) : m.name
+                                                label: getModelName(m.slug)
                                             }))}
                                             onChange={(value) => {
                                                 setSelectedModel(value)
@@ -1083,7 +1083,7 @@ export default function AIGeneratorMain({
                                         value={selectedModel}
                                         options={models.map((m: any) => ({
                                             value: m.slug,
-                                            label: _locale === 'en' ? (m.name_en || m.name) : m.name
+                                            label: getModelName(m.slug)
                                         }))}
                                         onChange={(value) => setSelectedModel(value)}
                                         buttonClassName="h-12"

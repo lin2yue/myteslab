@@ -2,7 +2,7 @@
 BEGIN;
 
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('023d4b53-01b1-4d21-a4d9-6daa312b81ce', '气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-d729a47f-1769326652824.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-d729a47f-1769326652824.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-2025-plus', false, '气球主题', NULL, NULL, NOW(), NOW())
+            VALUES ('023d4b53-01b1-4d21-a4d9-6daa312b81ce', '气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-d729a47f-1769326652824.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-d729a47f-1769326652824.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-2025-standard', false, '气球主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -18,7 +18,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('029cae81-3331-46a2-a542-a70d1ef62558', '变异鲨鱼', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5b633b08-1769047031325.png', 'https://cdn.tewan.club/wraps/previews/preview-029cae81-1769189783516.png', 'model-y-pre-2025', true, '变异鲨鱼', NULL, NULL, NOW(), NOW())
+            VALUES ('029cae81-3331-46a2-a542-a70d1ef62558', '变异鲨鱼', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5b633b08-1769047031325.png', 'https://cdn.tewan.club/wraps/previews/preview-029cae81-1769189783516.png', 'model-y', true, '变异鲨鱼', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -34,7 +34,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('057827c1-3d08-4f60-b0b2-16510fbf95e5', 'Sketch', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Sketch.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-sketch.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('057827c1-3d08-4f60-b0b2-16510fbf95e5', 'Sketch', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Sketch.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-sketch.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -58,7 +58,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('0c98de5c-2410-4527-bf80-150d922d99f6', '小黄鸭主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3cff6111-1769197385373.png', 'https://cdn.tewan.club/wraps/previews/preview-0c98de5c-1769234885531.png', 'model-3-2024-plus', true, '小黄鸭主题', NULL, NULL, NOW(), NOW())
+            VALUES ('0c98de5c-2410-4527-bf80-150d922d99f6', '小黄鸭主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3cff6111-1769197385373.png', 'https://cdn.tewan.club/wraps/previews/preview-0c98de5c-1769234885531.png', 'model-3-2024', true, '小黄鸭主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -82,7 +82,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1157cd1e-b81e-46a8-bb1f-7159ca9315b2', 'Camo', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Camo.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-camo.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('1157cd1e-b81e-46a8-bb1f-7159ca9315b2', 'Camo', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Camo.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-camo.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -98,7 +98,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1326417f-bb32-4ff7-a10d-deebb8dae81e', 'super junior 20周年主题，要有9成员的人物形象', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-b6e2aeaf-1769011842604.png', 'https://cdn.tewan.club/wraps/previews/preview-1326417f-1769189787613.png', 'model-y-pre-2025', true, 'super junior 20周年主题，要有9成员的人物形象', NULL, NULL, NOW(), NOW())
+            VALUES ('1326417f-bb32-4ff7-a10d-deebb8dae81e', 'super junior 20周年主题，要有9成员的人物形象', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-b6e2aeaf-1769011842604.png', 'https://cdn.tewan.club/wraps/previews/preview-1326417f-1769189787613.png', 'model-y', true, 'super junior 20周年主题，要有9成员的人物形象', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -114,7 +114,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('14bb3a29-8f74-4223-a4e6-af6985f60133', 'Divide', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Divide.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-divide.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('14bb3a29-8f74-4223-a4e6-af6985f60133', 'Divide', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Divide.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-divide.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -130,7 +130,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1a0b6dcf-ce14-46f1-95eb-fdf7b6c57f15', 'Camo', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Camo.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-camo.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('1a0b6dcf-ce14-46f1-95eb-fdf7b6c57f15', 'Camo', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Camo.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-camo.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -146,7 +146,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1ab92f3f-6c73-4e55-ac78-4381fff7c152', 'Cosmic Burst', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Cosmic_Burst.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-cosmic-burst.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('1ab92f3f-6c73-4e55-ac78-4381fff7c152', 'Cosmic Burst', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Cosmic_Burst.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-cosmic-burst.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -154,7 +154,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1ae967c0-02ad-4382-820f-362ba3a8cfc9', 'Pixel Art', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Pixel_Art.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-pixel-art.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('1ae967c0-02ad-4382-820f-362ba3a8cfc9', 'Pixel Art', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Pixel_Art.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-pixel-art.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -170,7 +170,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1eaf81f8-f69a-4a74-b3fc-034cd9d8e9b9', 'F1 梅赛德斯车队赛车涂装', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-d607695a-1769240543506.png', 'https://cdn.tewan.club/wraps/previews/preview-1eaf81f8-1769257678488.png', 'model-3-2024-plus', true, 'F1 梅赛德斯车队赛车涂装', NULL, NULL, NOW(), NOW())
+            VALUES ('1eaf81f8-f69a-4a74-b3fc-034cd9d8e9b9', 'F1 梅赛德斯车队赛车涂装', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-d607695a-1769240543506.png', 'https://cdn.tewan.club/wraps/previews/preview-1eaf81f8-1769257678488.png', 'model-3-2024', true, 'F1 梅赛德斯车队赛车涂装', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -186,7 +186,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('1f46f18f-4595-4a17-b20a-35b6de6f745c', '极光米黄', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-1507b84e-1769674572247.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-1f46f18f-1769674640306.png', 'model-3-2024-plus', true, '小米ultra黄色车身拉花', NULL, NULL, NOW(), NOW())
+            VALUES ('1f46f18f-4595-4a17-b20a-35b6de6f745c', '极光米黄', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-1507b84e-1769674572247.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-1f46f18f-1769674640306.png', 'model-3-2024', true, '小米ultra黄色车身拉花', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -194,7 +194,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('20249476-fcb5-43bf-b7ef-db9d01ae2c39', 'Cosmic Burst', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Cosmic_Burst.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-cosmic-burst.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('20249476-fcb5-43bf-b7ef-db9d01ae2c39', 'Cosmic Burst', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Cosmic_Burst.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-cosmic-burst.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -202,7 +202,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('21afed72-9e65-42f4-a662-34dd9eb484c1', 'Valentine', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Valentine.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-valentine.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('21afed72-9e65-42f4-a662-34dd9eb484c1', 'Valentine', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Valentine.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-valentine.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -218,7 +218,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('230e0f05-b79d-4d6c-9d27-9b7d91aa7978', 'Sketch', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Sketch.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-sketch.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('230e0f05-b79d-4d6c-9d27-9b7d91aa7978', 'Sketch', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Sketch.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-sketch.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -226,7 +226,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('247d12f7-384f-42dc-9446-ca963ea00b52', '火焰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5509dcb0-1769331124322.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5509dcb0-1769331124322.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-2025-plus', false, '火焰主题', NULL, NULL, NOW(), NOW())
+            VALUES ('247d12f7-384f-42dc-9446-ca963ea00b52', '火焰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5509dcb0-1769331124322.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5509dcb0-1769331124322.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-2025-standard', false, '火焰主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -242,7 +242,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2617f7da-d2d1-44d4-93f3-6c19c9ed345b', '草莓主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-e62f784f-1769324336106.png', 'https://cdn.tewan.club/wraps/ai-generated/wrap-e62f784f-1769324336106.png', 'model-y-2025-plus', false, '草莓主题', NULL, NULL, NOW(), NOW())
+            VALUES ('2617f7da-d2d1-44d4-93f3-6c19c9ed345b', '草莓主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-e62f784f-1769324336106.png', 'https://cdn.tewan.club/wraps/ai-generated/wrap-e62f784f-1769324336106.png', 'model-y-2025-standard', false, '草莓主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -274,7 +274,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2b132f04-a2c6-45a7-8de3-79ab43cbc162', '宝蓝信仰', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-9f17ba8c-1769484441030.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-2b132f04-1769484494311.png', 'model-y-pre-2025', true, '生成一个 Super Junior 主题，蓝色主色调，人物呈现要准确', NULL, NULL, NOW(), NOW())
+            VALUES ('2b132f04-a2c6-45a7-8de3-79ab43cbc162', '宝蓝信仰', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-9f17ba8c-1769484441030.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-2b132f04-1769484494311.png', 'model-y', true, '生成一个 Super Junior 主题，蓝色主色调，人物呈现要准确', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -282,7 +282,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2ba3564b-d430-4256-b621-28ceea2aa1d7', 'Avocado Green', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Avocado_Green.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-avocado-green.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('2ba3564b-d430-4256-b621-28ceea2aa1d7', 'Avocado Green', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Avocado_Green.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-avocado-green.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -290,7 +290,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2baea4e4-07a5-4c3b-9aa2-271cf2bfc040', 'Rudi', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Rudi.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-rudi.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('2baea4e4-07a5-4c3b-9aa2-271cf2bfc040', 'Rudi', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Rudi.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-rudi.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -306,7 +306,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2c23153b-2f71-4f32-9b46-08032b37261f', 'Vintage Gradient', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Vintage_Gradient.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-vintage-gradient.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('2c23153b-2f71-4f32-9b46-08032b37261f', 'Vintage Gradient', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Vintage_Gradient.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-vintage-gradient.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -314,7 +314,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2cd481cd-35b1-44c2-bd0d-4a178c8a25a8', 'Dot Matrix', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Dot_Matrix.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-dot-matrix.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('2cd481cd-35b1-44c2-bd0d-4a178c8a25a8', 'Dot Matrix', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Dot_Matrix.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-dot-matrix.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -330,7 +330,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('2d08d836-d356-425d-9221-c686aeb0c3e4', 'Dot Matrix', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Dot_Matrix.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-dot-matrix.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('2d08d836-d356-425d-9221-c686aeb0c3e4', 'Dot Matrix', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Dot_Matrix.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-dot-matrix.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -386,7 +386,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('346f3cac-8e2a-49b4-900f-25cb8194fbda', '黄色车身，小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-68eb4030-1768967767106.png', 'https://cdn.tewan.club/wraps/previews/preview-346f3cac-1769191324385.png', 'model-y-2025-plus', false, '黄色车身，小黄人主题', NULL, NULL, NOW(), NOW())
+            VALUES ('346f3cac-8e2a-49b4-900f-25cb8194fbda', '黄色车身，小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-68eb4030-1768967767106.png', 'https://cdn.tewan.club/wraps/previews/preview-346f3cac-1769191324385.png', 'model-y-2025-standard', false, '黄色车身，小黄人主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -418,7 +418,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('362a2ee6-654a-4f47-88f9-b5a62f593c4e', 'Leopard', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Leopard.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-leopard.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('362a2ee6-654a-4f47-88f9-b5a62f593c4e', 'Leopard', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Leopard.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-leopard.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -426,7 +426,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('37c8f7d9-72af-4b3a-9b72-27689713095e', 'Divide', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Divide.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-divide.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('37c8f7d9-72af-4b3a-9b72-27689713095e', 'Divide', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Divide.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-divide.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -434,7 +434,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('37cc8455-08fe-42e3-9617-2dab50a943f5', 'Valentine', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Valentine.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-valentine.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('37cc8455-08fe-42e3-9617-2dab50a943f5', 'Valentine', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Valentine.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-valentine.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -442,7 +442,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('39b42e78-8757-428d-b75b-31b5e93493e4', 'Acid Drip', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Acid_Drip.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-acid-drip.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('39b42e78-8757-428d-b75b-31b5e93493e4', 'Acid Drip', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Acid_Drip.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-acid-drip.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -450,7 +450,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3a5ff3cf-ba0d-4584-8ab8-0d39d4b1f7e4', 'Apocalypse', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Apocalypse.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-apocalypse.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('3a5ff3cf-ba0d-4584-8ab8-0d39d4b1f7e4', 'Apocalypse', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Apocalypse.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-apocalypse.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -458,7 +458,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3c5f56b2-909e-4f06-9781-af01143d659e', 'Pixel Art', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Pixel_Art.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-pixel-art.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('3c5f56b2-909e-4f06-9781-af01143d659e', 'Pixel Art', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Pixel_Art.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-pixel-art.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -466,7 +466,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3cfc4c3a-033f-4112-8be4-c8dbd654d380', 'Apocalypse', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Apocalypse.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-apocalypse.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('3cfc4c3a-033f-4112-8be4-c8dbd654d380', 'Apocalypse', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Apocalypse.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-apocalypse.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -474,7 +474,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3d8974dc-6fca-4b6e-8ec3-50d63a628176', '黄色车身，小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-868632e9-1768973488292.png', 'https://cdn.tewan.club/wraps/previews/preview-3d8974dc-1769191320659.png', 'model-y-2025-plus', false, '黄色车身，小黄人主题', NULL, NULL, NOW(), NOW())
+            VALUES ('3d8974dc-6fca-4b6e-8ec3-50d63a628176', '黄色车身，小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-868632e9-1768973488292.png', 'https://cdn.tewan.club/wraps/previews/preview-3d8974dc-1769191320659.png', 'model-y-2025-standard', false, '黄色车身，小黄人主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -482,7 +482,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3d999a98-344a-44c0-801f-5bc27effb18d', 'Sakura', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Sakura.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-sakura.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('3d999a98-344a-44c0-801f-5bc27effb18d', 'Sakura', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Sakura.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-sakura.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -490,7 +490,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3dacecca-0735-49fd-8e63-44fa79c8faa6', '参考这张图，生成车贴', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-70ae7fbf-1769061375537.png', 'https://cdn.tewan.club/wraps/previews/preview-3dacecca-1769189747505.png', 'model-y-2025-plus', true, '参考这张图，生成车贴', NULL, NULL, NOW(), NOW())
+            VALUES ('3dacecca-0735-49fd-8e63-44fa79c8faa6', '参考这张图，生成车贴', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-70ae7fbf-1769061375537.png', 'https://cdn.tewan.club/wraps/previews/preview-3dacecca-1769189747505.png', 'model-y-2025-standard', true, '参考这张图，生成车贴', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -498,7 +498,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('3f239800-51ee-4908-b410-16a9f9260c44', '红色底色，超燃火焰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-0eba510e-1769332254452.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-0eba510e-1769332254452.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-pre-2025', false, '红色底色，超燃火焰主题', NULL, NULL, NOW(), NOW())
+            VALUES ('3f239800-51ee-4908-b410-16a9f9260c44', '红色底色，超燃火焰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-0eba510e-1769332254452.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-0eba510e-1769332254452.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y', false, '红色底色，超燃火焰主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -514,7 +514,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('4503da8a-03c0-456b-a172-6adc4cff5123', 'Ani', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Ani.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-ani.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('4503da8a-03c0-456b-a172-6adc4cff5123', 'Ani', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Ani.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-ani.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -538,7 +538,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('490b870b-cdd5-49d5-ba51-4e6bbec21bc3', 'Vintage Stripes', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Vintage_Stripes.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-vintage-stripes.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('490b870b-cdd5-49d5-ba51-4e6bbec21bc3', 'Vintage Stripes', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Vintage_Stripes.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-vintage-stripes.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -570,7 +570,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('4acb2544-8086-4af8-b1ad-58bc68880044', 'Vintage Stripes', 'ai_generated', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Vintage_Stripes.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-vintage-stripes.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('4acb2544-8086-4af8-b1ad-58bc68880044', 'Vintage Stripes', 'ai_generated', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Vintage_Stripes.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-vintage-stripes.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -578,7 +578,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('4e8f0300-44e8-43b3-868b-0e936097438d', 'Sakura', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Sakura.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-sakura.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('4e8f0300-44e8-43b3-868b-0e936097438d', 'Sakura', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Sakura.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-sakura.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -618,7 +618,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('53ad0833-2e98-4323-9157-e73da09f067e', 'Vintage Gradient', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Vintage_Gradient.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-vintage-gradient.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('53ad0833-2e98-4323-9157-e73da09f067e', 'Vintage Gradient', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Vintage_Gradient.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-vintage-gradient.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -626,7 +626,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('53c3e1cb-8a7a-48aa-aed8-12b9d2fbc5b9', '银箭Y号', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3c083685-1769493117423.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-53c3e1cb-1769671236947.png', 'model-y-pre-2025', true, '参考图片，生成F1梅赛德斯车队赛车涂装', NULL, NULL, NOW(), NOW())
+            VALUES ('53c3e1cb-8a7a-48aa-aed8-12b9d2fbc5b9', '银箭Y号', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3c083685-1769493117423.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-53c3e1cb-1769671236947.png', 'model-y', true, '参考图片，生成F1梅赛德斯车队赛车涂装', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -634,7 +634,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('55242953-67e1-461d-bff9-351a264dbd5f', '粉色蝴蝶主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-dafc3c8b-1769239439413.png', 'https://cdn.tewan.club/wraps/previews/preview-55242953-1769257170214.png', 'model-3-2024-plus', true, '粉色蝴蝶主题', NULL, NULL, NOW(), NOW())
+            VALUES ('55242953-67e1-461d-bff9-351a264dbd5f', '粉色蝴蝶主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-dafc3c8b-1769239439413.png', 'https://cdn.tewan.club/wraps/previews/preview-55242953-1769257170214.png', 'model-3-2024', true, '粉色蝴蝶主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -650,7 +650,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('575dfbfe-6645-45df-86f8-1eeec90ff95f', 'Divide', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Divide.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-divide.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('575dfbfe-6645-45df-86f8-1eeec90ff95f', 'Divide', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Divide.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-divide.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -658,7 +658,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('57812cf1-0628-4af5-add1-808f114868a1', 'Reindeer', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Reindeer.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-reindeer.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('57812cf1-0628-4af5-add1-808f114868a1', 'Reindeer', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Reindeer.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-reindeer.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -714,7 +714,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('6435268c-bd8e-4d9e-9a73-f18d6f6933df', 'Rudi', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Rudi.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-rudi.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('6435268c-bd8e-4d9e-9a73-f18d6f6933df', 'Rudi', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Rudi.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-rudi.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -730,7 +730,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('6bdf4347-e8a4-4cc0-ad95-a6f875f7f23e', 'super junior 20周年主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-e54495fb-1769011614016.png', 'https://cdn.tewan.club/wraps/previews/preview-6bdf4347-1769189791373.png', 'model-y-pre-2025', true, 'super junior 20周年主题', NULL, NULL, NOW(), NOW())
+            VALUES ('6bdf4347-e8a4-4cc0-ad95-a6f875f7f23e', 'super junior 20周年主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-e54495fb-1769011614016.png', 'https://cdn.tewan.club/wraps/previews/preview-6bdf4347-1769189791373.png', 'model-y', true, 'super junior 20周年主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -762,7 +762,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('71cdedca-4f52-4597-9f52-37e34f9a4428', 'String Lights', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/String_Lights.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-string-lights.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('71cdedca-4f52-4597-9f52-37e34f9a4428', 'String Lights', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/String_Lights.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-string-lights.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -778,7 +778,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('73ed1fb0-9d09-435c-ab39-39ac14c0d708', 'Dot Matrix', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Dot_Matrix.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-dot-matrix.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('73ed1fb0-9d09-435c-ab39-39ac14c0d708', 'Dot Matrix', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Dot_Matrix.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-dot-matrix.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -802,7 +802,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('77c2f6a6-0af0-4901-8b3c-a5acb0d8e154', 'Doge', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Doge.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-doge.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('77c2f6a6-0af0-4901-8b3c-a5acb0d8e154', 'Doge', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Doge.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-doge.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -818,7 +818,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('78d681ae-1ea2-4b04-a29f-6d073ad948d4', 'Pixel Art', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Pixel_Art.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-pixel-art.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('78d681ae-1ea2-4b04-a29f-6d073ad948d4', 'Pixel Art', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Pixel_Art.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-pixel-art.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -842,7 +842,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('7adf84f2-0f6d-49a4-aba0-dacebe2ced8c', 'Valentine', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Valentine.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-valentine.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('7adf84f2-0f6d-49a4-aba0-dacebe2ced8c', 'Valentine', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Valentine.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-valentine.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -850,7 +850,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('7b96ff61-d842-455f-b6c6-d713dc7b2956', '经典竞速', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-72526459-1769351621426.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-7b96ff61-1769351684672.png', 'model-3-2024-plus', true, '复古赛车涂装', NULL, NULL, NOW(), NOW())
+            VALUES ('7b96ff61-d842-455f-b6c6-d713dc7b2956', '经典竞速', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-72526459-1769351621426.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-7b96ff61-1769351684672.png', 'model-3-2024', true, '复古赛车涂装', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -866,7 +866,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('7d656547-93d7-4f4f-905f-9bfd80da550a', 'Camo', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Camo.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-camo.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('7d656547-93d7-4f4f-905f-9bfd80da550a', 'Camo', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Camo.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-camo.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -882,7 +882,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('80d6d382-8281-4139-89eb-6eb6feb59c4b', 'Ice Cream', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Ice_Cream.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-ice-cream.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('80d6d382-8281-4139-89eb-6eb6feb59c4b', 'Ice Cream', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Ice_Cream.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-ice-cream.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -906,7 +906,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('8343816e-f00f-45e4-ac00-675f62ae3ac1', 'labubu 主题，车身颜色以红和棕为主，labubu 形象用象棋大国王的哪一款', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-7980a3cb-1769053969880.png', 'https://cdn.tewan.club/wraps/previews/preview-8343816e-1769197328985.png', 'model-y-pre-2025', true, 'labubu 主题，车身颜色以红和棕为主，labubu 形象用象棋大国王的哪一款', NULL, NULL, NOW(), NOW())
+            VALUES ('8343816e-f00f-45e4-ac00-675f62ae3ac1', 'labubu 主题，车身颜色以红和棕为主，labubu 形象用象棋大国王的哪一款', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-7980a3cb-1769053969880.png', 'https://cdn.tewan.club/wraps/previews/preview-8343816e-1769197328985.png', 'model-y', true, 'labubu 主题，车身颜色以红和棕为主，labubu 形象用象棋大国王的哪一款', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -930,7 +930,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('84e6da7e-c28a-4513-ac5d-609e4aaf2426', 'String Lights', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/String_Lights.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-string-lights.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('84e6da7e-c28a-4513-ac5d-609e4aaf2426', 'String Lights', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/String_Lights.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-string-lights.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -938,7 +938,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('86b3615a-2a24-4f01-8919-6c7f0a02e406', '彩虹凤凰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-8a73c463-1769252954040.png', 'https://cdn.tewan.club/wraps/previews/preview-86b3615a-1769255321764.png', 'model-y-pre-2025', true, '彩虹凤凰主题', NULL, NULL, NOW(), NOW())
+            VALUES ('86b3615a-2a24-4f01-8919-6c7f0a02e406', '彩虹凤凰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-8a73c463-1769252954040.png', 'https://cdn.tewan.club/wraps/previews/preview-86b3615a-1769255321764.png', 'model-y', true, '彩虹凤凰主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -946,7 +946,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('89513842-df5a-474e-a865-ec928e552618', 'Leopard', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Leopard.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-leopard.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('89513842-df5a-474e-a865-ec928e552618', 'Leopard', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Leopard.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-leopard.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -962,7 +962,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('8d4346ed-b051-4fe4-a692-36594aa4013a', 'Doge', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Doge.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-doge.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('8d4346ed-b051-4fe4-a692-36594aa4013a', 'Doge', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Doge.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-doge.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -970,7 +970,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('8f2345ad-08c6-43c7-9084-c1a158feef97', 'Doge', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Doge.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-doge.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('8f2345ad-08c6-43c7-9084-c1a158feef97', 'Doge', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Doge.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-doge.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -994,7 +994,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('91c624e3-501c-423c-858d-4728d7af02a9', '梵高星空', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-a7d2872e-1769326615474.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-91c624e3-1769326655718.png', 'model-y-2025-plus', true, '梵高星空', NULL, NULL, NOW(), NOW())
+            VALUES ('91c624e3-501c-423c-858d-4728d7af02a9', '梵高星空', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-a7d2872e-1769326615474.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-91c624e3-1769326655718.png', 'model-y-2025-standard', true, '梵高星空', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1010,7 +1010,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('9839166f-a473-469c-a22f-fcb41a548d31', 'Ani', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Ani.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-ani.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('9839166f-a473-469c-a22f-fcb41a548d31', 'Ani', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Ani.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-ani.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1018,7 +1018,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('9904d646-e08f-4f99-bdef-94c9bbb8e820', 'Sketch', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Sketch.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-sketch.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('9904d646-e08f-4f99-bdef-94c9bbb8e820', 'Sketch', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Sketch.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-sketch.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1034,7 +1034,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('9a36f245-94c5-42b4-8a83-13d76080bd21', '气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-bd4b864d-1769326472129.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-bd4b864d-1769326472129.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-2025-plus', false, '气球主题', NULL, NULL, NOW(), NOW())
+            VALUES ('9a36f245-94c5-42b4-8a83-13d76080bd21', '气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-bd4b864d-1769326472129.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-bd4b864d-1769326472129.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-2025-standard', false, '气球主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1074,7 +1074,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('a1f34c3d-96cf-457d-8b52-d6c182e0f6cd', 'Ice Cream', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Ice_Cream.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-ice-cream.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('a1f34c3d-96cf-457d-8b52-d6c182e0f6cd', 'Ice Cream', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Ice_Cream.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-ice-cream.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1082,7 +1082,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('a2c60f42-9ccb-46e2-bdf4-ca6056275ce4', 'Leopard', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Leopard.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-leopard.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('a2c60f42-9ccb-46e2-bdf4-ca6056275ce4', 'Leopard', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Leopard.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-leopard.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1090,7 +1090,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('a39227f0-d73f-49f9-86b7-48f8882ff844', 'Acid Drip', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Acid_Drip.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-acid-drip.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('a39227f0-d73f-49f9-86b7-48f8882ff844', 'Acid Drip', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Acid_Drip.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-acid-drip.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1146,7 +1146,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('acf6fd66-2f16-4e06-ae17-c45c36aad463', 'Sakura', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Sakura.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-sakura.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('acf6fd66-2f16-4e06-ae17-c45c36aad463', 'Sakura', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Sakura.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-sakura.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1162,7 +1162,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('ae3623da-b183-4fb6-b80b-7b57b662c638', '彩色气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-233b8211-1769324488675.png', 'https://cdn.tewan.club/wraps/ai-generated/wrap-233b8211-1769324488675.png', 'model-y-2025-plus', false, '彩色气球主题', NULL, NULL, NOW(), NOW())
+            VALUES ('ae3623da-b183-4fb6-b80b-7b57b662c638', '彩色气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-233b8211-1769324488675.png', 'https://cdn.tewan.club/wraps/ai-generated/wrap-233b8211-1769324488675.png', 'model-y-2025-standard', false, '彩色气球主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1170,7 +1170,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('aea30a87-8efe-44e4-91d2-66c89afb1bd1', 'HelloKitty主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-ac79f33c-1769196392613.png', 'https://cdn.tewan.club/wraps/previews/preview-aea30a87-1769220186856.png', 'model-y-2025-plus', true, 'HelloKitty主题', NULL, NULL, NOW(), NOW())
+            VALUES ('aea30a87-8efe-44e4-91d2-66c89afb1bd1', 'HelloKitty主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-ac79f33c-1769196392613.png', 'https://cdn.tewan.club/wraps/previews/preview-aea30a87-1769220186856.png', 'model-y-2025-standard', true, 'HelloKitty主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1186,7 +1186,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('afda04ad-08d4-463f-a5b4-45dfb144c646', 'String Lights', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/String_Lights.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-string-lights.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('afda04ad-08d4-463f-a5b4-45dfb144c646', 'String Lights', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/String_Lights.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-string-lights.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1194,7 +1194,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('b243c5c7-bdd7-40dc-96b8-5b06e5d0db18', '极速黑鲨', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-50aa1d3d-1769671324356.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-b243c5c7-1769671378537.png', 'model-y-2025-plus', true, '鲨鱼车身，整车像一条鲨鱼，背部黑色，腹部白色，车头有牙齿，机盖上有眼睛', NULL, NULL, NOW(), NOW())
+            VALUES ('b243c5c7-bdd7-40dc-96b8-5b06e5d0db18', '极速黑鲨', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-50aa1d3d-1769671324356.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/previews/preview-b243c5c7-1769671378537.png', 'model-y-2025-standard', true, '鲨鱼车身，整车像一条鲨鱼，背部黑色，腹部白色，车头有牙齿，机盖上有眼睛', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1218,7 +1218,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('b6db9571-b5c9-426e-83e1-45d3680dc6dd', 'Vintage Stripes', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Vintage_Stripes.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-vintage-stripes.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('b6db9571-b5c9-426e-83e1-45d3680dc6dd', 'Vintage Stripes', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Vintage_Stripes.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-vintage-stripes.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1258,7 +1258,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('bb488f98-3093-45c6-9f32-11d7db8ce39f', '气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-51df8480-1769326557264.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-51df8480-1769326557264.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-pre-2025', false, '气球主题', NULL, NULL, NOW(), NOW())
+            VALUES ('bb488f98-3093-45c6-9f32-11d7db8ce39f', '气球主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-51df8480-1769326557264.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-51df8480-1769326557264.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y', false, '气球主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1290,7 +1290,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('c2044818-1167-41df-a77d-f49b90088861', '小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5c0e6e76-1769193858911.png', 'https://cdn.tewan.club/wraps/previews/preview-c2044818-1769196664099.png', 'model-y-2025-plus', true, '小黄人主题', NULL, NULL, NOW(), NOW())
+            VALUES ('c2044818-1167-41df-a77d-f49b90088861', '小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-5c0e6e76-1769193858911.png', 'https://cdn.tewan.club/wraps/previews/preview-c2044818-1769196664099.png', 'model-y-2025-standard', true, '小黄人主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1298,7 +1298,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('c264732b-a1f6-4167-ae16-263ad9997c59', 'Ani', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Ani.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-ani.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('c264732b-a1f6-4167-ae16-263ad9997c59', 'Ani', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Ani.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-ani.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1306,7 +1306,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('c3902aad-45e1-40d7-a14f-2448caf40c8e', 'Rudi', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Rudi.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-rudi.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('c3902aad-45e1-40d7-a14f-2448caf40c8e', 'Rudi', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Rudi.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-rudi.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1322,7 +1322,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('c7cbc4e4-236c-45af-9322-46d86e5d35fc', 'Acid Drip', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Acid_Drip.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-acid-drip.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('c7cbc4e4-236c-45af-9322-46d86e5d35fc', 'Acid Drip', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Acid_Drip.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-acid-drip.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1346,7 +1346,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('cbcdf598-1cde-417d-9acd-8a4efdab7074', 'Reindeer', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Reindeer.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-reindeer.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('cbcdf598-1cde-417d-9acd-8a4efdab7074', 'Reindeer', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Reindeer.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-reindeer.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1362,7 +1362,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('cffa72b5-7067-4d9b-995c-ee0f605519c1', 'Reindeer', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Reindeer.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-reindeer.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('cffa72b5-7067-4d9b-995c-ee0f605519c1', 'Reindeer', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Reindeer.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-reindeer.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1370,7 +1370,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('d3f10614-47fe-463a-a808-0417eda2ba46', '蓝色背景，机器猫主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-8d615f77-1768967496845.png', 'https://cdn.tewan.club/wraps/previews/wrap-8d615f77-1768967496845.png', 'model-y-2025-plus', false, '蓝色背景，机器猫主题', NULL, NULL, NOW(), NOW())
+            VALUES ('d3f10614-47fe-463a-a808-0417eda2ba46', '蓝色背景，机器猫主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-8d615f77-1768967496845.png', 'https://cdn.tewan.club/wraps/previews/wrap-8d615f77-1768967496845.png', 'model-y-2025-standard', false, '蓝色背景，机器猫主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1378,7 +1378,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('d40c4841-f976-458c-a479-6fdfeb59b4e2', 'Avocado Green', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Avocado_Green.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-avocado-green.png', 'model-y-pre-2025', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('d40c4841-f976-458c-a479-6fdfeb59b4e2', 'Avocado Green', 'official', 'https://cdn.tewan.club/catalog/model-y-pre-2025/wraps/Official/Avocado_Green.png', 'https://cdn.tewan.club/previews/model-y-pre-2025/model-y-pre-2025-official-avocado-green.png', 'model-y', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1386,7 +1386,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('d5da1b91-dcb9-4495-b95e-37f37aa7727b', 'Ice Cream', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Ice_Cream.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-ice-cream.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('d5da1b91-dcb9-4495-b95e-37f37aa7727b', 'Ice Cream', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Ice_Cream.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-ice-cream.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1402,7 +1402,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('d7d01e32-d99e-460d-8b9b-3f5ffe64780f', '极速米橙', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-b94ef408-1769674347445.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-b94ef408-1769674347445.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-3-2024-plus', false, '小米ultra橙色车身拉花', NULL, NULL, NOW(), NOW())
+            VALUES ('d7d01e32-d99e-460d-8b9b-3f5ffe64780f', '极速米橙', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-b94ef408-1769674347445.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-b94ef408-1769674347445.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-3-2024', false, '小米ultra橙色车身拉花', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1442,7 +1442,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('e22b0427-d264-452e-9258-531dafbe3db1', '蓝色背景，机器猫主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-74179257-1768967613555.png', 'https://cdn.tewan.club/wraps/previews/preview-e22b0427-1769191328089.png', 'model-y-pre-2025', false, '蓝色背景，机器猫主题', NULL, NULL, NOW(), NOW())
+            VALUES ('e22b0427-d264-452e-9258-531dafbe3db1', '蓝色背景，机器猫主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-74179257-1768967613555.png', 'https://cdn.tewan.club/wraps/previews/preview-e22b0427-1769191328089.png', 'model-y', false, '蓝色背景，机器猫主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1458,7 +1458,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('e2d57578-1114-4d04-bf06-0f53c15a837a', '海底世界主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-ba75dbff-1769319125783.png', 'https://cdn.tewan.club/wraps/previews/preview-e2d57578-1769319192478.png', 'model-y-2025-plus', true, '海底世界主题', NULL, NULL, NOW(), NOW())
+            VALUES ('e2d57578-1114-4d04-bf06-0f53c15a837a', '海底世界主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-ba75dbff-1769319125783.png', 'https://cdn.tewan.club/wraps/previews/preview-e2d57578-1769319192478.png', 'model-y-2025-standard', true, '海底世界主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1466,7 +1466,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('e326aab2-8b64-4cb0-b06e-d0b74dac4bd3', '黄色车身，小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-981492ac-1768959203710.png', 'https://cdn.tewan.club/wraps/previews/preview-e326aab2-1768965361279.png', 'model-y-pre-2025', false, '黄色车身，小黄人主题', NULL, NULL, NOW(), NOW())
+            VALUES ('e326aab2-8b64-4cb0-b06e-d0b74dac4bd3', '黄色车身，小黄人主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-981492ac-1768959203710.png', 'https://cdn.tewan.club/wraps/previews/preview-e326aab2-1768965361279.png', 'model-y', false, '黄色车身，小黄人主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1530,7 +1530,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('ecbb19c7-f068-468b-a8a2-3ec78fb5cd48', 'Vintage Gradient', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Vintage_Gradient.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-vintage-gradient.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('ecbb19c7-f068-468b-a8a2-3ec78fb5cd48', 'Vintage Gradient', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Vintage_Gradient.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-vintage-gradient.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1538,7 +1538,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('efc17cf1-15a2-443e-a746-0910ecd70356', 'Apocalypse', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Apocalypse.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-apocalypse.png', 'model-3-2024-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('efc17cf1-15a2-443e-a746-0910ecd70356', 'Apocalypse', 'official', 'https://cdn.tewan.club/catalog/model-3-2024-plus/wraps/Official/Apocalypse.png', 'https://cdn.tewan.club/previews/model-3-2024-plus/model-3-2024-plus-official-apocalypse.png', 'model-3-2024', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1546,7 +1546,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('f01ac3f0-4a6c-4704-8e4d-8a6272a4928d', 'Avocado Green', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Avocado_Green.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-avocado-green.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('f01ac3f0-4a6c-4704-8e4d-8a6272a4928d', 'Avocado Green', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Avocado_Green.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-avocado-green.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1554,7 +1554,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('f26919aa-27fe-498c-a72f-0831ceca6566', 'Cosmic Burst', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Cosmic_Burst.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-cosmic-burst.png', 'model-y-2025-plus', true, NULL, NULL, NULL, NOW(), NOW())
+            VALUES ('f26919aa-27fe-498c-a72f-0831ceca6566', 'Cosmic Burst', 'official', 'https://cdn.tewan.club/catalog/model-y-2025-plus/wraps/Official/Cosmic_Burst.png', 'https://cdn.tewan.club/previews/model-y-2025-plus/model-y-2025-plus-official-cosmic-burst.png', 'model-y-2025-standard', true, NULL, NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,
@@ -1586,7 +1586,7 @@ BEGIN;
                 is_public = EXCLUDED.is_public;
             
             INSERT INTO wraps (id, name, category, texture_url, preview_url, model_slug, is_public, prompt, description, user_id, created_at, updated_at)
-            VALUES ('f8f815ed-712b-43da-bab4-adafb9ac676a', '红色底色，超燃火焰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3c89b87e-1769340925696.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3c89b87e-1769340925696.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y-pre-2025', false, '红色底色，超燃火焰主题', NULL, NULL, NOW(), NOW())
+            VALUES ('f8f815ed-712b-43da-bab4-adafb9ac676a', '红色底色，超燃火焰主题', 'ai_generated', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3c89b87e-1769340925696.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'https://cdn.tewan.club/wraps/ai-generated/wrap-3c89b87e-1769340925696.png?x-oss-process=image/rotate,180/resize,w_1024,h_1024', 'model-y', false, '红色底色，超燃火焰主题', NULL, NULL, NOW(), NOW())
             ON CONFLICT (id) DO UPDATE SET 
                 name = EXCLUDED.name,
                 texture_url = EXCLUDED.texture_url,

@@ -13,6 +13,7 @@ import { getMaskUrl, getMaskDimensions } from '@/lib/ai/mask-config';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { logTaskStep } from '@/lib/ai/task-logger';
+import { getModelBySlug } from '@/config/models';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
 import { ServiceType, getServiceCost } from '@/lib/constants/credits';
 import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
@@ -23,15 +24,6 @@ import crypto from 'crypto';
 
 // Allow longer execution time for AI generation (Vercel Pro: 300s, Hobby: 60s max)
 export const maxDuration = 300;
-
-// Model slug to display name mapping
-const MODEL_NAMES: Record<string, string> = {
-    'cybertruck': 'Cybertruck',
-    'model-3': 'Model 3',
-    'model-3-2024-plus': 'Model 3 2024+',
-    'model-y-pre-2025': 'Model Y',
-    'model-y-2025-plus': 'Model Y 2025+',
-};
 
 const MAX_REFERENCE_IMAGES = 3;
 const MAX_REFERENCE_IMAGE_BYTES = 1.5 * 1024 * 1024;
@@ -138,7 +130,29 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const modelName = MODEL_NAMES[modelSlug];
+        const currentModelSlug = modelSlug.toLowerCase().trim();
+        let modelName: string | undefined;
+
+        try {
+            const { data, error } = await supabase
+                .from('wrap_models')
+                .select('name, name_en')
+                .eq('slug', currentModelSlug)
+                .eq('is_active', true)
+                .single();
+
+            if (!error && data) {
+                modelName = data.name || data.name_en || undefined;
+            }
+        } catch (dbErr) {
+            console.error('[AI-GEN] Failed to load model from DB, fallback to config:', dbErr);
+        }
+
+        if (!modelName) {
+            const fallback = getModelBySlug(currentModelSlug);
+            modelName = fallback?.name;
+        }
+
         if (!modelName) {
             return NextResponse.json({ success: false, error: 'Invalid model' }, { status: 400 });
         }
@@ -195,7 +209,7 @@ export async function POST(request: NextRequest) {
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
-        const currentModelSlug = modelSlug.toLowerCase();
+        // reuse currentModelSlug from validation step
         let maskImageBase64: string | null = null;
         try {
             console.log(`[AI-GEN] Fetching mask for ${currentModelSlug}...`);

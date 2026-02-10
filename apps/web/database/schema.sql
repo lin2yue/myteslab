@@ -392,7 +392,7 @@ CREATE POLICY "Own Ledger" ON credit_ledger FOR SELECT USING (auth.uid() = user_
 INSERT INTO wrap_models (slug, name, model_3d_url, sort_order) VALUES
   ('cybertruck', 'Cybertruck', 'https://cdn.tewan.club/models/wraps/cybertruck/model_v1.glb', 1),
   ('model-3', 'Model 3 (经典款)', 'https://cdn.tewan.club/models/wraps/model-3/model_v1.glb', 2),
-  ('model-3-2024-plus', 'Model 3 (焕新版)', 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v2.glb', 3),
-  ('model-y-2025-plus', 'Model Y (2025+)', 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v5.glb', 4),
-  ('model-y-pre-2025', 'Model Y (经典款)', 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb', 5)
+  ('model-3-2024', 'Model 3 (焕新版)', 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v2.glb', 3),
+  ('model-y-2025-standard', 'Model Y (2025+)', 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v5.glb', 4),
+  ('model-y', 'Model Y (经典款)', 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb', 5)
 ON CONFLICT (slug) DO NOTHING;

@@ -40,7 +40,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
         is_active: true,
     },
     {
-        slug: 'model-3-2024-plus',
+        slug: 'model-3-2024',
         name: 'Model 3 (焕新版)',
         name_en: 'Model 3 2024+',
         model_3d_url: 'https://cdn.tewan.club/models/wraps/model-3-2024-plus/model_v2.glb',
@@ -48,7 +48,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
         is_active: true,
     },
     {
-        slug: 'model-y-2025-plus',
+        slug: 'model-y-2025-standard',
         name: 'Model Y (2025+)',
         name_en: 'Model Y 2025+',
         model_3d_url: 'https://cdn.tewan.club/models/wraps/model-y-2025-plus/model_v5.glb',
@@ -56,7 +56,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
         is_active: true,
     },
     {
-        slug: 'model-y-pre-2025',
+        slug: 'model-y',
         name: 'Model Y (经典款)',
         name_en: 'Model Y',
         model_3d_url: 'https://cdn.tewan.club/models/wraps/model-y-pre-2025/model_v2.glb',

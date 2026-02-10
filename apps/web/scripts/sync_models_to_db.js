@@ -50,7 +50,7 @@ const DEFAULT_MODELS = [
         is_active: true
     },
     {
-        slug: 'model-3-2024-plus',
+        slug: 'model-3-2024',
         name: 'Model 3 焕新版',
         name_en: 'Model 3 Highland',
         model_3d_url: 'https://cdn.tewan.club/models/model3-2024-base/body.glb',
@@ -59,7 +59,7 @@ const DEFAULT_MODELS = [
         is_active: true
     },
     {
-        slug: 'model-y-pre-2025',
+        slug: 'model-y',
         name: 'Model Y (经典款)',
         name_en: 'Model Y (Classic)',
         model_3d_url: 'https://cdn.tewan.club/models/modely/body.glb',
@@ -68,7 +68,7 @@ const DEFAULT_MODELS = [
         is_active: true
     },
     {
-        slug: 'model-y-2025-plus',
+        slug: 'model-y-2025-standard',
         name: 'Model Y 标准版',
         name_en: 'Model Y (Standard)',
         model_3d_url: 'https://cdn.tewan.club/models/modely-2025-base/body.glb',
