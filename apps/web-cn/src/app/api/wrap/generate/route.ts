@@ -245,10 +245,20 @@ async function refundTaskCredits(taskId: string, reason: string) {
     }
 }
 
-export async function POST(request: NextRequest) {
-    let taskId: string | undefined;
+async function processGenerationTask(params: {
+    taskId: string;
+    userId: string;
+    modelSlug: string;
+    modelName: string;
+    prompt: string;
+    referenceImages?: string[];
+    origin: string;
+}) {
+    const { taskId, userId, modelSlug, modelName, prompt, referenceImages, origin } = params;
+    const logStep = (step: string, status?: string, reason?: string) =>
+        logTaskStep(taskId, step, status, reason);
+
     const markTaskFailed = async (reason: string) => {
-        if (!taskId) return;
         await dbQuery(
             `UPDATE generation_tasks
              SET status = 'failed',
@@ -258,6 +268,232 @@ export async function POST(request: NextRequest) {
             [taskId, reason]
         );
     };
+
+    try {
+        // 1. 先标记处理中
+        await logStep('ai_call_start', 'processing');
+        await dbQuery(
+            `UPDATE generation_tasks
+             SET status = 'processing', updated_at = NOW()
+             WHERE id = $1 AND user_id = $2`,
+            [taskId, userId]
+        );
+
+        // 2. 获取 Mask
+        let maskImageBase64: string | null = null;
+        try {
+            console.log(`[AI-GEN] Fetching mask for ${modelSlug}...`);
+            const maskUrl = getMaskUrl(modelSlug, origin);
+            console.log(`[AI-GEN] Mask URL: ${maskUrl}`);
+            const maskResponse = await fetch(maskUrl);
+
+            if (maskResponse.ok) {
+                const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
+                console.log(`[AI-GEN] Mask fetched, size: ${maskBuffer.length} bytes`);
+                maskImageBase64 = maskBuffer.toString('base64');
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[AI-DEBUG] Mask processed.`);
+                }
+            } else {
+                console.error(`[AI-GEN] Failed to fetch mask from: ${maskUrl}, Status: ${maskResponse.status}`);
+            }
+        } catch (error) {
+            console.error('[AI-GEN] ❌ Mask processing failed:', error);
+        }
+
+        // 3. 参考图上传
+        const savedReferenceUrls: string[] = [];
+        if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+            console.log(`[AI-GEN] Processing ${referenceImages.length} reference images...`);
+            for (let i = 0; i < referenceImages.length; i++) {
+                try {
+                    const base64Data = referenceImages[i];
+                    if (!base64Data) continue;
+
+                    const payload = extractBase64Payload(base64Data);
+                    if (!payload) continue;
+                    if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
+                        throw new Error('Reference image too large');
+                    }
+                    const buffer = Buffer.from(payload, 'base64');
+
+                    const refFilename = `${taskId}-ref-${i}.png`;
+                    const refUrl = await uploadToOSS(buffer, refFilename, 'wraps/reference');
+                    savedReferenceUrls.push(refUrl);
+                    console.log(`[AI-GEN] Reference image ${i} uploaded: ${refUrl}`);
+                } catch (e) {
+                    if (e instanceof Error && e.message === 'Reference image too large') {
+                        throw e;
+                    }
+                    console.error(`[AI-GEN] Failed to upload reference image ${i}:`, e);
+                }
+            }
+        }
+
+        // 4. 准备参考图 base64
+        const referenceImagesBase64: string[] = [];
+        if (referenceImages && Array.isArray(referenceImages)) {
+            for (const refImage of referenceImages) {
+                if (typeof refImage !== 'string') continue;
+                const base64 = refImage.startsWith('http')
+                    ? await imageUrlToBase64(refImage)
+                    : extractBase64Payload(refImage);
+                if (base64) referenceImagesBase64.push(base64);
+            }
+        }
+
+        console.log(`[AI-GEN] Starting parallel tasks: Gemini image and bilingual metadata...`);
+
+        const metadataPromise = generateBilingualMetadata(prompt, modelName).catch(err => {
+            console.error('[AI-GEN] Failed to generate bilingual metadata, using fallback:', err);
+            return {
+                name: 'AI Generated Wrap',
+                name_en: 'AI Generated Wrap',
+                description: '',
+                description_en: ''
+            };
+        });
+
+        const imageGenerationPromise = generateWrapTexture({
+            modelSlug,
+            modelName,
+            prompt,
+            maskImageBase64: maskImageBase64 || undefined,
+            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
+        });
+
+        const result = await imageGenerationPromise;
+
+        if (!result.success) {
+            console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${userId}...`);
+            await markTaskFailed(`AI API Error: ${result.error}`);
+            await refundTaskCredits(taskId, `AI API Error: ${result.error}`);
+            return;
+        }
+
+        await logStep('ai_response_received');
+
+        if (!result.dataUrl) {
+            await markTaskFailed('AI generated image but no data returned');
+            await refundTaskCredits(taskId, 'AI generated image but no data returned');
+            return;
+        }
+
+        let savedUrl = result.dataUrl;
+        let correctedDataUrl = result.dataUrl;
+
+        try {
+            const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
+
+            const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            await logStep('oss_upload_start');
+
+            try {
+                const rawUrl = await uploadToOSS(buffer, filename, 'wraps/ai-generated');
+                if (modelSlug.includes('cybertruck')) {
+                    savedUrl = `${rawUrl}?x-oss-process=image/rotate,90/resize,w_1024,h_768`;
+                } else {
+                    savedUrl = `${rawUrl}?x-oss-process=image/rotate,180/resize,w_1024,h_1024`;
+                }
+                correctedDataUrl = savedUrl;
+                await logStep('oss_upload_success');
+            } catch (ossErr) {
+                console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${userId}:`, ossErr);
+                await markTaskFailed('OSS upload failed');
+                await refundTaskCredits(taskId, 'OSS upload failed');
+                return;
+            }
+        } catch (err) {
+            console.error(`❌ [AI-GEN] Image processing error for task ${taskId}, user ${userId}:`, err);
+            await markTaskFailed('Image processing failed');
+            await refundTaskCredits(taskId, 'Image processing failed');
+            return;
+        }
+
+        await logStep('database_save_start');
+
+        const metadata = await metadataPromise;
+
+        const slugBase = buildSlugBase({
+            name: metadata.name,
+            nameEn: metadata.name_en,
+            prompt,
+            modelSlug
+        });
+        const slug = await ensureUniqueSlug(slugBase);
+
+        let wrapId: string | undefined;
+
+        try {
+            const { rows: wrapRows } = await dbQuery(
+                `INSERT INTO wraps (
+                    user_id, name, name_en, description_en, prompt, model_slug,
+                    texture_url, preview_url, is_public, category, reference_images, generation_task_id, slug
+                ) VALUES (
+                    $1,$2,$3,$4,$5,$6,
+                    $7,$8,$9,$10,$11::text[],$12,$13
+                ) RETURNING id, slug`,
+                [
+                    userId,
+                    metadata.name,
+                    metadata.name_en,
+                    metadata.description_en,
+                    prompt,
+                    modelSlug,
+                    savedUrl,
+                    savedUrl,
+                    false,
+                    WRAP_CATEGORY.AI_GENERATED,
+                    savedReferenceUrls,
+                    taskId,
+                    slug
+                ]
+            );
+
+            wrapId = wrapRows[0]?.id;
+
+            if (!wrapId) {
+                throw new Error('Failed to get wrap ID from database');
+            }
+        } catch (dbErr) {
+            console.error(`❌ [AI-GEN] Database save failed for task ${taskId}, user ${userId}:`, dbErr);
+            await logStep('database_save_failed', undefined, dbErr instanceof Error ? dbErr.message : 'Database error');
+            await markTaskFailed(`Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
+            await refundTaskCredits(taskId, `Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
+            return;
+        }
+
+        if (wrapId) {
+            await dbQuery(
+                `UPDATE generation_tasks
+                 SET status = 'completed', wrap_id = $2, updated_at = NOW()
+                 WHERE id = $1 AND user_id = $3`,
+                [taskId, wrapId, userId]
+            );
+        }
+
+        await logStep('database_save_success');
+        await logStep('completed', 'completed');
+
+        console.log(`[AI-GEN] Task ${taskId} completed. Wrap ${wrapId} saved.`);
+        return;
+
+    } catch (error: any) {
+        console.error('❌ [AI-GEN] Background task error:', error);
+        try {
+            await markTaskFailed(`Global API Error: ${error instanceof Error ? error.message : String(error)}`);
+            await logTaskStep(taskId, 'failed', 'failed', `Global Error: ${error instanceof Error ? error.message : String(error)}`);
+            await refundTaskCredits(taskId, `Global API Error: ${error instanceof Error ? error.message : String(error)}`);
+        } catch (innerErr) {
+            console.error('[AI-GEN] Failed to finalize error handling:', innerErr);
+        }
+    }
+}
+
+export async function POST(request: NextRequest) {
+    let taskId: string | undefined;
 
     const requestId = crypto.randomUUID();
     console.log(`[AI-GEN] [${requestId}] Request received. Content-Length: ${request.headers.get('content-length')}`);
@@ -384,264 +620,40 @@ export async function POST(request: NextRequest) {
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
-        let maskImageBase64: string | null = null;
-        try {
-            console.log(`[AI-GEN] Fetching mask for ${currentModelSlug}...`);
-            const maskUrl = getMaskUrl(currentModelSlug, request.nextUrl.origin);
-            console.log(`[AI-GEN] Mask URL: ${maskUrl}`);
-            const maskResponse = await fetch(maskUrl);
-
-            if (maskResponse.ok) {
-                const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
-                console.log(`[AI-GEN] Mask fetched, size: ${maskBuffer.length} bytes`);
-
-                // 已经使用了你上传到线上的“预旋转”Mask，因此不需要再做预处理旋转
-                maskImageBase64 = maskBuffer.toString('base64');
-
-                if (process.env.NODE_ENV === 'development') {
-                    // Dev only logging if needed, but file writes removed for safety
-                    console.log(`[AI-DEBUG] Mask processed.`);
-                }
-            } else {
-                console.error(`[AI-GEN] Failed to fetch mask from: ${maskUrl}, Status: ${maskResponse.status}`);
-            }
-        } catch (error) {
-            console.error('[AI-GEN] ❌ Mask processing failed:', error);
-        }
-
-        // 4. 处理并转存参考图 (Optional Reference Images)
-        const savedReferenceUrls: string[] = [];
-        if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
-            console.log(`[AI-GEN] Processing ${referenceImages.length} reference images...`);
-            for (let i = 0; i < referenceImages.length; i++) {
-                try {
-                    const base64Data = referenceImages[i];
-                    if (!base64Data) continue;
-
-                    const payload = extractBase64Payload(base64Data);
-                    if (!payload) continue;
-                    if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
-                        return NextResponse.json({ success: false, error: 'Reference image too large' }, { status: 413 });
-                    }
-                    const buffer = Buffer.from(payload, 'base64');
-
-                    const refFilename = `${taskId}-ref-${i}.png`;
-                    const refUrl = await uploadToOSS(buffer, refFilename, 'wraps/reference');
-                    savedReferenceUrls.push(refUrl);
-                    console.log(`[AI-GEN] Reference image ${i} uploaded: ${refUrl}`);
-                } catch (e) {
-                    console.error(`[AI-GEN] Failed to upload reference image ${i}:`, e);
-                }
-            }
-        }
-
-        // 5. 调用 Gemini 生成纹理 (Call AI)
-        console.log(`[AI-GEN] Preparing for Gemini generation...`);
-        const referenceImagesBase64: string[] = [];
-        if (referenceImages && Array.isArray(referenceImages)) {
-            for (const refImage of referenceImages) {
-                if (typeof refImage !== 'string') continue;
-                const base64 = refImage.startsWith('http')
-                    ? await imageUrlToBase64(refImage)
-                    : extractBase64Payload(refImage);
-                if (base64) referenceImagesBase64.push(base64);
-            }
-        }
-
-        // 5. 并行准备：开始生图的同时，也开始准备元数据
-        console.log(`[AI-GEN] Starting parallel tasks: Gemini image and bilingual metadata...`);
-
-        const logStep = (step: string, status?: string, reason?: string) =>
-            logTaskStep(taskId, step, status, reason);
-
-        await logStep('ai_call_start', 'processing');
-        await dbQuery(
-            `UPDATE generation_tasks
-             SET status = 'processing', updated_at = NOW()
-             WHERE id = $1 AND user_id = $2`,
-            [taskId, user.id]
-        );
-
-        // 同时启动两个 AI 任务
-        const metadataPromise = generateBilingualMetadata(prompt, modelName).catch(err => {
-            console.error('[AI-GEN] Failed to generate bilingual metadata, using fallback:', err);
-            return {
-                name: 'AI Generated Wrap',
-                name_en: 'AI Generated Wrap',
-                description: '',
-                description_en: ''
-            };
-        });
-        const imageGenerationPromise = generateWrapTexture({
+        // 异步处理，立即返回 pending
+        void processGenerationTask({
+            taskId,
+            userId: user.id,
             modelSlug,
             modelName,
             prompt,
-            maskImageBase64: maskImageBase64 || undefined,
-            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
+            referenceImages,
+            origin: request.nextUrl.origin
         });
-
-        // 等待生图结果
-        const result = await imageGenerationPromise;
-
-        // 6. 处理结果
-        if (!result.success) {
-            // 失败：更新任务状态并自动退款
-            console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${user.id}...`);
-            await markTaskFailed(`AI API Error: ${result.error}`);
-            if (taskId) await refundTaskCredits(taskId, `AI API Error: ${result.error}`);
-
-            return NextResponse.json({ success: false, error: result.error }, { status: 500 });
-        }
-
-        // 记录步骤：AI 响应成功
-        await logStep('ai_response_received');
-
-        // 7. 成功：记录结果并返回
-        if (!result.dataUrl) {
-            return NextResponse.json({ success: false, error: 'AI generated image but no data returned' }, { status: 500 });
-        }
-
-        let savedUrl = result.dataUrl;
-        let correctedDataUrl = result.dataUrl;
-
-        try {
-            if (!taskId) throw new Error('Task ID is missing');
-            const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
-
-            const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            // 记录步骤：准备上传 OSS
-            await logStep('oss_upload_start');
-
-            // 1. 直接上传到云端 OSS (不经过 Sharp 旋转)
-            try {
-                const rawUrl = await uploadToOSS(buffer, filename, 'wraps/ai-generated');
-
-                // 2. 在 URL 后挂载云端旋转和缩放参数 (x-oss-process)
-                // 核心逻辑：从 AI 视角(车头向下)转回 3D 视角
-                if (currentModelSlug.includes('cybertruck')) {
-                    // Cybertruck: 顺时针旋转 90 度 -> 车头向左 (1024x768)
-                    savedUrl = `${rawUrl}?x-oss-process=image/rotate,90/resize,w_1024,h_768`;
-                } else {
-                    // Model 3/Y: 旋转 180 度 -> 车头向上 (1024x1024)
-                    savedUrl = `${rawUrl}?x-oss-process=image/rotate,180/resize,w_1024,h_1024`;
-                }
-                correctedDataUrl = savedUrl; // 前端可以直接使用带参数的 URL
-
-                // 记录步骤：OSS 上传成功
-                await logStep('oss_upload_success');
-
-            } catch (ossErr) {
-                console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${user.id}:`, ossErr);
-                await markTaskFailed('OSS upload failed');
-                if (taskId) await refundTaskCredits(taskId, 'OSS upload failed');
-                return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
-            }
-
-        } catch (err) {
-            console.error(`❌ [AI-GEN] Image processing error for task ${taskId}, user ${user.id}:`, err);
-            await markTaskFailed('Image processing failed');
-            if (taskId) await refundTaskCredits(taskId, 'Image processing failed');
-            return NextResponse.json({ success: false, error: 'Image correction failed' }, { status: 500 });
-        }
-
-        // 记录步骤:准备保存至作品表
-        await logStep('database_save_start');
-
-        // 等待并获取元数据结果(元数据任务在后台可能已经跑完了)
-        const metadata = await metadataPromise;
-
-        // 插入到统一的作品表 wraps
-        const slugBase = buildSlugBase({
-            name: metadata.name,
-            nameEn: metadata.name_en,
-            prompt,
-            modelSlug
-        });
-        const slug = await ensureUniqueSlug(slugBase);
-
-        let wrapId: string | undefined;
-
-        try {
-            const { rows: wrapRows } = await dbQuery(
-                `INSERT INTO wraps (
-                    user_id, name, name_en, description_en, prompt, model_slug,
-                    texture_url, preview_url, is_public, category, reference_images, generation_task_id, slug
-                ) VALUES (
-                    $1,$2,$3,$4,$5,$6,
-                    $7,$8,$9,$10,$11::text[],$12,$13
-                ) RETURNING id, slug`,
-                [
-                    user.id,
-                    metadata.name,
-                    metadata.name_en,
-                    metadata.description_en,
-                    prompt,
-                    modelSlug,
-                    savedUrl,
-                    savedUrl,
-                    false,
-                    WRAP_CATEGORY.AI_GENERATED,
-                    savedReferenceUrls,
-                    taskId,
-                    slug
-                ]
-            );
-
-            wrapId = wrapRows[0]?.id;
-
-            if (!wrapId) {
-                throw new Error('Failed to get wrap ID from database');
-            }
-        } catch (dbErr) {
-            console.error(`❌ [AI-GEN] Database save failed for task ${taskId}, user ${user.id}:`, dbErr);
-            await logStep('database_save_failed', undefined, dbErr instanceof Error ? dbErr.message : 'Database error');
-            await markTaskFailed(`Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
-
-            // 数据库保存失败,自动退款
-            if (taskId) {
-                await refundTaskCredits(taskId, `Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
-            }
-
-            return NextResponse.json({
-                success: false,
-                error: 'Failed to save result to database'
-            }, { status: 500 });
-        }
-
-        if (taskId && wrapId) {
-            await dbQuery(
-                `UPDATE generation_tasks
-                 SET status = 'completed', wrap_id = $2, updated_at = NOW()
-                 WHERE id = $1 AND user_id = $3`,
-                [taskId, wrapId, user.id]
-            );
-        }
-
-        // 记录步骤:作品保存成功
-        await logStep('database_save_success');
-
-        // 记录步骤:任务最终完成
-        await logStep('completed', 'completed');
 
         return NextResponse.json({
             success: true,
             taskId,
-            wrapId,
-            image: {
-                dataUrl: correctedDataUrl,
-                mimeType: result.mimeType,
-                savedUrl: savedUrl
-            },
+            status: 'pending',
             remainingBalance: deductResultRaw?.remainingBalance ?? 0
-        });
+        }, { status: 202 });
 
     } catch (error: any) {
         console.error('❌ [AI-GEN] Global API Error:', error);
 
         if (taskId) {
-            await markTaskFailed(`Global API Error: ${error instanceof Error ? error.message : String(error)}`);
+            try {
+                await dbQuery(
+                    `UPDATE generation_tasks
+                     SET status = 'failed',
+                         error_message = $2,
+                         updated_at = NOW()
+                     WHERE id = $1`,
+                    [taskId, `Global API Error: ${error instanceof Error ? error.message : String(error)}`]
+                );
+            } catch (markErr) {
+                console.error('[AI-GEN] Failed to mark task failed in API error handler:', markErr);
+            }
             // Try to log the failure to the DB so it shows in Admin Console
             try {
                 // Try logging with user client first as it's already instantiated (hopefully)
