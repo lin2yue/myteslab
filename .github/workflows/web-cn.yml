@@ -113,6 +113,10 @@ jobs:
               -e WECHAT_MP_APP_SECRET="${{ secrets.WECHAT_MP_APP_SECRET }}" \
               -e WECHAT_MP_TOKEN="${{ secrets.WECHAT_MP_TOKEN }}" \
               -e WECHAT_MP_AES_KEY="${{ secrets.WECHAT_MP_AES_KEY }}" \
+              -e ALIPAY_APP_ID="${{ secrets.ALIPAY_APP_ID }}" \
+              -e ALIPAY_PRIVATE_KEY="${{ secrets.ALIPAY_PRIVATE_KEY }}" \
+              -e ALIPAY_PUBLIC_KEY="${{ secrets.ALIPAY_PUBLIC_KEY }}" \
+              -e ALIPAY_GATEWAY="${{ secrets.ALIPAY_GATEWAY }}" \
               -e HTTP_PROXY="" \
               -e HTTPS_PROXY="" \
               ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:${{ steps.set_env.outputs.IMAGE_TAG }}

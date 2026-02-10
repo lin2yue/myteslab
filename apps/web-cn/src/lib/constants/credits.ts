@@ -49,32 +49,40 @@ export interface PricingTier extends PricingTierBase {
 }
 
 /**
- * 价格套餐基础数据
+ * 价格套餐基础数据 (RMB)
  */
 const PRICING_TIERS_BASE: PricingTierBase[] = [
     {
         id: 'starter',
         nameKey: 'starter',
-        price: '4.99',
-        credits: 100,
-        polarProductId: '3f5b29c4-563f-4d37-91b0-584f58b9683a',
+        price: '19.9',
+        credits: 60,
+        polarProductId: '', // Deprecated for Alipay
     },
     {
         id: 'explorer',
         nameKey: 'explorer',
-        price: '9.99',
-        credits: 250,
+        price: '59.0',
+        credits: 200,
         popular: true,
+        savings: '10',
+        polarProductId: '',
+    },
+    {
+        id: 'advanced', // New tier
+        nameKey: 'advanced',
+        price: '128.0',
+        credits: 500,
         savings: '20',
-        polarProductId: 'd70e4de3-c53c-41db-a86a-9f5c6e6af6d9',
+        polarProductId: '',
     },
     {
         id: 'collector',
         nameKey: 'collector',
-        price: '19.99',
-        credits: 700,
-        savings: '40',
-        polarProductId: '05816746-1a3a-46d2-a40e-4c513d19fad7',
+        price: '288.0',
+        credits: 1200,
+        savings: '30',
+        polarProductId: '',
     }
 ];
 

@@ -86,8 +86,11 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
 
                 <div className="mt-8 flex flex-col items-center">
                     <div className="flex items-baseline justify-center">
+                        <span className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-white mr-1">
+                            ¥
+                        </span>
                         <span className="text-5xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                            ${tier.price.replace('.99', '.9')}
+                            {tier.price}
                         </span>
                     </div>
                     <div className="mt-4 px-3 py-1 rounded-full border text-zinc-600 dark:text-zinc-400 border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex items-baseline justify-center gap-1">
@@ -116,8 +119,8 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             {/* Action Button */}
             <Button
                 onClick={handleBuy}
-                disabled={true}
-                className={`w-full rounded-2xl ${status !== 'idle' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-wait' : 'opacity-50 cursor-not-allowed'}`}
+                disabled={status !== 'idle'}
+                className={`w-full rounded-2xl ${status !== 'idle' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-wait' : ''}`}
                 size="lg"
             >
                 {status !== 'idle' ? (
@@ -128,7 +131,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
                         </span>
                     </div>
                 ) : (
-                    t('coming_soon')
+                    t('buy_now')
                 )}
             </Button>
         </div>
