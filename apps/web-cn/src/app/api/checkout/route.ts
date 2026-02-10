@@ -20,14 +20,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
         }
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        // Determine app URL (prioritize headers for correct host)
+        const headersList = await headers();
+        const host = headersList.get('host') || 'localhost:3000';
+        const protocol = headersList.get('x-forwarded-proto') || 'http';
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
         const localePrefix = locale ? `/${locale}` : '';
 
         // Generate a unique out_trade_no (User ID + Timestamp)
         const outTradeNo = `${user.id.slice(0, 8)}-${Date.now()}`;
 
         // Detect device type
-        const headersList = await headers();
+        // const headersList = await headers(); // Already obtained above
         const userAgent = headersList.get('user-agent') || '';
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 

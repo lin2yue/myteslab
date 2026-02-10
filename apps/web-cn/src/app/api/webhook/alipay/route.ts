@@ -4,6 +4,7 @@ import { dbQuery } from '@/lib/db';
 import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
+    console.log('[Alipay Webhook] Received request');
     try {
         const alipaySdk = getAlipaySdk();
         const formData = await request.formData();
@@ -86,13 +87,20 @@ export async function POST(request: Request) {
             // but we can run sequential queries.
             try {
                 // Add credits to balance
+                // Add credits to balance (UPSERT)
+                // Since our db wrapper doesn't support UPSERT syntax easily for all PG versions or complex joins, 
+                // we'll try UPDATE first, if rowCount is 0, we INSERT.
+                // Actually, standard PG "INSERT ... ON CONFLICT" is best.
+                // Assuming user_id is PK or Unique.
                 await dbQuery(
-                    `UPDATE user_credits 
-                     SET balance = balance + $1, 
-                         total_earned = total_earned + $1,
-                         updated_at = NOW()
-                     WHERE user_id = $2`,
-                    [creditsToAdd, userId]
+                    `INSERT INTO user_credits (user_id, balance, total_earned, updated_at)
+                     VALUES ($1, $2, $2, NOW())
+                     ON CONFLICT (user_id) 
+                     DO UPDATE SET 
+                        balance = user_credits.balance + $2,
+                        total_earned = user_credits.total_earned + $2,
+                        updated_at = NOW()`,
+                    [userId, creditsToAdd]
                 );
 
                 // Log the transaction
@@ -102,7 +110,7 @@ export async function POST(request: Request) {
                     [userId, creditsToAdd, tradeNo, JSON.stringify(params)]
                 );
 
-                console.log(`[Alipay Webhook] Success: Added ${creditsToAdd} credits to user ${userId}`);
+                console.log(`[Alipay Webhook] Success: Added ${creditsToAdd} credits to user ${userId} and logged transaction ${tradeNo}`);
             } catch (dbError) {
                 console.error('[Alipay Webhook] Database update failed:', dbError);
                 return new Response('fail', { status: 500 });
