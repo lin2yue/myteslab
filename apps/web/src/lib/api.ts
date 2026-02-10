@@ -309,7 +309,7 @@ export async function getModels(): Promise<Model[]> {
                     return DEFAULT_MODELS.filter(m => m.is_active) as Model[];
                 }
             },
-            ['models-v9'], // Incremented version to force cache refresh
+            ['models-v10'], // Incremented version to force cache refresh
             { revalidate: 3600, tags: ['models'] }
         )()
     } catch (error) {
