@@ -5,16 +5,20 @@ import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
     console.log('[Alipay Webhook] Received request');
-    console.log('[Alipay Webhook] Received request');
+
     let params: Record<string, string> = {}; // Declare outside try for error logging usage
 
     try {
+        await dbQuery(`INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`, ['alipay', '{}', 'entry_point_hit']);
+
         const alipaySdk = getAlipaySdk();
         const formData = await request.formData();
 
         formData.forEach((value, key) => {
             params[key] = value.toString();
         });
+
+        await dbQuery(`INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`, ['alipay', JSON.stringify(params), 'params_parsed']);
 
         console.log('[Alipay Webhook] Received params:', params);
 
