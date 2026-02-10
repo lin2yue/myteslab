@@ -33,6 +33,12 @@ export async function POST(request: Request) {
         }
         // -------------------------------------
 
+        // --- DEBUG: Log signature check start ---
+        try {
+            await dbQuery(`INSERT INTO webhook_events(provider, payload, status) VALUES($1, $2, $3)`, ['alipay', '{}', 'verifying_signature']);
+        } catch (e) { }
+        // ----------------------------------------
+
         // 1. Verify Signature
         const isValid = alipaySdk.checkNotifySign(params);
         if (!isValid) {
@@ -170,17 +176,12 @@ export async function POST(request: Request) {
         console.error('[Alipay Webhook] Error:', error);
         // --- DEBUG: Log top-level error ---
         try {
-            if (Object.keys(params).length > 0) {
-                await dbQuery(
-                    `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
-                    [`Top-level Error: ${error.message}`, JSON.stringify(params)]
-                );
-            } else {
-                await dbQuery(
-                    `INSERT INTO webhook_events (provider, payload, status, error) VALUES ($1, $2, $3, $4)`,
-                    ['alipay', '{}', 'failed', `Top-level Error (No Params): ${error.message}`]
-                );
-            }
+            // FORCE INSERT error log to guarantee visibility
+            // Don't rely on UPDATE matching complex JSON
+            await dbQuery(
+                `INSERT INTO webhook_events (provider, payload, status, error) VALUES ($1, $2, $3, $4)`,
+                ['alipay', JSON.stringify(params), 'failed', `Top-level Crash: ${error.message}`]
+            );
         } catch (e) {
             console.error('Failed to log top-level error:', e);
         }
