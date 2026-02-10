@@ -1,17 +1,18 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useTranslations } from '@/lib/i18n'
+import { useTranslations } from 'next-intl'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
-import Link from 'next/link'
+import { Link } from '@/i18n/routing'
+import { createClient } from '@/utils/supabase/client'
 import Image from 'next/image'
 import StickerEditor from '@/components/sticker/StickerEditor'
 import {
     Sun, Moon, RotateCw, Pause, Camera, Download, Globe, Check, Loader2,
-    Sparkles, X, Plus, Palette, ArrowRight
+    Sparkles, X, Plus, Palette, ArrowRight, ZoomIn
 } from 'lucide-react'
 import PricingModal from '@/components/pricing/PricingModal'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/routing'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 import PublishModal from '@/components/publish/PublishModal'
 import { useAlert } from '@/components/alert/AlertProvider'
@@ -76,6 +77,8 @@ export default function AIGeneratorMain({
         return effectiveUrl;
     }, [cdnUrl])
 
+    const supabase = useMemo(() => createClient(), [])
+
     // 从 localStorage 读取上次选择的模型
     const getInitialModel = () => {
         if (typeof window === 'undefined') return models[0]?.slug || 'cybertruck'
@@ -108,8 +111,7 @@ export default function AIGeneratorMain({
     const pollAttemptsRef = useRef(0)
     const pollStartRef = useRef<number | null>(null)
     const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const sessionGuidRef = useRef<string>(Math.random().toString(36).substring(2, 15))
-    const retrySeedRef = useRef<number>(0)
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -172,17 +174,41 @@ export default function AIGeneratorMain({
         isFetchingRef.current = true
         setIsFetchingHistory(true)
         try {
-            const res = await fetch(`/api/wrap/history?category=${activeMode === 'diy' ? 'diy' : 'ai_generated'}`)
-            if (res.status === 401) {
-                setIsLoggedInInternal(false)
+            const { data: { session } } = await supabase.auth.getSession()
+            const user = session?.user
+            if (!user) {
+                console.log('fetchHistory: No user found')
                 setHistory([])
                 return
             }
-            const data = await res.json()
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || 'Failed to fetch history')
+
+            let query = supabase
+                .from('wraps')
+                .select('*')
+                .eq('user_id', user.id)
+                .is('deleted_at', null)
+
+            // Strictly filter by category defined at writing
+            if (activeMode === 'diy') {
+                query = query.eq('category', 'diy')
+            } else {
+                query = query.eq('category', 'ai_generated')
             }
-            setHistory(data.wraps || [])
+
+            const { data, error } = await query
+                .order('created_at', { ascending: false })
+                .limit(10)
+
+            if (error) {
+                console.error('Supabase query error:', error)
+                throw error
+            }
+
+            if (data) {
+                setHistory(data)
+            } else {
+                setHistory([])
+            }
         } catch (err) {
             console.error('Fetch history error:', err)
             // Optional: could set an error state here to show in UI
@@ -191,26 +217,34 @@ export default function AIGeneratorMain({
             isFetchingRef.current = false
             setIsFetchingHistory(false)
         }
-    }, [activeMode])
-
-    const checkAuth = useCallback(async () => {
-        try {
-            const res = await fetch('/api/auth/me')
-            if (!res.ok) {
-                setIsLoggedInInternal(false)
-                return
-            }
-            const data = await res.json()
-            setIsLoggedInInternal(!!data?.user)
-        } catch {
-            setIsLoggedInInternal(false)
-        }
-    }, [])
+    }, [supabase, activeMode])
 
     useEffect(() => {
-        checkAuth()
-        fetchHistory()
-    }, [checkAuth, fetchHistory])
+        let isMounted = true
+        if (isMounted) {
+            console.log('AIGeneratorMain: Running fetchHistory due to mount or mode change')
+            fetchHistory()
+        }
+
+        // 监听登录状态变化
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!isMounted) return
+            const hasUser = !!session?.user
+            setIsLoggedInInternal(hasUser)
+
+            if (hasUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+                fetchHistory()
+            }
+            if (event === 'SIGNED_OUT') {
+                setHistory([])
+            }
+        })
+
+        return () => {
+            isMounted = false
+            subscription.unsubscribe()
+        }
+    }, [fetchHistory, supabase])
 
     useEffect(() => {
         if (!pendingTaskId) return
@@ -287,8 +321,6 @@ export default function AIGeneratorMain({
     }, [pendingTaskId, fetchHistory])
 
     // 生成逻辑
-    const isBusy = isGenerating || !!pendingTaskId
-
     const handleGenerate = async () => {
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
@@ -298,7 +330,7 @@ export default function AIGeneratorMain({
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }
-        if (!prompt.trim() || isBusy) return
+        if (!prompt.trim() || isGenerating) return
 
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
         const currentBalance = balance ?? 0
@@ -309,27 +341,19 @@ export default function AIGeneratorMain({
         }
 
         setIsGenerating(true)
-        let bumpIdempotency = false
         try {
-            // 生成幂等键 (5分钟时窗 + Prompt + 模型 + 会话标识)
-            const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000));
-            const idempotencyRaw = `${sessionGuidRef.current}-${selectedModel}-${prompt.trim()}-${timeBucket}-${retrySeedRef.current}`;
-            // 简单的客户端哈希或直接编码
-            const idempotencyKey = btoa(unescape(encodeURIComponent(idempotencyRaw))).substring(0, 64);
-
             // Check payload size estimate
             const payload = JSON.stringify({
                 modelSlug: selectedModel,
                 prompt: prompt.trim(),
-                referenceImages: referenceImages,
-                idempotencyKey
+                referenceImages: referenceImages
             });
 
             if (payload.length > 4 * 1024 * 1024) { // 4MB safety limit
                 throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`);
             }
 
-            console.log(`[AI-GEN] Requesting with idempotencyKey: ${idempotencyKey}, size: ${(payload.length / 1024).toFixed(2)} KB`);
+            console.log(`[AI-GEN] Requesting with payload size: ${(payload.length / 1024).toFixed(2)} KB`);
 
             const res = await fetch('/api/wrap/generate', {
                 method: 'POST',
@@ -338,9 +362,6 @@ export default function AIGeneratorMain({
             })
 
             if (!res.ok) {
-                if (res.status >= 500 && res.status !== 504) {
-                    bumpIdempotency = true
-                }
                 if (res.status === 413) {
                     throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`);
                 }
@@ -360,10 +381,7 @@ export default function AIGeneratorMain({
             }
 
             const data = await res.json()
-            if (!data.success) {
-                bumpIdempotency = true
-                throw new Error(data.error)
-            }
+            if (!data.success) throw new Error(data.error)
 
             if (data.status === 'pending') {
                 setPendingTaskId(data.taskId)
@@ -382,9 +400,6 @@ export default function AIGeneratorMain({
             setTimeout(fetchHistory, 1000)
 
         } catch (err) {
-            if (bumpIdempotency) {
-                retrySeedRef.current += 1
-            }
             const message = err instanceof Error ? err.message : String(err)
             alert.error(`生成失败: ${message}`)
         } finally {
@@ -393,15 +408,6 @@ export default function AIGeneratorMain({
     }
 
     const handleDownload = async () => {
-        if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
-            return
-        }
-
         if (!currentTexture) return;
 
         // 如果有作品 ID，直接使用专门的下载接口（解决跨域和文件名问题）
@@ -487,7 +493,8 @@ export default function AIGeneratorMain({
     };
 
     const confirmPublish = async (previewImageBase64: string) => {
-        if (!isLoggedInInternal) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
             alert.warning('Please login again');
             return;
         }
@@ -704,7 +711,7 @@ export default function AIGeneratorMain({
             const dataUrl = await viewerRef.current.takeHighResScreenshot({ zoomOut: false });
             if (dataUrl) {
                 const link = document.createElement('a');
-                link.download = `tewan-design-${selectedModel}-${Date.now()}.png`;
+                link.download = `myteslab-design-${selectedModel}-${Date.now()}.png`;
                 link.href = dataUrl;
                 link.click();
             }
@@ -730,8 +737,8 @@ export default function AIGeneratorMain({
             <div className="flex flex-col lg:flex-row flex-1 overflow-visible lg:overflow-hidden w-full mx-auto">
 
                 {/* Left Side: 3D Preview (65%) */}
-                <div className="flex-none lg:flex-[6.5] flex flex-col p-4 pb-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
-                    <div className="relative flex-1 aspect-video max-h-[50vh] min-h-[220px] lg:aspect-auto lg:max-h-none overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
+                <div className="flex-none lg:flex-[6.5] flex flex-col p-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
+                    <div className="relative w-full aspect-video max-h-[50vh] min-h-[220px] lg:flex-1 lg:aspect-auto lg:max-h-none overflow-hidden m-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
                         <ModelViewer
                             ref={viewerRef}
                             id="ai-viewer"
@@ -746,7 +753,7 @@ export default function AIGeneratorMain({
                     </div>
 
                     {/* Bottom Controls for 3D */}
-                    <div className="flex flex-row items-center px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 gap-2 overflow-x-auto backdrop-blur -mx-4 mt-4" >
+                    <div className="flex flex-row items-center px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 gap-2 overflow-x-auto backdrop-blur" >
                         <button
                             onClick={() => {
                                 const next = !isNight
@@ -879,7 +886,7 @@ export default function AIGeneratorMain({
                                             value={selectedModel}
                                             options={models.map((m: any) => ({
                                                 value: m.slug,
-                                                label: _locale === 'en' ? (m.name_en || m.name) : m.name
+                                                label: getModelName(m.slug)
                                             }))}
                                             onChange={(value) => {
                                                 setSelectedModel(value)
@@ -978,13 +985,13 @@ export default function AIGeneratorMain({
 
                                     <button
                                         onClick={handleGenerate}
-                                        disabled={isBusy || isUploadingRefs || !prompt.trim()}
-                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all ${isBusy
+                                        disabled={isGenerating || isUploadingRefs || !prompt.trim()}
+                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all ${isGenerating
                                             ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed shadow-none'
                                             : 'bg-black text-white dark:bg-white dark:text-black shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]'
                                             }`}
                                     >
-                                        {isBusy ? (
+                                        {isGenerating ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                 {tGen('generating')}
@@ -1062,6 +1069,15 @@ export default function AIGeneratorMain({
                                                             setSelectedModel(item.model_slug);
                                                             setActiveWrapId(item.id);
                                                         }}
+                                                        onImageClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const itemCdnUrl = getCdnUrl(item.texture_url);
+                                                            let displayUrl = itemCdnUrl;
+                                                            if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`;
+                                                            }
+                                                            setImagePreviewUrl(displayUrl);
+                                                        }}
                                                     />
                                                 ))}
                                             </>
@@ -1077,7 +1093,7 @@ export default function AIGeneratorMain({
                                         value={selectedModel}
                                         options={models.map((m: any) => ({
                                             value: m.slug,
-                                            label: _locale === 'en' ? (m.name_en || m.name) : m.name
+                                            label: getModelName(m.slug)
                                         }))}
                                         onChange={(value) => setSelectedModel(value)}
                                         buttonClassName="h-12"
@@ -1115,6 +1131,32 @@ export default function AIGeneratorMain({
                 textureUrl={currentTexture || ''}
                 isPublishing={isPublishing}
             />
+
+            {/* Image Preview Modal */}
+            {imagePreviewUrl && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                    onClick={() => setImagePreviewUrl(null)}
+                >
+                    <div className="relative max-w-5xl max-h-[90vh] w-full">
+                        <button
+                            onClick={() => setImagePreviewUrl(null)}
+                            className="absolute -top-12 right-0 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                        <div className="relative w-full h-full flex items-center justify-center">
+                            <Image
+                                src={imagePreviewUrl}
+                                alt="Preview"
+                                width={2048}
+                                height={2048}
+                                className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
@@ -1123,12 +1165,14 @@ function HistoryItem({
     item,
     activeWrapId,
     onClick,
+    onImageClick,
     getCdnUrl,
     getModelName
 }: {
     item: GenerationHistory;
     activeWrapId: string | null;
     onClick: () => void;
+    onImageClick?: (e: React.MouseEvent) => void;
     getCdnUrl: (url: string) => string;
     getModelName: (slug: string) => string;
 }) {
@@ -1140,7 +1184,8 @@ function HistoryItem({
             className={`flex gap-3 p-2.5 rounded-lg border transition-all group cursor-pointer bg-white/70 dark:bg-zinc-900/70 backdrop-blur ${activeWrapId === item.id ? 'border-zinc-900 bg-zinc-50' : 'border-black/5 dark:border-white/10 hover:border-black/15 hover:bg-white/90'}`}
         >
             <div
-                className="w-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0"
+                onClick={onImageClick}
+                className="w-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative cursor-zoom-in group/image"
                 style={{ aspectRatio: '4 / 3' }}
             >
                 <ResponsiveOSSImage
@@ -1150,6 +1195,9 @@ function HistoryItem({
                     height={48} // 64 / (4/3) = 48
                     className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-all flex items-center justify-center">
+                    <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover/image:opacity-100 transition-all drop-shadow-lg" />
+                </div>
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">

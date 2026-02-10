@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useTranslations } from '@/lib/i18n';
+import { createClient } from '@/utils/supabase/client';
+import { useTranslations } from 'next-intl';
 import {
     Clock,
     CheckCircle2,
@@ -47,6 +48,7 @@ interface GenerationTask {
 export default function AdminTasksPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
+    const supabase = createClient();
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -54,43 +56,95 @@ export default function AdminTasksPage() {
 
     const fetchTasks = async () => {
         setLoading(true);
-        try {
-            const res = await fetch('/api/admin/tasks');
-            const data = await res.json();
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || 'Failed to load tasks');
-            }
-            setTasks(data.tasks || []);
-        } catch (err: any) {
-            alert.error(err.message || 'Failed to load tasks');
+        const { data, error } = await supabase
+            .from('generation_tasks')
+            .select(`
+                *,
+                profiles (
+                    display_name,
+                    email
+                )
+            `)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) {
+            alert.error(error.message);
+        } else {
+            setTasks(data || []);
         }
         setLoading(false);
     };
 
     useEffect(() => {
         fetchTasks();
-        const timer = setInterval(fetchTasks, 15000);
-        return () => clearInterval(timer);
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('admin-tasks-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'generation_tasks'
+                },
+                async (payload) => {
+                    console.log('Realtime Event:', payload);
+
+                    if (payload.eventType === 'INSERT') {
+                        // New task: Fetch full details including profile
+                        const { data: newTask, error } = await supabase
+                            .from('generation_tasks')
+                            .select(`
+                                *,
+                                profiles (
+                                    display_name,
+                                    email
+                                )
+                            `)
+                            .eq('id', payload.new.id)
+                            .single();
+
+                        if (!error && newTask) {
+                            setTasks((prev) => [newTask as GenerationTask, ...prev]);
+                            // Optional: Alert or sound?
+                        }
+                    } else if (payload.eventType === 'UPDATE') {
+                        // Update existing task
+                        setTasks((prev) =>
+                            prev.map((task) =>
+                                task.id === payload.new.id
+                                    ? { ...task, ...payload.new }
+                                    : task
+                            )
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const handleRefund = async (taskId: string) => {
         if (!confirm(t('refund_confirm'))) return;
 
         setRefundingId(taskId);
-        try {
-            const res = await fetch('/api/admin/tasks/refund', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ taskId, reason: 'Manual admin refund' })
-            });
-            const data = await res.json();
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || t('refund_failed'));
-            }
+        const { data, error } = await supabase.rpc('refund_task_credits', {
+            p_task_id: taskId,
+            p_reason: 'Manual admin refund'
+        });
+
+        if (error) {
+            alert.error(error.message);
+        } else if (data?.[0]?.success) {
             alert.success(t('refund_success'));
             fetchTasks();
-        } catch (err: any) {
-            alert.error(err.message || t('refund_failed'));
+        } else {
+            alert.error(data?.[0]?.error_msg || t('refund_failed'));
         }
         setRefundingId(null);
     };
@@ -119,6 +173,35 @@ export default function AdminTasksPage() {
                 </span>;
         }
     };
+
+    const getGenerationDuration = (task: GenerationTask): string | null => {
+        // 只有已完成或失败的任务才计算耗时
+        if (task.status !== 'completed' && task.status !== 'failed' && task.status !== 'failed_refunded') {
+            return null;
+        }
+
+        // 从 steps 中找到最后一步的时间戳
+        if (!Array.isArray(task.steps) || task.steps.length === 0) {
+            return null;
+        }
+
+        const lastStep = task.steps[task.steps.length - 1];
+        const startTime = new Date(task.created_at).getTime();
+        const endTime = new Date(lastStep.ts).getTime();
+        const durationMs = endTime - startTime;
+
+        // 转换为秒
+        const durationSec = Math.round(durationMs / 1000);
+
+        if (durationSec < 60) {
+            return `${durationSec}s`;
+        } else {
+            const minutes = Math.floor(durationSec / 60);
+            const seconds = durationSec % 60;
+            return `${minutes}m ${seconds}s`;
+        }
+    };
+
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -218,6 +301,18 @@ export default function AdminTasksPage() {
                                                 <span className="text-[10px] text-gray-400 uppercase font-black">
                                                     {format(new Date(task.created_at), 'MMM dd')}
                                                 </span>
+                                                {(() => {
+                                                    const duration = getGenerationDuration(task);
+                                                    if (duration) {
+                                                        return (
+                                                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                                                                <Clock size={10} />
+                                                                {duration}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
