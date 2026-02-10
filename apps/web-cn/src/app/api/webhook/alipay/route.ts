@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         // ----------------------------------------
 
         // 1. Verify Signature
-        const isValid = alipaySdk.checkNotifySign(params);
+        const isValid = alipaySdk.checkNotifySignV2(params);
         if (!isValid) {
             console.error('[Alipay Webhook] Invalid signature');
             // Log failure
