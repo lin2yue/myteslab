@@ -15,10 +15,27 @@ export async function POST(request: Request) {
 
         console.log('[Alipay Webhook] Received params:', params);
 
+        // --- DEBUG: Log raw request to DB ---
+        try {
+            await dbQuery(
+                `INSERT INTO webhook_events (provider, payload, status) VALUES ($1, $2, $3)`,
+                ['alipay', JSON.stringify(params), 'received']
+            );
+        } catch (e) {
+            console.error('[Alipay Webhook] Failed to log event:', e);
+        }
+        // -------------------------------------
+
         // 1. Verify Signature
         const isValid = alipaySdk.checkNotifySign(params);
         if (!isValid) {
             console.error('[Alipay Webhook] Invalid signature');
+            // Log failure
+            await dbQuery(
+                `UPDATE webhook_events SET status = 'failed', error = 'Invalid Signature' 
+                 WHERE provider = 'alipay' AND payload::text = $1::text AND created_at > NOW() - INTERVAL '1 minute'`,
+                [JSON.stringify(params)]
+            );
             return new Response('fail', { status: 400 });
         }
 
