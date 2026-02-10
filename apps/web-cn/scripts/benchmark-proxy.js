@@ -13,8 +13,12 @@ const { performance } = require('perf_hooks');
 // 测试配置
 const PROXIES = [
     {
-        name: 'api.aievgo.com',
+        name: 'api.aievgo.com (当前代理)',
         baseUrl: 'https://api.aievgo.com'
+    },
+    {
+        name: 'wrapsgenerate.aievgo.com (Cloudflare Workers)',
+        baseUrl: 'https://wrapsgenerate.aievgo.com'
     },
     {
         name: 'Google Direct (需要翻墙)',
