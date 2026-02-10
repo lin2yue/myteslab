@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getSessionUser } from '@/lib/auth/session';
 import alipaySdk from '@/lib/alipay';
 import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
     try {
-        const supabase = await createClient();
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const user = await getSessionUser();
 
-        if (userError || !user) {
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

@@ -1,4 +1,4 @@
-import AlipaySdk from 'alipay-sdk';
+import { AlipaySdk } from 'alipay-sdk';
 
 const alipaySdk = new AlipaySdk({
     appId: process.env.ALIPAY_APP_ID || '',
