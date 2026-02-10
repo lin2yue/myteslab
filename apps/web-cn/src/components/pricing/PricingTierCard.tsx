@@ -62,7 +62,12 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
         }
     };
 
-    const features = t.raw(`features.${tier.nameKey}`) as string[];
+    const rawFeatures = t.raw(`features.${tier.nameKey}`);
+    const features = Array.isArray(rawFeatures) ? rawFeatures : [];
+
+    if (features.length === 0) {
+        console.warn(`[Pricing] No features found for tier: ${tier.nameKey}`);
+    }
 
     return (
         <div
