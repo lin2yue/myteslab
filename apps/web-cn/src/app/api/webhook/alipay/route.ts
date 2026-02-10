@@ -5,10 +5,13 @@ import { PRICING_TIERS } from '@/lib/constants/credits';
 
 export async function POST(request: Request) {
     console.log('[Alipay Webhook] Received request');
+    console.log('[Alipay Webhook] Received request');
+    let params: Record<string, string> = {}; // Declare outside try for error logging usage
+
     try {
         const alipaySdk = getAlipaySdk();
         const formData = await request.formData();
-        const params: Record<string, string> = {};
+
         formData.forEach((value, key) => {
             params[key] = value.toString();
         });
@@ -163,14 +166,17 @@ export async function POST(request: Request) {
         console.error('[Alipay Webhook] Error:', error);
         // --- DEBUG: Log top-level error ---
         try {
-            const formData = await request.clone().formData();
-            const params: Record<string, string> = {};
-            formData.forEach((value, key) => { params[key] = value.toString(); });
-
-            await dbQuery(
-                `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
-                [`Top-level Error: ${error.message}`, JSON.stringify(params)]
-            );
+            if (Object.keys(params).length > 0) {
+                await dbQuery(
+                    `UPDATE webhook_events SET status = 'failed', error = $1 WHERE provider = 'alipay' AND payload::text = $2::text`,
+                    [`Top-level Error: ${error.message}`, JSON.stringify(params)]
+                );
+            } else {
+                await dbQuery(
+                    `INSERT INTO webhook_events (provider, payload, status, error) VALUES ($1, $2, $3, $4)`,
+                    ['alipay', '{}', 'failed', `Top-level Error (No Params): ${error.message}`]
+                );
+            }
         } catch (e) {
             console.error('Failed to log top-level error:', e);
         }
