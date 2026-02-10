@@ -103,11 +103,16 @@ export async function POST(request: Request) {
                     [userId, creditsToAdd]
                 );
 
-                // Log the transaction
+                // Log the transaction to credit_ledger
                 await dbQuery(
-                    `INSERT INTO credit_logs (user_id, amount, type, transaction_id, metadata)
-                     VALUES ($1, $2, 'purchase', $3, $4)`,
-                    [userId, creditsToAdd, tradeNo, JSON.stringify(params)]
+                    `INSERT INTO credit_ledger (user_id, amount, type, description, metadata)
+                     VALUES ($1, $2, 'top-up', $3, $4)`,
+                    [
+                        userId,
+                        creditsToAdd,
+                        `Alipay Top-up: ${tradeNo}`,
+                        JSON.stringify({ ...params, transaction_id: tradeNo })
+                    ]
                 );
 
                 console.log(`[Alipay Webhook] Success: Added ${creditsToAdd} credits to user ${userId} and logged transaction ${tradeNo}`);
