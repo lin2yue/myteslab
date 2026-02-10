@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { useTranslations } from '@/lib/i18n';
 import {
     Clock,
@@ -48,7 +47,6 @@ interface GenerationTask {
 export default function AdminTasksPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
-    const supabase = createClient();
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -56,95 +54,43 @@ export default function AdminTasksPage() {
 
     const fetchTasks = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('generation_tasks')
-            .select(`
-                *,
-                profiles (
-                    display_name,
-                    email
-                )
-            `)
-            .order('created_at', { ascending: false })
-            .limit(50);
-
-        if (error) {
-            alert.error(error.message);
-        } else {
-            setTasks(data || []);
+        try {
+            const res = await fetch('/api/admin/tasks');
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to load tasks');
+            }
+            setTasks(data.tasks || []);
+        } catch (err: any) {
+            alert.error(err.message || 'Failed to load tasks');
         }
         setLoading(false);
     };
 
     useEffect(() => {
         fetchTasks();
-
-        // Realtime subscription
-        const channel = supabase
-            .channel('admin-tasks-realtime')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'generation_tasks'
-                },
-                async (payload) => {
-                    console.log('Realtime Event:', payload);
-
-                    if (payload.eventType === 'INSERT') {
-                        // New task: Fetch full details including profile
-                        const { data: newTask, error } = await supabase
-                            .from('generation_tasks')
-                            .select(`
-                                *,
-                                profiles (
-                                    display_name,
-                                    email
-                                )
-                            `)
-                            .eq('id', payload.new.id)
-                            .single();
-
-                        if (!error && newTask) {
-                            setTasks((prev) => [newTask as GenerationTask, ...prev]);
-                            // Optional: Alert or sound?
-                        }
-                    } else if (payload.eventType === 'UPDATE') {
-                        // Update existing task
-                        setTasks((prev) =>
-                            prev.map((task) =>
-                                task.id === payload.new.id
-                                    ? { ...task, ...payload.new }
-                                    : task
-                            )
-                        );
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        const timer = setInterval(fetchTasks, 15000);
+        return () => clearInterval(timer);
     }, []);
 
     const handleRefund = async (taskId: string) => {
         if (!confirm(t('refund_confirm'))) return;
 
         setRefundingId(taskId);
-        const { data, error } = await supabase.rpc('refund_task_credits', {
-            p_task_id: taskId,
-            p_reason: 'Manual admin refund'
-        });
-
-        if (error) {
-            alert.error(error.message);
-        } else if (data?.[0]?.success) {
+        try {
+            const res = await fetch('/api/admin/tasks/refund', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ taskId, reason: 'Manual admin refund' })
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || t('refund_failed'));
+            }
             alert.success(t('refund_success'));
             fetchTasks();
-        } else {
-            alert.error(data?.[0]?.error_msg || t('refund_failed'));
+        } catch (err: any) {
+            alert.error(err.message || t('refund_failed'));
         }
         setRefundingId(null);
     };
@@ -201,7 +147,6 @@ export default function AdminTasksPage() {
             return `${minutes}m ${seconds}s`;
         }
     };
-
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
