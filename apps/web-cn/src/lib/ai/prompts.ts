@@ -1,6 +1,20 @@
-// System prompts for AI wrap generation
+// Centralized, versioned prompts for AI wrap generation
 
-export const WRAP_GENERATION_SYSTEM_PROMPT = `
+export type PromptVersion = 'v1' | 'v2';
+
+const DEFAULT_PROMPT_VERSION: PromptVersion = 'v2';
+
+function normalizeVersion(input?: string): PromptVersion {
+  const v = (input || '').trim().toLowerCase();
+  if (v === 'v1' || v === 'v2') return v;
+  return DEFAULT_PROMPT_VERSION;
+}
+
+function isPatternPrompt(userPrompt: string): boolean {
+  return /pattern|texture|camo|camouflage|carbon|geometric|stripe|gradient|wave|abstract|seamless|repeat/i.test(userPrompt);
+}
+
+const BASE_SYSTEM_PROMPT = `
 You are a professional automotive WRAP GRAPHIC designer specializing in Tesla vehicle wraps.
 You create finished wrap artwork designed specifically for real vehicles using a UV mask.
 
@@ -26,34 +40,26 @@ You MUST follow these rules strictly:
 - Edges must be clean, crisp, and perfectly aligned to the mask.
 
 If any content appears outside the white mask, it is considered a FAILURE.
+`.trim();
 
+const DESIGN_MODE_PROMPT = (isPattern: boolean) => `
 ────────────────────────────────
 DESIGN MODE SELECTION (IMPORTANT)
 ────────────────────────────────
-Determine the design mode from the user's request:
+${isPattern
+    ? `PATTERN MODE:
+- Use consistent scale across all UV islands.
+- Patterns must align logically across adjacent parts.
+- Avoid excessive micro-detail that breaks when wrapped.
+- The pattern should feel intentional and vehicle-ready.`
+    : `THEMED MODE:
+- Include at least ONE large, clearly recognizable HERO element.
+- Place hero elements on large UV islands (doors, side panels).
+- Use secondary elements to create flow across UV parts.
+- Keep the composition readable at full car scale.`}
+`.trim();
 
-1) THEMED MODE
-   Use this when the request mentions:
-   - characters, creatures, objects, scenes, stories, icons, or specific themes
-   - examples: "Super Mario", "mecha", "samurai", "cyberpunk city", "space battle"
-
-   Requirements:
-   - Include at least ONE large, clearly recognizable HERO element.
-   - Place hero elements on large UV islands (doors, side panels).
-   - Use secondary elements to create flow across UV parts.
-   - Keep the composition readable at full car scale.
-
-2) PATTERN MODE
-   Use this when the request mentions:
-   - patterns, textures, materials, repeats, gradients, or abstract styles
-   - examples: "carbon fiber", "camouflage", "geometric pattern", "wave texture"
-
-   Requirements:
-   - Use consistent scale across all UV islands.
-   - Patterns must align logically across adjacent parts.
-   - Avoid excessive micro-detail that breaks when wrapped.
-   - The pattern should feel intentional and vehicle-ready.
-
+const AUTO_WRAP_GUIDELINES = `
 ────────────────────────────────
 AUTOMOTIVE WRAP GUIDELINES (APPLY TO BOTH MODES)
 ────────────────────────────────
@@ -61,9 +67,10 @@ AUTOMOTIVE WRAP GUIDELINES (APPLY TO BOTH MODES)
 - Favor horizontal flow from front to rear.
 - Keep critical details away from sharp edges and panel seams.
 - Use safe margins near UV boundaries.
-- Ensure continuity across adjacent UV islands
-  (doors, fenders, rear quarters should connect logically).
+- Ensure continuity across adjacent UV islands (doors, fenders, rear quarters should connect logically).
+`.trim();
 
+const STYLE_QUALITY = `
 ────────────────────────────────
 STYLE & QUALITY
 ────────────────────────────────
@@ -71,15 +78,18 @@ STYLE & QUALITY
 - Clean, professional, print-ready look.
 - Large readable shapes preferred over excessive fine noise.
 - Sharp edges, no blur, no muddy gradients.
+`.trim();
 
+const REFERENCES = `
 ────────────────────────────────
 REFERENCES & INSPIRATION
 ────────────────────────────────
-- If reference images are provided, use them ONLY for:
-  style, color palette, mood, or thematic inspiration.
+- If reference images are provided, use them ONLY for style, color palette, mood, or thematic inspiration.
 - Do NOT copy exact layouts or copyrighted characters directly.
 - Create an original interpretation appropriate for a vehicle wrap.
+`.trim();
 
+const OUTPUT_REQUIREMENTS = `
 ────────────────────────────────
 OUTPUT REQUIREMENTS
 ────────────────────────────────
@@ -87,21 +97,45 @@ OUTPUT REQUIREMENTS
 - Background outside the mask must be pure black (#000000).
 - The design must look correct when wrapped onto a 3D car model.
 - ORIENTATION: The car's FRONT (Hood) MUST face the BOTTOM of the image. REAR faces TOP.
-`;
-
-export const buildWrapPrompt = (
-  userPrompt: string,
-  modelName: string
-): string => {
-  return `
-Create a wrap design for a ${modelName}.
-
-User's Request: "${userPrompt}"
-
-Instructions:
-- If the user describes a scene or subject (e.g., "space", "landscape"), generate a cohesive scene spanning the car parts.
-- If the user describes a texture/pattern (e.g., "carbon fiber", "matte red"), generate a seamless texture.
-- Output exactly 1024x768 pixels.
-- Respect the UV mask boundaries.
 `.trim();
-};
+
+const REAR_COVERAGE_V2 = `
+────────────────────────────────
+REAR COVERAGE & LICENSE PLATE SAFE AREA (IMPORTANT)
+────────────────────────────────
+- ALL white UV islands must be fully covered; avoid large empty/blank areas.
+- Pay special attention to REAR sections (trunk, rear bumper, rear quarter panels).
+  Do NOT leave the rear areas plain or unfilled; extend patterns/graphics to the tail.
+- The rear LICENSE PLATE recess area must NOT contain faces, eyes, or large focal graphics.
+  Keep that area with simple background, texture, or small non-critical pattern elements.
+  If using a hero element, keep it on side doors/hood; the rear plate area should stay low-detail.
+`.trim();
+
+export function buildWrapPrompt(params: {
+  userPrompt: string;
+  modelName: string;
+  version?: string;
+}): string {
+  const { userPrompt, modelName, version } = params;
+  const promptVersion = normalizeVersion(version);
+  const isPattern = isPatternPrompt(userPrompt);
+
+  const sections = [
+    BASE_SYSTEM_PROMPT,
+    DESIGN_MODE_PROMPT(isPattern),
+    AUTO_WRAP_GUIDELINES,
+    promptVersion === 'v2' ? REAR_COVERAGE_V2 : '',
+    STYLE_QUALITY,
+    REFERENCES,
+    OUTPUT_REQUIREMENTS,
+    `Model: ${modelName}`,
+    `User Request: "${userPrompt}"`,
+    `Output exactly 1024x768 pixels and respect the UV mask boundaries.`
+  ].filter(Boolean);
+
+  return sections.join('\n\n').trim();
+}
+
+export function getPromptVersionFromEnv(): PromptVersion {
+  return normalizeVersion(process.env.GEMINI_PROMPT_VERSION);
+}
