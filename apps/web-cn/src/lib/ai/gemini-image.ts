@@ -126,7 +126,10 @@ export async function generateWrapTexture(
             ? buildEditingPrompt(prompt, modelName)
             : buildWrapPrompt(modelName, prompt);
 
-        const MODEL = 'gemini-3-pro-image-preview';
+        const MODEL = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
+        if (!MODEL) {
+            throw new Error('GEMINI_IMAGE_MODEL is empty');
+        }
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
 
@@ -293,8 +296,9 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
         const apiKey = (process.env.GEMINI_API_KEY || '').trim();
         if (!apiKey) throw new Error('GEMINI_API_KEY missing');
 
-        // Note: Using flash-latest for fast and cheap text generation
-        const MODEL = 'gemini-flash-latest';
+        // Note: Use configurable text model for compatibility with proxy/model availability
+        const MODEL = (process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash').trim();
+        if (!MODEL) throw new Error('GEMINI_TEXT_MODEL is empty');
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
 

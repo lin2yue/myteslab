@@ -25,6 +25,9 @@
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `GEMINI_API_KEY`
+- `GEMINI_API_BASE_URL`（使用代理时）
+- `GEMINI_IMAGE_MODEL`（例如：`gemini-2.5-flash-image`）
+- `GEMINI_TEXT_MODEL`（例如：`gemini-2.5-flash`）
 - `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET`
 
 ### 本地运行

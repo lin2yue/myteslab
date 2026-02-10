@@ -109,6 +109,8 @@ jobs:
               -e BAIDU_PUSH_SITE="tewan.club" \
               -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
               -e GEMINI_API_BASE_URL="${{ secrets.GEMINI_API_BASE_URL }}" \
+              -e GEMINI_IMAGE_MODEL="${{ secrets.GEMINI_IMAGE_MODEL }}" \
+              -e GEMINI_TEXT_MODEL="${{ secrets.GEMINI_TEXT_MODEL }}" \
               -e WECHAT_MP_APP_ID="${{ secrets.WECHAT_MP_APP_ID }}" \
               -e WECHAT_MP_APP_SECRET="${{ secrets.WECHAT_MP_APP_SECRET }}" \
               -e WECHAT_MP_TOKEN="${{ secrets.WECHAT_MP_TOKEN }}" \
