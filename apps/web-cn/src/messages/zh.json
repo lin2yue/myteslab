@@ -254,28 +254,35 @@
         "tiers": {
             "starter": "轻量体验包",
             "explorer": "进阶创作包",
+            "advanced": "量型优选包",
             "collector": "终极收藏包"
         },
         "descriptions": {
             "starter": "轻松开启新风格尝试",
             "explorer": "大多数特斯拉车主的最佳选择",
-            "collector": "为硬核改装玩家和创意大师打造"
+            "advanced": "适合追求极致风格的硬核玩家",
+            "collector": "为创意大师和专业改装店打造"
         },
         "features": {
             "starter": [
                 "{count} 次 AI 生成",
-                "积分永不过期",
-                "支持生成贴图下载"
+                "包含高清贴图下载",
+                "实时 3D 预览授权"
             ],
             "explorer": [
                 "{count} 次 AI 生成",
-                "积分永不过期",
-                "支持生成贴图下载"
+                "包含高清贴图下载",
+                "单次成本更优"
+            ],
+            "advanced": [
+                "{count} 次 AI 生成",
+                "包含高清贴图下载",
+                "无忧创作大容量"
             ],
             "collector": [
                 "{count} 次 AI 生成",
-                "积分永不过期",
-                "支持生成贴图下载"
+                "包含高清贴图下载",
+                "最低单次生成成本"
             ]
         },
         "choose_plan": "立即购买",
@@ -283,15 +290,15 @@
         "buy_now": "立即充值",
         "processing": "处理中",
         "redirecting": "正在跳转",
-        "approx_cost": "单张成本仅 ${cost}",
+        "approx_cost": "单张成本仅 ¥{cost}",
         "save_percent": "立省 {percent}%",
         "credits": "积分",
         "credits_desc": "通用账户余额",
         "generations": "次 AI 贴纸设计",
         "generations_desc": "基于 10 积分/次 估算",
-        "secure_payment_desc": "支付由 Polar.sh 安全处理。一次性付费，无自动续费。",
+        "secure_payment_desc": "支付由支付宝安全处理。一次性付费，无自动续费。",
         "page_title": "价格方案 - 选择最适合您的套餐",
-        "page_description": "购买 AI 生成积分，创作定制特斯拉贴图设计。灵活价格方案，低至 $4.99 起。",
+        "page_description": "购买 AI 生成积分，创作定制特斯拉贴图设计。灵活人民币价格方案，低至 ¥19.9 起。",
         "features_title": "您将获得",
         "feature_1_title": "AI 生成积分",
         "feature_1_desc": "积分永不过期，随时可用于生成定制特斯拉贴图设计",

@@ -95,8 +95,13 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
                             ¥
                         </span>
                         <span className="text-5xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                            {tier.price}
+                            {tier.price.split('.')[0]}
                         </span>
+                        {tier.price.includes('.') && (
+                            <span className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+                                .{tier.price.split('.')[1]}
+                            </span>
+                        )}
                     </div>
                     <div className="mt-4 px-3 py-1 rounded-full border text-zinc-600 dark:text-zinc-400 border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex items-baseline justify-center gap-1">
                         <span className="text-base font-bold text-zinc-900 dark:text-white">
