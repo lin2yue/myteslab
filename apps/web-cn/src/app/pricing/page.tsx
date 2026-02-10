@@ -38,7 +38,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
             {/* Pricing Cards */}
             <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 lg:gap-6">
                     {PRICING_TIERS.map((tier) => (
                         <PricingTierCard key={tier.id} tier={tier} />
                     ))}
