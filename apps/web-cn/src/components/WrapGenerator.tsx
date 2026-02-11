@@ -26,7 +26,6 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
     const [error, setError] = useState<string | null>(null)
     const [generatedImage, setGeneratedImage] = useState<string | null>(null)
     const [history, setHistory] = useState<GenerationHistory[]>([])
-    const [debugMode, setDebugMode] = useState(true) // Default to true for debugging phase
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isUploadingRefs, setIsUploadingRefs] = useState(false)
     const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
@@ -331,46 +330,6 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
             setIsGenerating(false)
         }
     }
-
-
-
-    // Helper component for debug images
-    const ImageWithInfo = ({ src, alt, label, onClick, isActive }: {
-        src: string,
-        alt: string,
-        label: string,
-        onClick?: (e: React.MouseEvent<HTMLDivElement>) => void,
-        isActive?: boolean
-    }) => {
-        return (
-            <div
-                className={`comparison-item ${onClick ? 'clickable' : ''} ${isActive ? 'active' : ''}`}
-                onClick={onClick}
-            >
-                <span className="comparison-label">{label} {onClick && '👆'}</span>
-                <div style={{ position: 'relative' }}>
-                    <Image
-                        className="result-image"
-                        src={src}
-                        alt={alt}
-                        fill
-                        sizes="100vw"
-                    />
-                </div>
-            </div>
-        )
-    }
-
-    // Helper to get mask URL
-    const getMaskUrl = (slug: string) => {
-        const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL;
-        const path = `/masks/${slug}_mask.png`;
-        if (cdnUrl && !window.location.host.includes('localhost')) {
-            return `${cdnUrl}${path}`;
-        }
-        return path;
-    }
-
     return (
         <div className="wrap-generator">
             <style jsx>{`
@@ -511,49 +470,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                     align-self: flex-end;
                     background: transparent; border: none; color: #ef4444; cursor: pointer;
                 }
-                .debug-toggle {
-                    margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
-                    color: #a0aec0; font-size: 14px; cursor: pointer;
-                }
-                .debug-comparison {
-                    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;
-                }
-                .comparison-item { 
-                    display: flex; flex-direction: column; gap: 8px; 
-                    border: 1px solid transparent; /* Default border */
-                    border-radius: 8px;
-                    padding: 4px;
-                }
-                .comparison-item.clickable {
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .comparison-item.clickable:hover {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.1);
-                }
-                .comparison-item.active {
-                    border-color: #10b981; /* Highlight active image */
-                    background: rgba(16, 185, 129, 0.1);
-                }
-                .comparison-label { font-size: 12px; color: #a0aec0; text-align: center; }
-                .resolution-tag {
-                    position: absolute;
-                    bottom: 4px; right: 4px;
-                    background: rgba(0,0,0,0.7);
-                    color: #00ff00;
-                    font-size: 10px;
-                    padding: 2px 4px;
-                    border-radius: 4px;
-                    font-family: monospace;
-                    pointer-events: none;
-                }
             `}</style>
-
-            <div className="debug-toggle" onClick={() => setDebugMode(!debugMode)}>
-                <input type="checkbox" checked={debugMode} readOnly />
-                <span>启用调试模式 (显示原始图、Mask、分辨率)</span>
-            </div>
 
             <div className="form-group">
                 <label className="label">选择车型</label>
@@ -623,40 +540,14 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
             {generatedImage && (
                 <div className="generated-result">
                     <div className="result-title">✅ 生成完成</div>
-                    {debugMode && history[0]?.originalImageDataUrl && history[0]?.id === history.find(h => h.imageDataUrl === generatedImage)?.id ? (
-                        <div className="debug-comparison">
-                            <ImageWithInfo
-                                src={history.find(h => h.imageDataUrl === generatedImage)?.originalImageDataUrl || generatedImage}
-                                alt="Raw"
-                                label="🔴 原始 (Raw)"
-                                onClick={() => onGenerated?.({
-                                    imageDataUrl: history.find(h => h.imageDataUrl === generatedImage)?.originalImageDataUrl || generatedImage || '',
-                                    modelSlug: selectedModel
-                                })}
-                            />
-                            <ImageWithInfo
-                                src={getMaskUrl(selectedModel)}
-                                alt="Mask"
-                                label="🟣 遮罩 (Mask)"
-                            />
-                            <ImageWithInfo
-                                src={generatedImage}
-                                alt="Processed"
-                                label="🟢 最终 (Final)"
-                                onClick={() => onGenerated?.({ imageDataUrl: generatedImage, modelSlug: selectedModel })}
-                                isActive={true}
-                            />
-                        </div>
-                    ) : (
-                        <Image
-                            className="result-image"
-                            src={generatedImage}
-                            alt="生成的贴膜设计"
-                            fill
-                            sizes="100vw"
-                            priority
-                        />
-                    )}
+                    <Image
+                        className="result-image"
+                        src={generatedImage}
+                        alt="生成的贴膜设计"
+                        fill
+                        sizes="100vw"
+                        priority
+                    />
                 </div>
             )}
 
@@ -664,7 +555,7 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
             {history.length > 0 && (
                 <div className="history-section">
                     <div className="history-header">
-                        <h3 className="history-title">📜 生成历史 {debugMode ? '(调试模式)' : ''}</h3>
+                        <h3 className="history-title">📜 生成历史</h3>
                         <span className="history-count">{history.length} 条记录</span>
                     </div>
                     <div className="history-list">
@@ -682,39 +573,9 @@ export function WrapGenerator({ models, onGenerated }: WrapGeneratorProps) {
                                     </div>
                                 </div>
 
-                                {debugMode ? (
-                                    <div className="debug-comparison" style={{ marginTop: 8 }}>
-                                        <ImageWithInfo
-                                            src={item.originalImageDataUrl || item.imageDataUrl}
-                                            alt="Raw"
-                                            label="原始"
-                                            onClick={(e) => {
-                                                e?.stopPropagation(); // Prevent parent click
-                                                onGenerated?.({ imageDataUrl: item.originalImageDataUrl || item.imageDataUrl, modelSlug: item.modelSlug });
-                                                setGeneratedImage(item.imageDataUrl); // Update main view
-                                            }}
-                                        />
-                                        <ImageWithInfo
-                                            src={getMaskUrl(item.modelSlug)}
-                                            alt="Mask"
-                                            label="遮罩"
-                                        />
-                                        <ImageWithInfo
-                                            src={item.imageDataUrl}
-                                            alt="Processed"
-                                            label="修正后"
-                                            onClick={(e) => {
-                                                e?.stopPropagation();
-                                                onGenerated?.({ imageDataUrl: item.imageDataUrl, modelSlug: item.modelSlug });
-                                                setGeneratedImage(item.imageDataUrl);
-                                            }}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="history-thumbnail" onClick={() => loadFromHistory(item)}>
-                                        <Image src={item.imageDataUrl} alt={item.prompt} fill sizes="100vw" />
-                                    </div>
-                                )}
+                                <div className="history-thumbnail" onClick={() => loadFromHistory(item)}>
+                                    <Image src={item.imageDataUrl} alt={item.prompt} fill sizes="100vw" />
+                                </div>
 
                                 <button className="history-delete" onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id); }}>×</button>
                             </div>

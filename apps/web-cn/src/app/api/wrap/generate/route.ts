@@ -285,6 +285,7 @@ async function processGenerationTask(params: {
                 console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
                 maskImageBase64 = maskBuffer.toString('base64');
                 await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
+
             } else {
                 console.error(`[AI-GEN] [Task:${taskId}] ❌ Failed to fetch mask. Status: ${maskResponse.status}`);
                 await logStep('mask_load_failed', 'failed', `HTTP ${maskResponse.status}`);

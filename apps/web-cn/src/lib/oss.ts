@@ -25,15 +25,6 @@ export async function uploadToOSS(
     const OSS = require('ali-oss');
     const config = getOSSConfig();
 
-    // Debug identifying which keys are missing without exposing them
-    console.log('[OSS-DEBUG] Checking env vars:', {
-        hasId: !!config.accessKeyId,
-        hasSecret: !!config.accessKeySecret,
-        region: config.region,
-        bucket: config.bucket,
-        idLength: config.accessKeyId?.length || 0
-    });
-
     if (!config.accessKeyId || !config.accessKeySecret) {
         throw new Error('OSS credentials missing');
     }

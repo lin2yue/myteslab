@@ -3,17 +3,6 @@ import { getMPOAuthUserInfo } from '@/lib/wechat-mp';
 import { dbQuery } from '@/lib/db';
 import { findUserByWechatOpenId, findUserByWechatUnionId, createUser, linkWechatMPIdentity, DbUser } from '@/lib/auth/users';
 
-async function logDebug(category: string, message: string, data: any = {}) {
-    try {
-        await dbQuery(
-            'INSERT INTO debug_logs (category, message, data) VALUES ($1, $2, $3)',
-            [category, message, JSON.stringify(data)]
-        );
-    } catch (e) {
-        console.error('Failed to log debug info', e);
-    }
-}
-
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -26,7 +15,6 @@ export async function GET(request: Request) {
     try {
         // 1. 获取授权用户信息
         const userInfo = await getMPOAuthUserInfo(code);
-        await logDebug('wechat_oauth_callback', 'Received OAuth Info', { userInfo, sceneId });
 
         if (!userInfo || !userInfo.openid) {
             console.error('[wechat-mp] Failed to get OAuth user info', userInfo);
@@ -45,14 +33,12 @@ export async function GET(request: Request) {
                 displayName: nickname || '微信用户',
                 avatarUrl: headimgurl || null,
             });
-            await logDebug('wechat_oauth', 'Created new user', { userId: user.id, nickname });
         } else if (nickname && (!user.display_name || user.display_name === '微信用户' || /^\d+$/.test(user.display_name || ''))) {
             // 更新背景资料 (包括处理纯数字昵称的旧数据)
             await dbQuery(
                 `UPDATE users SET display_name = $1, avatar_url = $2 WHERE id = $3`,
                 [nickname, headimgurl || user.avatar_url, user.id]
             );
-            await logDebug('wechat_oauth', 'Updated user profile', { userId: user.id, nickname });
         }
 
         // 3. 关联身份
@@ -105,7 +91,6 @@ export async function GET(request: Request) {
         });
 
     } catch (error: any) {
-        await logDebug('wechat_oauth_error', error.message, { stack: error.stack });
         return new Response('服务器错误', { status: 500 });
     }
 }
