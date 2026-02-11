@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64 } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, imageUrlToBase64, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
@@ -17,6 +17,7 @@ import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
 import { db, dbQuery } from '@/lib/db';
 import { getModelBySlug } from '@/config/models';
 import { getSessionUser } from '@/lib/auth/session';
+import { evaluatePromptForGeneration } from '@/lib/ai/prompt-guard';
 import crypto from 'crypto';
 import sharp from 'sharp';
 
@@ -100,6 +101,58 @@ function buildLocalWrapMetadata(prompt: string, modelName: string) {
         name_en: title || 'AI Wrap',
         description: description || '',
         description_en: description || '',
+    };
+}
+
+function mapGenerationFailureForUser(result: Pick<GenerateWrapResult, 'error' | 'errorCode' | 'finishReasons' | 'promptBlockReason'>) {
+    const errorCode = result.errorCode || 'unknown_error';
+    const finishReasons = (result.finishReasons || []).map(x => String(x).toUpperCase());
+    const promptBlockReason = (result.promptBlockReason || '').toUpperCase();
+
+    if (errorCode === 'prompt_blocked') {
+        if (promptBlockReason === 'PROHIBITED_CONTENT' || promptBlockReason === 'BLOCKLIST') {
+            return {
+                code: errorCode,
+                message: '生成失败：提示词触发内容限制（可能包含受保护IP/品牌词）。请改为原创风格描述后重试。',
+            };
+        }
+        return {
+            code: errorCode,
+            message: result.error || '生成失败：提示词触发内容安全策略，请调整后重试。',
+        };
+    }
+
+    if (errorCode === 'recitation_blocked') {
+        return {
+            code: errorCode,
+            message: '生成失败：请求触发版权引用限制。请去掉角色/IP名称，改为原创的配色与风格描述。',
+        };
+    }
+
+    if (errorCode === 'no_image_payload') {
+        const reasons = finishReasons.join(',');
+        if (finishReasons.some(reason => reason === 'OTHER' || reason === 'IMAGE_OTHER' || reason === 'NO_IMAGE')) {
+            return {
+                code: errorCode,
+                message: `生成失败：模型未返回图片（${reasons || 'OTHER'}）。常见原因是提示词过于接近受保护IP或描述过于具体，请改为原创元素描述后重试。`,
+            };
+        }
+        return {
+            code: errorCode,
+            message: result.error || '生成失败：模型未返回图片，请简化提示词后重试。',
+        };
+    }
+
+    if (errorCode === 'timeout') {
+        return {
+            code: errorCode,
+            message: result.error || '生成失败：AI生成超时，请稍后重试。',
+        };
+    }
+
+    return {
+        code: errorCode,
+        message: result.error || 'AI generation failed',
     };
 }
 
@@ -588,9 +641,12 @@ async function processGenerationTask(params: {
 
         if (!result.success) {
             console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${userId}...`);
-            const failureMessage = result.error || 'AI generation failed';
-            await markTaskFailed(failureMessage);
-            await refundTaskCredits(taskId, `AI generation failed: ${failureMessage}`);
+            const mappedFailure = mapGenerationFailureForUser(result);
+            const finishReasons = (result.finishReasons || []).join('|') || '-';
+            const blockReason = result.promptBlockReason || '-';
+            await logStep('ai_call_failed', 'failed', `code=${mappedFailure.code}; block=${blockReason}; finish=${finishReasons}`);
+            await markTaskFailed(mappedFailure.message);
+            await refundTaskCredits(taskId, `AI generation failed: ${mappedFailure.message}`);
             return;
         }
 
@@ -800,6 +856,21 @@ export async function POST(request: NextRequest) {
         if (normalizedPrompt.length < 3 || normalizedPrompt.length > 400) {
             return NextResponse.json({ success: false, error: '提示词长度需在 3 到 400 字之间' }, { status: 400 });
         }
+        const promptGuard = evaluatePromptForGeneration(normalizedPrompt);
+        if (promptGuard.action === 'reject') {
+            return NextResponse.json({
+                success: false,
+                error: promptGuard.userMessage || '提示词包含受限内容，请改为原创风格描述。',
+                errorCode: promptGuard.reasonCode,
+                matchedTerms: promptGuard.matchedTerms
+            }, { status: 422 });
+        }
+        const effectivePrompt = promptGuard.effectivePrompt;
+        if (promptGuard.action === 'rewrite') {
+            console.warn(
+                `[AI-GEN] [${requestId}] Prompt rewritten for policy safety. matchedTerms=${promptGuard.matchedTerms.join(',')} | original="${normalizedPrompt}" | effective="${effectivePrompt}"`
+            );
+        }
         if (idempotencyKey && (typeof idempotencyKey !== 'string' || idempotencyKey.length < 16 || idempotencyKey.length > 128)) {
             return NextResponse.json({ success: false, error: 'Invalid idempotency key' }, { status: 400 });
         }
@@ -851,7 +922,7 @@ export async function POST(request: NextRequest) {
 
         const deductResultRaw = await deductCreditsForGeneration({
             userId: user.id,
-            prompt: normalizedPrompt,
+            prompt: effectivePrompt,
             amount: requiredCredits,
             idempotencyKey: idempotencyKey || null
         });
@@ -932,7 +1003,9 @@ export async function POST(request: NextRequest) {
                     success: true,
                     taskId,
                     status: 'pending',
-                    remainingBalance: deductResultRaw?.remainingBalance ?? 0
+                    remainingBalance: deductResultRaw?.remainingBalance ?? 0,
+                    promptRewritten: promptGuard.action === 'rewrite',
+                    promptRewriteMessage: promptGuard.action === 'rewrite' ? promptGuard.userMessage : undefined
                 }, { status: 202 });
             }
 
@@ -955,6 +1028,29 @@ export async function POST(request: NextRequest) {
             throw new Error('Task ID is missing');
         }
 
+        if (promptGuard.action === 'rewrite') {
+            try {
+                await dbQuery(
+                    `UPDATE generation_tasks
+                     SET steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
+                         updated_at = NOW()
+                     WHERE id = $1`,
+                    [
+                        taskId,
+                        JSON.stringify([
+                            {
+                                step: 'prompt_rewrite_applied',
+                                ts: new Date().toISOString(),
+                                reason: `matched_terms=${promptGuard.matchedTerms.join('|')}`
+                            }
+                        ])
+                    ]
+                );
+            } catch (logErr) {
+                console.error('[AI-GEN] Failed to persist prompt rewrite metadata:', logErr);
+            }
+        }
+
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
         // 异步处理，立即返回 pending
@@ -963,7 +1059,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             modelSlug: currentModelSlug,
             modelName,
-            prompt: normalizedPrompt,
+            prompt: effectivePrompt,
             referenceImages,
             origin: request.nextUrl.origin
         });
@@ -972,7 +1068,9 @@ export async function POST(request: NextRequest) {
             success: true,
             taskId,
             status: 'pending',
-            remainingBalance: deductResultRaw?.remainingBalance ?? 0
+            remainingBalance: deductResultRaw?.remainingBalance ?? 0,
+            promptRewritten: promptGuard.action === 'rewrite',
+            promptRewriteMessage: promptGuard.action === 'rewrite' ? promptGuard.userMessage : undefined
         }, { status: 202 });
 
     } catch (error: any) {
