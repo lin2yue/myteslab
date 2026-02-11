@@ -233,9 +233,10 @@ export async function generateWrapTexture(
         const modelCandidates = [primaryModel, ...fallbackModels];
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const buildParts = (promptValue: string) => {
-            const built: any[] = [{ text: promptValue }];
+            const built: any[] = [];
 
-            // Keep text as first part to match Google's image-editing examples.
+            // Keep request layout aligned with main branch behavior:
+            // mask first, then prompt text, then references.
             if (maskImageBase64) {
                 const cleanMaskBase64 = maskImageBase64.includes('base64,')
                     ? maskImageBase64.split('base64,')[1]
@@ -248,6 +249,8 @@ export async function generateWrapTexture(
                     }
                 });
             }
+
+            built.push({ text: promptValue });
 
             if (referenceImagesBase64 && referenceImagesBase64.length > 0) {
                 referenceImagesBase64.forEach((base64: string) => {
@@ -290,7 +293,7 @@ export async function generateWrapTexture(
                         body: JSON.stringify({
                             contents: [{ parts: buildParts(promptToUse) }],
                             generationConfig: {
-                                responseModalities: ['TEXT', 'IMAGE'],
+                                responseModalities: ['Image'],
                                 imageConfig: {
                                     aspectRatio: maskDimensions.aspectRatio,
                                 }
