@@ -8,7 +8,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import Portal from '@/components/Portal';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Menu, Monitor, Moon, Sun, Star } from 'lucide-react';
+import { Check, Menu, Monitor, Moon, Sun, Zap } from 'lucide-react';
 import { ThemeMode, useThemeMode } from '@/utils/theme';
 import { useCredits } from '@/components/credits/CreditsProvider';
 
@@ -168,7 +168,7 @@ export default function Navbar() {
                                         </p>
                                         <div className="flex items-center gap-2">
                                             <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
-                                                <Star className="w-4 h-4 text-gray-900 dark:text-white fill-gray-900 dark:fill-white" />
+                                                <Zap className="w-4 h-4 text-gray-900 dark:text-white" />
                                             </div>
                                             <div className="flex items-baseline gap-2">
                                                 <span className="text-2xl font-black text-gray-900 dark:text-white">{balance}</span>

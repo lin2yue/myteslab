@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PricingModal from '@/components/pricing/PricingModal';
-import { Star } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { useCredits } from '@/components/credits/CreditsProvider';
 
 type SessionUser = {
@@ -94,7 +94,7 @@ export default function AuthButton() {
                             onClick={() => setIsPricingOpen(true)}
                             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900/5 dark:bg-white/10 rounded-full border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-900/10 dark:hover:bg-white/15 transition-all hover:scale-105 active:scale-95"
                         >
-                            <Star className="w-3.5 h-3.5 text-zinc-800 dark:text-white fill-zinc-800 dark:fill-white" />
+                            <Zap className="w-3.5 h-3.5 text-zinc-800 dark:text-white" />
                             <span className="text-sm font-semibold text-zinc-900 dark:text-white">{balance}</span>
                             <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-tight">{tProfile('credits')}</span>
                         </button>
