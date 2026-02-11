@@ -34,11 +34,20 @@ interface GenerationHistory {
 
 type TaskStatus = 'pending' | 'processing' | 'failed' | 'failed_refunded'
 
+interface TaskStep {
+    step: string
+    ts?: string
+    reason?: string
+}
+
 interface GenerationTaskHistory {
     id: string
     prompt: string
     status: TaskStatus
     error_message: string | null
+    steps?: TaskStep[]
+    is_retrying?: boolean
+    retry_started_at?: string | null
     created_at: string
     updated_at: string
     model_slug?: string | null
@@ -92,12 +101,45 @@ function mergeTaskHistory(
         byId.set(item.id, {
             ...prev,
             ...item,
+            steps: item.steps || prev?.steps || [],
+            is_retrying: typeof item.is_retrying === 'boolean' ? item.is_retrying : (prev?.is_retrying ?? false),
+            retry_started_at: item.retry_started_at ?? prev?.retry_started_at ?? null,
             model_slug: item.model_slug || prev?.model_slug || null
         })
     })
     return Array.from(byId.values())
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 50)
+}
+
+function normalizeTaskSteps(raw: unknown): TaskStep[] {
+    if (!Array.isArray(raw)) return []
+    return raw
+        .map((item) => {
+            if (!item || typeof item !== 'object') return null
+            const step = typeof (item as any).step === 'string' ? (item as any).step : ''
+            if (!step) return null
+            return {
+                step,
+                ts: typeof (item as any).ts === 'string' ? (item as any).ts : undefined,
+                reason: typeof (item as any).reason === 'string' ? (item as any).reason : undefined
+            }
+        })
+        .filter(Boolean) as TaskStep[]
+}
+
+function resolveRetryState(status: TaskStatus, steps: TaskStep[]) {
+    const retryOptimizedStep = [...steps].reverse().find(step => step.step === 'prompt_retry_optimized')
+    const retryEnded = steps.some(step =>
+        step.step === 'prompt_retry_success'
+        || step.step === 'prompt_retry_failed'
+        || step.step === 'prompt_retry_skipped'
+    )
+    const isRetrying = Boolean(retryOptimizedStep) && !retryEnded && (status === 'pending' || status === 'processing')
+    return {
+        isRetrying,
+        retryStartedAt: isRetrying ? (retryOptimizedStep?.ts || null) : null
+    }
 }
 
 export default function AIGeneratorMain({
@@ -263,11 +305,16 @@ export default function AIGeneratorMain({
                 )
                     ? statusRaw
                     : 'pending'
+                const steps = normalizeTaskSteps(task.steps)
+                const retryState = resolveRetryState(status, steps)
                 return {
                     id: String(task.id || ''),
                     prompt: String(task.prompt || ''),
                     status,
                     error_message: task.error_message ? String(task.error_message) : null,
+                    steps,
+                    is_retrying: retryState.isRetrying,
+                    retry_started_at: retryState.retryStartedAt,
                     created_at: String(task.created_at || new Date().toISOString()),
                     updated_at: String(task.updated_at || task.created_at || new Date().toISOString()),
                     model_slug: null
@@ -347,12 +394,17 @@ export default function AIGeneratorMain({
 
                 if (data?.status === 'failed') {
                     retrySeedRef.current += 1
+                    const failedStatus: TaskStatus = (data?.taskStatus === 'failed_refunded' || data?.refunded)
+                        ? 'failed_refunded'
+                        : 'failed'
                     setTaskHistory(prev => prev.map(task => (
                         task.id === taskId
                             ? {
                                 ...task,
-                                status: 'failed',
+                                status: failedStatus,
                                 error_message: data.error || task.error_message || '任务失败',
+                                is_retrying: false,
+                                retry_started_at: null,
                                 updated_at: new Date().toISOString()
                             }
                             : task
@@ -368,6 +420,8 @@ export default function AIGeneratorMain({
                                 ...task,
                                 status: 'failed',
                                 error_message: '任务已完成但结果缺失，请稍后重试',
+                                is_retrying: false,
+                                retry_started_at: null,
                                 updated_at: new Date().toISOString()
                             }
                             : task
@@ -380,6 +434,8 @@ export default function AIGeneratorMain({
                         ? {
                             ...task,
                             status: (data?.status === 'processing' ? 'processing' : 'pending'),
+                            is_retrying: Boolean(data?.retrying),
+                            retry_started_at: typeof data?.retryStartedAt === 'string' ? data.retryStartedAt : (task.retry_started_at || null),
                             updated_at: new Date().toISOString()
                         }
                         : task
@@ -487,6 +543,9 @@ export default function AIGeneratorMain({
                         prompt: promptValue,
                         status: 'failed',
                         error_message: data.error || '任务失败',
+                        steps: [],
+                        is_retrying: false,
+                        retry_started_at: null,
                         created_at: nowIso,
                         updated_at: nowIso,
                         model_slug: modelSlugValue
@@ -502,6 +561,9 @@ export default function AIGeneratorMain({
                     prompt: promptValue,
                     status: 'pending',
                     error_message: null,
+                    steps: [],
+                    is_retrying: false,
+                    retry_started_at: null,
                     created_at: nowIso,
                     updated_at: nowIso,
                     model_slug: modelSlugValue
@@ -1415,23 +1477,34 @@ function TaskHistoryItemCard({
     const isPending = task.status === 'pending' || task.status === 'processing'
     const isFailed = task.status === 'failed' || task.status === 'failed_refunded'
     const isRefunded = task.status === 'failed_refunded'
-    const elapsedMs = Math.max(0, nowTs - new Date(task.created_at).getTime())
-    const elapsedSeconds = elapsedMs / 1000
+    const retryStateFromSteps = resolveRetryState(task.status, task.steps || [])
+    const isRetrying = isPending && ((typeof task.is_retrying === 'boolean' ? task.is_retrying : retryStateFromSteps.isRetrying))
+    const retryStartedAt = task.retry_started_at || retryStateFromSteps.retryStartedAt || task.updated_at
+    const progressStartAt = isRetrying ? retryStartedAt : task.created_at
+    const elapsedMs = Math.max(0, nowTs - new Date(progressStartAt).getTime())
+    const elapsedSeconds = Math.max(0, Math.floor(elapsedMs / 1000))
     const progress = Math.min(100, (elapsedMs / (ESTIMATED_GENERATE_SECONDS * 1000)) * 100)
+    const statusText = isRetrying ? '失败重试中' : (isPending ? '生成中' : (isFailed ? '失败' : task.status))
+    const statusClassName = isRetrying
+        ? 'bg-amber-200 text-amber-900'
+        : (isPending ? 'bg-amber-100 text-amber-700' : (isFailed ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-700'))
+    const elapsedLabel = isRetrying
+        ? `重试中 ${elapsedSeconds}s · 预计 ${ESTIMATED_GENERATE_SECONDS}s`
+        : `已生成 ${elapsedSeconds}s · 预计 ${ESTIMATED_GENERATE_SECONDS}s`
 
     return (
         <div className="h-[98px] p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70 overflow-hidden flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
                 <p className="text-xs text-gray-700 dark:text-zinc-200 line-clamp-1 italic flex-1">&quot;{task.prompt}&quot;</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isPending ? 'bg-amber-100 text-amber-700' : isFailed ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-700'}`}>
-                    {isPending ? '生成中' : isFailed ? '失败' : task.status}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusClassName}`}>
+                    {statusText}
                 </span>
             </div>
 
             {isPending && (
                 <div className="mt-1">
                     <div className="text-[10px] text-gray-500">
-                        已生成 {elapsedSeconds.toFixed(1)}s · 预计 {ESTIMATED_GENERATE_SECONDS}s
+                        {elapsedLabel}
                     </div>
                     <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
                         <div
@@ -1454,8 +1527,8 @@ function TaskHistoryItemCard({
                 <div className="mt-1 flex items-center gap-2">
                     <div className="text-[10px] text-rose-600 line-clamp-1 flex-1">
                         失败原因：{task.error_message || '未知错误'}
-                        {isRefunded && <span className="ml-1 text-emerald-600">· 积分已退还</span>}
                     </div>
+                    {isRefunded && <span className="text-[10px] text-emerald-600 whitespace-nowrap">积分已退还</span>}
                     <button
                         onClick={onRetry}
                         className="h-6 px-2 rounded-md text-[10px] font-semibold bg-black text-white dark:bg-white dark:text-black flex-shrink-0"

@@ -7,6 +7,7 @@ type TaskHistoryRow = {
     prompt: string;
     status: string;
     error_message: string | null;
+    steps: unknown;
     created_at: string;
     updated_at: string;
 };
@@ -176,7 +177,7 @@ export async function GET(request: Request) {
     let tasks: TaskHistoryRow[] = [];
     if (category === 'ai_generated') {
         const taskResult = await dbQuery<TaskHistoryRow>(
-            `SELECT id, prompt, status, error_message, created_at, updated_at
+            `SELECT id, prompt, status, error_message, steps, created_at, updated_at
              FROM generation_tasks
              WHERE user_id = $1
                AND status IN ('pending', 'processing', 'failed', 'failed_refunded')

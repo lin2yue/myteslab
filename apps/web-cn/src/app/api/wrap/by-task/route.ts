@@ -8,6 +8,44 @@ const userThrottleMap = new Map<string, number>();
 const cacheMap = new Map<string, { expiresAt: number; payload: any; status: number }>();
 const CACHE_TTL_MS = Number(process.env.WRAP_TASK_CACHE_TTL_MS ?? 3000);
 
+type TaskStep = { step?: string; ts?: string };
+
+function normalizeTaskSteps(raw: unknown): TaskStep[] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .map(item => {
+            if (!item || typeof item !== 'object') return null;
+            const step = typeof (item as any).step === 'string' ? (item as any).step : '';
+            const ts = typeof (item as any).ts === 'string' ? (item as any).ts : '';
+            if (!step) return null;
+            return { step, ts };
+        })
+        .filter(Boolean) as TaskStep[];
+}
+
+function getRetryProgressFromSteps(raw: unknown, status: string) {
+    const steps = normalizeTaskSteps(raw);
+    const lastRetryStep = [...steps].reverse().find(step => step.step === 'prompt_retry_optimized');
+    if (!lastRetryStep) {
+        return {
+            retrying: false,
+            retryStartedAt: null as string | null
+        };
+    }
+
+    const hasRetryEnded = steps.some(step =>
+        step.step === 'prompt_retry_success'
+        || step.step === 'prompt_retry_failed'
+        || step.step === 'prompt_retry_skipped'
+    );
+
+    const retrying = (status === 'pending' || status === 'processing') && !hasRetryEnded;
+    return {
+        retrying,
+        retryStartedAt: retrying ? (lastRetryStep.ts || null) : null
+    };
+}
+
 function extractSavedUrlFromSteps(steps: unknown): string | null {
     if (!Array.isArray(steps)) return null;
     for (let i = steps.length - 1; i >= 0; i -= 1) {
@@ -114,6 +152,8 @@ export async function POST(request: NextRequest) {
                 const payload = {
                     success: true,
                     status: 'failed',
+                    taskStatus: task.status,
+                    refunded: task.status === 'failed_refunded',
                     error: task.error_message || 'Generation failed',
                     retryAfter: RETRY_AFTER_SECONDS
                 };
@@ -148,7 +188,8 @@ export async function POST(request: NextRequest) {
 
             const payload = {
                 success: true,
-                status: 'pending',
+                status: task.status === 'processing' ? 'processing' : 'pending',
+                ...getRetryProgressFromSteps(task.steps, task.status),
                 retryAfter: RETRY_AFTER_SECONDS
             };
             cacheMap.set(cacheKey, { payload, status: 202, expiresAt: now + CACHE_TTL_MS });
