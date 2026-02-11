@@ -68,7 +68,7 @@ async function fetchWithRetry(url: string, options: RequestInit & { timeoutMs: n
 
 // Gemini API configuration
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
-const DEFAULT_IMAGE_FALLBACK_MODELS = ['gemini-2.5-flash-image', 'gemini-2.0-flash-exp-image-generation'];
+const DEFAULT_IMAGE_FALLBACK_MODELS = ['gemini-2.5-flash-image'];
 
 interface GenerateWrapParams {
     modelSlug: string;
@@ -400,11 +400,13 @@ export async function generateWrapTexture(
         const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
         const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
         const imageSize = (process.env.GEMINI_IMAGE_SIZE || '').trim();
+        const noImageRetryRounds = Math.min(readEnvInt('GEMINI_NO_IMAGE_RETRY_ROUNDS', 1), 3);
 
         try {
             const fallbackPrompt = `Create a clean, high-contrast, print-ready automotive wrap texture for ${modelName}. Theme: ${prompt}. No text, logos, watermark, UI, or letters.`;
             const promptVariants = [textPrompt, fallbackPrompt].filter((v, i, arr) => arr.indexOf(v) === i);
             let lastFailure: string | null = null;
+            let lastErrorCode: string | null = null;
 
             for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex += 1) {
                 const model = modelCandidates[modelIndex];
@@ -444,6 +446,8 @@ export async function generateWrapTexture(
                         const errorText = await response.text();
                         const parsedError = parseGeminiHttpError(response.status, errorText);
                         lastFailure = parsedError.error;
+                        lastErrorCode = parsedError.errorCode;
+                        console.warn(`[AI-GEN] [${VERSION}] Gemini HTTP error model=${model} status=${response.status} code=${parsedError.errorCode}`);
                         if (!parsedError.retryable) {
                             return {
                                 success: false,
@@ -465,6 +469,7 @@ export async function generateWrapTexture(
                     }
 
                     lastFailure = parsed.error || 'No image found in response';
+                    lastErrorCode = parsed.errorCode || 'no_image_payload';
                     if (!parsed.retryable) {
                         return {
                             success: false,
@@ -478,10 +483,66 @@ export async function generateWrapTexture(
                 }
             }
 
+            if (lastErrorCode === 'no_image_payload' && noImageRetryRounds > 0) {
+                for (let round = 0; round < noImageRetryRounds; round += 1) {
+                    await sleep(700 * (round + 1));
+                    const rescuePrompt = `Create a clear automotive wrap texture for ${modelName}. Theme: ${prompt}. Return image only. Keep outside mask black. No text or logos.`;
+                    console.warn(`[AI-GEN] [${VERSION}] No-image rescue round ${round + 1}/${noImageRetryRounds}`);
+                    for (const model of modelCandidates) {
+                        const rescueUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
+                        console.log(`[AI-GEN] [${VERSION}] Rescue attempt model=${model}`);
+                        const rescueResponse = await fetchWithRetry(`${rescueUrl}?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                            },
+                            body: JSON.stringify({
+                                contents: [{ role: 'user', parts: buildParts(rescuePrompt) }],
+                                generationConfig: {
+                                    responseModalities: ['IMAGE'],
+                                    candidateCount: 1,
+                                    imageConfig: {
+                                        aspectRatio: maskDimensions.aspectRatio,
+                                        ...(imageSize ? { imageSize } : {})
+                                    }
+                                },
+                            }),
+                            timeoutMs: imageTimeoutMs,
+                            maxRetries: imageMaxRetries,
+                            retryBaseMs,
+                            retryMaxMs,
+                            logPrefix: '[AI-GEN]'
+                        } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
+
+                        if (!rescueResponse.ok) {
+                            const errorText = await rescueResponse.text();
+                            const parsedError = parseGeminiHttpError(rescueResponse.status, errorText);
+                            lastFailure = parsedError.error;
+                            lastErrorCode = parsedError.errorCode;
+                            if (!parsedError.retryable) {
+                                continue;
+                            }
+                            continue;
+                        }
+
+                        const rescueContent = await rescueResponse.json();
+                        const rescueParsed = parseGeminiImageResponse(rescueContent, rescuePrompt);
+                        if (rescueParsed.ok && rescueParsed.result) {
+                            console.log(`[AI-GEN] [${VERSION}] Gemini image success in rescue mode with model ${model}`);
+                            return rescueParsed.result;
+                        }
+
+                        lastFailure = rescueParsed.error || 'No image found in response';
+                        lastErrorCode = rescueParsed.errorCode || 'no_image_payload';
+                    }
+                }
+            }
+
             return {
                 success: false,
                 error: lastFailure || 'No image found in response',
-                errorCode: 'no_image_payload',
+                errorCode: lastErrorCode || 'no_image_payload',
                 finalPrompt: textPrompt
             };
 
