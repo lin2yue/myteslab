@@ -20,7 +20,7 @@ export function LockAlbumCard({ album, onOpen }: LockAlbumCardProps) {
     return (
         <button
             type="button"
-            className="panel p-3 sm:p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_18px_34px_rgba(0,0,0,0.14)]"
+            className="bg-white/80 dark:bg-zinc-900/80 rounded-2xl overflow-hidden shadow-none hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_36px_rgba(0,0,0,0.10)] transition-all duration-300 border border-black/5 dark:border-white/10 backdrop-blur-sm hover:-translate-y-0.5 p-3 sm:p-4 text-left"
             onClick={() => onOpen(album)}
             aria-label={`查看专辑 ${album.album}`}
         >

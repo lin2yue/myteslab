@@ -37,7 +37,7 @@ export function LockAudioCard({
     onDownload,
 }: LockAudioCardProps) {
     return (
-        <article className={`panel p-3 sm:p-4 transition-all ${isCurrent ? 'ring-2 ring-black/10 dark:ring-white/20' : ''}`}>
+        <article className={`bg-white/80 dark:bg-zinc-900/80 rounded-2xl overflow-hidden shadow-none hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_36px_rgba(0,0,0,0.10)] transition-all duration-300 border border-black/5 dark:border-white/10 backdrop-blur-sm hover:-translate-y-0.5 p-3 sm:p-4 ${isCurrent ? 'ring-2 ring-black/10 dark:ring-white/20' : ''}`}>
             <div className="flex items-center gap-3 sm:gap-4">
                 <button
                     onClick={() => onPlay(audio)}
@@ -88,7 +88,7 @@ export function LockAudioCard({
 
                 <button
                     onClick={() => onDownload(audio)}
-                    className="shrink-0 inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-[#E31937]/10 text-[#E31937] border border-[#E31937]/25 hover:bg-[#E31937]/15 active:scale-[0.98] transition-all text-xs sm:text-sm font-semibold"
+                    className="shrink-0 inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-black/5 dark:bg-white/10 text-gray-900 dark:text-zinc-100 border border-black/10 dark:border-white/20 hover:bg-black/10 dark:hover:bg-white/15 active:scale-[0.98] transition-all text-xs sm:text-sm font-semibold"
                     aria-label={`下载 ${audio.title}`}
                 >
                     <Download className="w-4 h-4" />

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { dbQuery } from '@/lib/db'
 import { getAudioDownloadUrl } from '@/lib/audio'
+import { getSessionUser } from '@/lib/auth/session'
 
 type AudioDownloadRow = {
     id: string
@@ -12,6 +13,11 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getSessionUser()
+        if (!user) {
+            return NextResponse.json({ success: false, error: '请登录后下载' }, { status: 401 })
+        }
+
         const { id } = await params
         if (!id) {
             return NextResponse.json({ success: false, error: '无效音频ID' }, { status: 400 })

@@ -99,9 +99,16 @@ type AlbumRow = {
     latest_created_at: string | null
 }
 
-export async function getLockAudioAlbums(limit: number = 120): Promise<LockAudioAlbum[]> {
+export async function getLockAudioAlbums(
+    limit: number = 120,
+    sortBy: 'latest' | 'hot' = 'latest'
+): Promise<LockAudioAlbum[]> {
     try {
         const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(1, Math.floor(limit)), 500) : 120
+        const safeSort = sortBy === 'hot' ? 'hot' : 'latest'
+        const orderBy = safeSort === 'hot'
+            ? 'total_play_count DESC, audio_count DESC, latest_created_at DESC, album_name ASC'
+            : 'latest_created_at DESC, total_play_count DESC, audio_count DESC, album_name ASC'
         const sql = `
             WITH base AS (
                 SELECT
@@ -119,7 +126,7 @@ export async function getLockAudioAlbums(limit: number = 120): Promise<LockAudio
                 MAX(created_at) AS latest_created_at
             FROM base
             GROUP BY album_name
-            ORDER BY audio_count DESC, latest_created_at DESC, album_name ASC
+            ORDER BY ${orderBy}
             LIMIT $1
         `
 

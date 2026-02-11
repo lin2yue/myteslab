@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Loader2, Flame, Clock3, Volume2, X } from 'lucide-react'
+import { Search, Loader2, X } from 'lucide-react'
 import { useTranslations } from '@/lib/i18n'
 import type { LockAudio, LockAudioAlbum } from '@/lib/types'
 import { getAudioPlayableUrl } from '@/lib/audio'
 import { LockAudioCard } from '@/components/audio/LockAudioCard'
 import { LockAlbumCard } from '@/components/audio/LockAlbumCard'
+import { useRouter } from 'next/navigation'
 
 type SortBy = 'latest' | 'hot'
 type ViewMode = 'audios' | 'albums'
@@ -37,8 +38,10 @@ function mergeAudios(previous: LockAudio[], incoming: LockAudio[]) {
 
 export default function LockSoundsClient() {
     const tCommon = useTranslations('Common')
+    const tIndex = useTranslations('Index')
     const tLock = useTranslations('LockSounds')
     const loadErrorText = tLock('load_error')
+    const router = useRouter()
 
     const [viewMode, setViewMode] = useState<ViewMode>('audios')
     const [selectedAlbum, setSelectedAlbum] = useState('')
@@ -46,7 +49,8 @@ export default function LockSoundsClient() {
     const [audios, setAudios] = useState<LockAudio[]>([])
     const [albums, setAlbums] = useState<LockAudioAlbum[]>([])
 
-    const [sortBy, setSortBy] = useState<SortBy>('latest')
+    const [sortBy, setSortBy] = useState<SortBy>('hot')
+    const [albumSortBy, setAlbumSortBy] = useState<SortBy>('latest')
     const [searchInput, setSearchInput] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
     const [nextPage, setNextPage] = useState(1)
@@ -154,7 +158,7 @@ export default function LockSoundsClient() {
         setAlbumsLoading(true)
         setAlbumsError('')
         try {
-            const response = await fetch('/api/audios/albums?limit=200', {
+            const response = await fetch(`/api/audios/albums?limit=200&sort=${albumSortBy}`, {
                 method: 'GET',
                 cache: 'no-store',
             })
@@ -173,7 +177,7 @@ export default function LockSoundsClient() {
         } finally {
             setAlbumsLoading(false)
         }
-    }, [loadErrorText])
+    }, [albumSortBy, loadErrorText])
 
     useEffect(() => {
         if (viewMode !== 'audios') return
@@ -184,9 +188,8 @@ export default function LockSoundsClient() {
 
     useEffect(() => {
         if (viewMode !== 'albums') return
-        if (albums.length > 0) return
         void fetchAlbums()
-    }, [albums.length, fetchAlbums, viewMode])
+    }, [fetchAlbums, viewMode])
 
     const handleLoadMore = useCallback(() => {
         if (loading || loadingMore || !hasMore) return
@@ -234,7 +237,25 @@ export default function LockSoundsClient() {
         }
     }, [currentAudioId])
 
-    const handleDownload = useCallback((audio: LockAudio) => {
+    const handleDownload = useCallback(async (audio: LockAudio) => {
+        let isLoggedIn = false
+        try {
+            const response = await fetch('/api/auth/me', { method: 'GET', cache: 'no-store' })
+            const data = (await response.json()) as { user?: { id: string } | null }
+            isLoggedIn = Boolean(data?.user?.id)
+        } catch (error) {
+            console.error('[LockSoundsClient] 检查登录状态失败:', error)
+        }
+
+        if (!isLoggedIn) {
+            const currentUrl = window.location.pathname + window.location.search
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_redirect_next', currentUrl)
+            }
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
+
         setDownloadingId(audio.id)
         setAudios((prev) => prev.map((item) => (
             item.id === audio.id
@@ -253,7 +274,7 @@ export default function LockSoundsClient() {
         window.setTimeout(() => {
             setDownloadingId((current) => (current === audio.id ? null : current))
         }, 1200)
-    }, [])
+    }, [router])
 
     const handleOpenAlbum = useCallback((album: LockAudioAlbum) => {
         setSelectedAlbum(album.album)
@@ -278,98 +299,121 @@ export default function LockSoundsClient() {
     }, [albums, searchQuery])
 
     return (
-        <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-            <header className="panel-muted p-5 sm:p-6 mb-6">
-                <div className="flex flex-col gap-3">
-                    <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#E31937] bg-[#E31937]/10 border border-[#E31937]/20 rounded-full px-3 py-1 w-fit">
-                        <Volume2 className="w-3.5 h-3.5" />
-                        {tLock('badge')}
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+        <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+            <header className="mb-8">
+                <section className="mb-8 text-center">
+                    <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
                         {tLock('title')}
                     </h1>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-zinc-400 max-w-3xl leading-relaxed">
+                    <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
                         {tLock('subtitle')}
                     </p>
-                </div>
+                </section>
 
-                <div className="mt-6 flex items-center gap-2">
-                    <button
-                        onClick={() => setViewMode('audios')}
-                        className={`h-10 px-4 rounded-xl text-sm font-semibold transition-all ${viewMode === 'audios'
-                            ? 'bg-black text-white dark:bg-white dark:text-black'
-                            : 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/15'
-                            }`}
-                    >
-                        {tLock('tab_audios')}
-                    </button>
-                    <button
-                        onClick={() => setViewMode('albums')}
-                        className={`h-10 px-4 rounded-xl text-sm font-semibold transition-all ${viewMode === 'albums'
-                            ? 'bg-black text-white dark:bg-white dark:text-black'
-                            : 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/15'
-                            }`}
-                    >
-                        {tLock('tab_albums')}
-                    </button>
-                </div>
+                <div className="space-y-4">
+                    <div className="flex -mx-4 px-4 overflow-x-auto no-scrollbar">
+                        <div className="flex items-center gap-3 min-w-max">
+                            <div className="inline-flex bg-black/5 dark:bg-white/10 rounded-xl p-1 gap-1 min-w-max backdrop-blur shrink-0">
+                                <button
+                                    onClick={() => setViewMode('audios')}
+                                    className={`
+                                        px-5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all
+                                        ${viewMode === 'audios'
+                                            ? 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }
+                                    `}
+                                >
+                                    {tLock('tab_audios')}
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('albums')}
+                                    className={`
+                                        px-5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all
+                                        ${viewMode === 'albums'
+                                            ? 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }
+                                    `}
+                                >
+                                    {tLock('tab_albums')}
+                                </button>
+                            </div>
 
-                <div className={`mt-4 grid grid-cols-1 ${viewMode === 'audios' ? 'sm:grid-cols-[1fr_auto_auto]' : 'sm:grid-cols-[1fr_auto]'} gap-3 items-center`}>
-                    <label className="relative block">
-                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            value={searchInput}
-                            onChange={(event) => setSearchInput(event.target.value)}
-                            placeholder={viewMode === 'audios' ? tLock('search_placeholder') : tLock('search_album_placeholder')}
-                            className="input-field pl-10"
-                        />
-                    </label>
+                            <label className="relative block w-[220px] sm:w-[280px] lg:w-[340px] xl:w-[380px] shrink-0">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    value={searchInput}
+                                    onChange={(event) => setSearchInput(event.target.value)}
+                                    placeholder={viewMode === 'audios' ? tLock('search_placeholder') : tLock('search_album_placeholder')}
+                                    className="input-field pl-10"
+                                />
+                            </label>
+                        </div>
+                    </div>
 
-                    {viewMode === 'audios' && (
-                        <button
-                            onClick={() => setSortBy('latest')}
-                            className={`h-11 px-4 rounded-xl text-sm font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${sortBy === 'latest'
-                                ? 'bg-black text-white dark:bg-white dark:text-black'
-                                : 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/15'
-                                }`}
-                        >
-                            <Clock3 className="w-4 h-4" />
-                            {tLock('sort_latest')}
-                        </button>
-                    )}
-
-                    {viewMode === 'audios' && (
-                        <button
-                            onClick={() => setSortBy('hot')}
-                            className={`h-11 px-4 rounded-xl text-sm font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${sortBy === 'hot'
-                                ? 'bg-black text-white dark:bg-white dark:text-black'
-                                : 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/15'
-                                }`}
-                        >
-                            <Flame className="w-4 h-4" />
-                            {tLock('sort_hot')}
-                        </button>
-                    )}
+                    <div className="flex -mx-4 px-4 overflow-x-auto no-scrollbar pb-1">
+                        <div className="inline-flex border border-black/5 dark:border-white/10 rounded-lg p-1 gap-1 min-w-max bg-white/60 dark:bg-zinc-900/50">
+                            <button
+                                onClick={() => {
+                                    if (viewMode === 'audios') {
+                                        setSortBy('latest')
+                                    } else {
+                                        setAlbumSortBy('latest')
+                                    }
+                                }}
+                                className={`
+                                    px-4 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all
+                                    ${(viewMode === 'audios' ? sortBy : albumSortBy) === 'latest'
+                                        ? 'bg-black/90 text-white'
+                                        : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                    }
+                                `}
+                            >
+                                {tIndex('sort_latest')}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (viewMode === 'audios') {
+                                        setSortBy('hot')
+                                    } else {
+                                        setAlbumSortBy('hot')
+                                    }
+                                }}
+                                className={`
+                                    px-4 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all
+                                    ${(viewMode === 'audios' ? sortBy : albumSortBy) === 'hot'
+                                        ? 'bg-black/90 text-white'
+                                        : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+                                    }
+                                `}
+                            >
+                                {tIndex('sort_popular')}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {viewMode === 'audios' && selectedAlbum && (
-                    <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15">
-                        <span className="text-xs text-gray-600 dark:text-zinc-300">
-                            {tLock('filtered_by_album')}：{selectedAlbum}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={clearAlbumFilter}
-                            className="inline-flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/10 dark:hover:bg-white/15 text-gray-500 dark:text-zinc-300"
-                            aria-label={tLock('clear_album_filter')}
-                        >
-                            <X className="w-3.5 h-3.5" />
-                        </button>
+                    <div className="mt-4 flex -mx-4 px-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15">
+                            <span className="text-xs text-gray-600 dark:text-zinc-300">
+                                {tLock('filtered_by_album')}：{selectedAlbum}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={clearAlbumFilter}
+                                className="inline-flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/10 dark:hover:bg-white/15 text-gray-500 dark:text-zinc-300"
+                                aria-label={tLock('clear_album_filter')}
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                     </div>
                 )}
 
                 {viewMode === 'audios' && currentAudioId && (
-                    <p className="mt-4 text-xs sm:text-sm text-gray-500 dark:text-zinc-400">
+                    <p className="mt-4 px-4 text-xs sm:text-sm text-gray-500 dark:text-zinc-400">
                         {isPlaying ? tLock('now_playing') : tLock('paused')}
                         {currentAudioTitle ? `：${currentAudioTitle}` : ''}
                     </p>

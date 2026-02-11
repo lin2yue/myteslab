@@ -5,11 +5,14 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
         const limit = Number(searchParams.get('limit') || '120')
-        const items = await getLockAudioAlbums(limit)
+        const sortParam = searchParams.get('sort') || 'latest'
+        const sortBy = sortParam === 'hot' ? 'hot' : 'latest'
+        const items = await getLockAudioAlbums(limit, sortBy)
 
         return NextResponse.json({
             success: true,
             items,
+            sort: sortBy,
         })
     } catch (error) {
         console.error('[api/audios/albums] 获取专辑列表失败:', error)
