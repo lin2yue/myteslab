@@ -83,8 +83,11 @@ export interface GenerateWrapResult {
     dataUrl?: string; // Standard data:image/png;base64,... format
     mimeType?: string;
     error?: string;
+    errorCode?: string;
     usage?: any; // Token usage info if available
     finalPrompt?: string; // The exact prompt sent to AI
+    finishReasons?: string[];
+    promptBlockReason?: string | null;
 }
 
 type ParsedGeminiResult = {
@@ -92,7 +95,100 @@ type ParsedGeminiResult = {
     result?: GenerateWrapResult;
     retryable: boolean;
     error?: string;
+    errorCode?: string;
+    finishReasons?: string[];
+    promptBlockReason?: string | null;
 };
+
+type ParsedGeminiHttpError = {
+    retryable: boolean;
+    error: string;
+    errorCode: string;
+    promptBlockReason?: string | null;
+    finishReasons?: string[];
+};
+
+const PROMPT_BLOCKED_REASONS = new Set(['SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'IMAGE_SAFETY']);
+const FINISH_POLICY_REASONS = new Set([
+    'SAFETY',
+    'BLOCKLIST',
+    'PROHIBITED_CONTENT',
+    'SPII',
+    'IMAGE_SAFETY',
+    'IMAGE_PROHIBITED_CONTENT'
+]);
+const FINISH_RETRYABLE_REASONS = new Set(['OTHER', 'IMAGE_OTHER', 'NO_IMAGE']);
+
+function buildPromptBlockedMessage(blockReason: string): string {
+    if (blockReason === 'PROHIBITED_CONTENT' || blockReason === 'BLOCKLIST') {
+        return '生成失败：提示词触发了平台内容限制（违禁词/受限内容）。请修改提示词后重试。';
+    }
+    if (blockReason === 'SAFETY' || blockReason === 'IMAGE_SAFETY') {
+        return '生成失败：提示词或参考图触发安全策略，请调整描述后重试。';
+    }
+    return `生成失败：请求被内容策略拦截（${blockReason}）。请调整提示词后重试。`;
+}
+
+function buildFinishReasonMessage(finishReasons: string[]): string {
+    const joined = finishReasons.join(',');
+    if (finishReasons.some(reason => FINISH_POLICY_REASONS.has(reason))) {
+        return `生成失败：请求触发内容安全策略（${joined}）。请修改提示词后重试。`;
+    }
+    if (finishReasons.includes('RECITATION') || finishReasons.includes('IMAGE_RECITATION')) {
+        return `生成失败：内容触发版权/引用限制（${joined}）。请尝试更原创的描述。`;
+    }
+    if (finishReasons.includes('LANGUAGE')) {
+        return '生成失败：提示词语言不受支持，请改用中文或英文简化描述。';
+    }
+    if (finishReasons.includes('NO_IMAGE') || finishReasons.includes('IMAGE_OTHER') || finishReasons.includes('OTHER')) {
+        return `生成失败：模型未返回图片（${joined}）。建议简化提示词或更换描述方式。`;
+    }
+    return `生成失败：模型返回异常结束状态（${joined}）。`;
+}
+
+function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttpError {
+    let parsed: any = null;
+    try {
+        parsed = rawBody ? JSON.parse(rawBody) : null;
+    } catch {
+        parsed = null;
+    }
+
+    const message =
+        parsed?.error?.message
+        || parsed?.message
+        || rawBody
+        || `Gemini API Error (${status})`;
+
+    const promptBlockReason = String(
+        parsed?.promptFeedback?.blockReason
+        || parsed?.error?.details?.[0]?.metadata?.blockReason
+        || ''
+    ).toUpperCase() || null;
+
+    if (promptBlockReason && PROMPT_BLOCKED_REASONS.has(promptBlockReason)) {
+        return {
+            retryable: false,
+            errorCode: 'prompt_blocked',
+            error: buildPromptBlockedMessage(promptBlockReason),
+            promptBlockReason,
+        };
+    }
+
+    if (status === 429 || status === 408 || status >= 500) {
+        return {
+            retryable: true,
+            errorCode: 'api_retryable_error',
+            error: `AI 服务暂时不可用（HTTP ${status}），系统将自动重试。`,
+        };
+    }
+
+    return {
+        retryable: false,
+        errorCode: 'api_error',
+        error: `Gemini API Error (${status}): ${message}`.slice(0, 600),
+    };
+}
 
 function extractInlineImagePart(payload: any): { mimeType: string; data: string } | null {
     const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
@@ -154,33 +250,47 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
                 dataUrl: `data:${imagePart.mimeType};base64,${imagePart.data}`,
                 mimeType: imagePart.mimeType,
                 usage: usageMetadata,
-                finalPrompt
+                finalPrompt,
+                finishReasons: [],
+                promptBlockReason: null
             }
         };
     }
 
     const summary = summarizeGeminiResponse(payload);
-    const finishReasons: string[] = Array.isArray(summary.finishReasons) ? summary.finishReasons : [];
+    const finishReasons: string[] = Array.isArray(summary.finishReasons)
+        ? summary.finishReasons.map((x: any) => String(x).toUpperCase())
+        : [];
+    const promptBlockReason = summary.promptBlockReason ? String(summary.promptBlockReason).toUpperCase() : null;
 
-    if (summary.promptBlockReason) {
+    if (promptBlockReason) {
         return {
             ok: false,
             retryable: false,
-            error: `生成失败：请求内容违反了 AI 服务条款 (${summary.promptBlockReason})`
+            errorCode: 'prompt_blocked',
+            promptBlockReason,
+            finishReasons,
+            error: buildPromptBlockedMessage(promptBlockReason)
         };
     }
-    if (finishReasons.includes('SAFETY')) {
+    if (finishReasons.some(reason => FINISH_POLICY_REASONS.has(reason))) {
         return {
             ok: false,
             retryable: false,
-            error: '生成失败：提示词或遮罩图触发了安全过滤器 (SAFETY)。请尝试修改描述词，避免可能触发敏感审查的内容。'
+            errorCode: 'prompt_blocked',
+            finishReasons,
+            promptBlockReason,
+            error: buildFinishReasonMessage(finishReasons)
         };
     }
-    if (finishReasons.includes('RECITATION')) {
+    if (finishReasons.includes('RECITATION') || finishReasons.includes('IMAGE_RECITATION')) {
         return {
             ok: false,
             retryable: false,
-            error: '生成失败：内容涉及版权或引用限制 (RECITATION)。'
+            errorCode: 'recitation_blocked',
+            finishReasons,
+            promptBlockReason,
+            error: buildFinishReasonMessage(finishReasons)
         };
     }
 
@@ -189,21 +299,24 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
         return {
             ok: false,
             retryable: true,
+            errorCode: 'no_image_payload',
+            finishReasons,
+            promptBlockReason,
             error: `Model returned non-image response: ${textPart.substring(0, 200)}`
         };
     }
 
     console.warn('[AI-GEN] Gemini response has no image payload:', JSON.stringify(summary));
-    const finishReasonText = finishReasons.length > 0 ? ` (Reason: ${finishReasons.join(',')})` : '';
-
-    let userFriendlyError = `生成失败：未能生成图片${finishReasonText}。`;
-    if (finishReasons.includes('OTHER')) {
-        userFriendlyError = '生成失败：AI 无法根据当前提示词或图片生成内容。这通常是由于提示词过于模糊、过于特殊或触发了隐含的策略限制。建议尝试简化或微调提示词。';
-    }
+    let userFriendlyError = finishReasons.length > 0
+        ? buildFinishReasonMessage(finishReasons)
+        : '生成失败：模型未返回图片内容。请稍后重试。';
 
     return {
         ok: false,
-        retryable: finishReasons.includes('OTHER') || finishReasons.length === 0,
+        retryable: finishReasons.length === 0 || finishReasons.some(reason => FINISH_RETRYABLE_REASONS.has(reason)),
+        errorCode: 'no_image_payload',
+        finishReasons,
+        promptBlockReason,
         error: userFriendlyError
     };
 }
@@ -282,6 +395,7 @@ export async function generateWrapTexture(
         const imageMaxRetries = readEnvInt('GEMINI_IMAGE_RETRIES', 2);
         const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
         const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
+        const imageSize = (process.env.GEMINI_IMAGE_SIZE || '').trim();
 
         try {
             const fallbackPrompt = `Create a clean, high-contrast, print-ready automotive wrap texture for ${modelName}. Theme: ${prompt}. No text, logos, watermark, UI, or letters.`;
@@ -304,11 +418,14 @@ export async function generateWrapTexture(
                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                         },
                         body: JSON.stringify({
-                            contents: [{ parts: buildParts(promptToUse) }],
+                            contents: [{ role: 'user', parts: buildParts(promptToUse) }],
                             generationConfig: {
-                                responseModalities: ['Image'],
+                                // Follow Gemini API docs: modality enum values are uppercase in REST payload.
+                                responseModalities: ['IMAGE'],
+                                candidateCount: 1,
                                 imageConfig: {
                                     aspectRatio: maskDimensions.aspectRatio,
+                                    ...(imageSize ? { imageSize } : {})
                                 }
                             },
                         }),
@@ -321,7 +438,19 @@ export async function generateWrapTexture(
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+                        const parsedError = parseGeminiHttpError(response.status, errorText);
+                        lastFailure = parsedError.error;
+                        if (!parsedError.retryable) {
+                            return {
+                                success: false,
+                                error: parsedError.error,
+                                errorCode: parsedError.errorCode,
+                                promptBlockReason: parsedError.promptBlockReason || null,
+                                finishReasons: parsedError.finishReasons || [],
+                                finalPrompt: promptToUse
+                            };
+                        }
+                        continue;
                     }
 
                     const content = await response.json();
@@ -332,12 +461,24 @@ export async function generateWrapTexture(
 
                     lastFailure = parsed.error || 'No image found in response';
                     if (!parsed.retryable) {
-                        return { success: false, error: lastFailure, finalPrompt: promptToUse };
+                        return {
+                            success: false,
+                            error: lastFailure,
+                            errorCode: parsed.errorCode || 'no_image_payload',
+                            promptBlockReason: parsed.promptBlockReason || null,
+                            finishReasons: parsed.finishReasons || [],
+                            finalPrompt: promptToUse
+                        };
                     }
                 }
             }
 
-            return { success: false, error: lastFailure || 'No image found in response', finalPrompt: textPrompt };
+            return {
+                success: false,
+                error: lastFailure || 'No image found in response',
+                errorCode: 'no_image_payload',
+                finalPrompt: textPrompt
+            };
 
         } catch (error: any) {
             throw error;
@@ -350,6 +491,7 @@ export async function generateWrapTexture(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
+            errorCode: 'unknown_error',
             finalPrompt: textPrompt
         };
     }

@@ -39,38 +39,56 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, alreadyRefunded: true });
         }
 
-        const credits = Number(task.credits_spent || 0);
+        const { rows: chargeRows } = await client.query(
+            `SELECT amount
+             FROM credit_ledger
+             WHERE task_id = $1
+               AND type IN ('generation', 'generation_charge')
+             ORDER BY created_at ASC
+             LIMIT 1`,
+            [taskId]
+        );
+        const credits = chargeRows[0]
+            ? Math.abs(Number(chargeRows[0].amount || task.credits_spent || 0))
+            : 0;
         const userId = task.user_id as string;
 
-        const { rows: creditRows } = await client.query(
-            `SELECT balance, total_spent
-             FROM user_credits
-             WHERE user_id = $1
-             FOR UPDATE`,
-            [userId]
-        );
+        if (credits > 0) {
+            const { rows: creditRows } = await client.query(
+                `SELECT balance, total_spent
+                 FROM user_credits
+                 WHERE user_id = $1
+                 FOR UPDATE`,
+                [userId]
+            );
 
-        if (creditRows.length === 0) {
-            await client.query(
-                `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
-                 VALUES ($1, $2, $2, 0, NOW())`,
-                [userId, credits]
-            );
-        } else {
-            await client.query(
-                `UPDATE user_credits
-                 SET balance = balance + $2,
-                     total_spent = GREATEST(total_spent - $2, 0),
-                     updated_at = NOW()
-                 WHERE user_id = $1`,
-                [userId, credits]
-            );
+            if (creditRows.length === 0) {
+                await client.query(
+                    `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
+                     VALUES ($1, $2, $2, 0, NOW())`,
+                    [userId, credits]
+                );
+            } else {
+                await client.query(
+                    `UPDATE user_credits
+                     SET balance = balance + $2,
+                         total_spent = GREATEST(total_spent - $2, 0),
+                         updated_at = NOW()
+                     WHERE user_id = $1`,
+                    [userId, credits]
+                );
+            }
         }
 
         await client.query(
             `INSERT INTO credit_ledger (user_id, task_id, amount, type, description, created_at)
              VALUES ($1, $2, $3, 'refund', $4, NOW())`,
-            [userId, taskId, credits, reason]
+            [
+                userId,
+                taskId,
+                credits,
+                credits > 0 ? reason : `${reason} (no charged credits to refund)`
+            ]
         );
 
         await client.query(
@@ -88,7 +106,7 @@ export async function POST(request: Request) {
         );
 
         await client.query('COMMIT');
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, refundedCredits: credits });
     } catch (err: any) {
         await client.query('ROLLBACK');
         console.error('[admin refund] error:', err);
@@ -97,4 +115,3 @@ export async function POST(request: Request) {
         client.release();
     }
 }
-

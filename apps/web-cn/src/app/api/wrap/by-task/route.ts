@@ -8,6 +8,20 @@ const userThrottleMap = new Map<string, number>();
 const cacheMap = new Map<string, { expiresAt: number; payload: any; status: number }>();
 const CACHE_TTL_MS = Number(process.env.WRAP_TASK_CACHE_TTL_MS ?? 3000);
 
+function extractSavedUrlFromSteps(steps: unknown): string | null {
+    if (!Array.isArray(steps)) return null;
+    for (let i = steps.length - 1; i >= 0; i -= 1) {
+        const step = steps[i] as any;
+        if (typeof step?.savedUrl === 'string' && step.savedUrl) {
+            return step.savedUrl;
+        }
+        if (typeof step?.reason === 'string' && step.reason.startsWith('http')) {
+            return step.reason;
+        }
+    }
+    return null;
+}
+
 function jsonWithRetry(body: any, status: number) {
     return NextResponse.json(body, {
         status,
@@ -56,7 +70,7 @@ export async function POST(request: NextRequest) {
         }
 
         const { rows: taskRows } = await dbQuery(
-            `SELECT status, error_message, wrap_id
+            `SELECT status, error_message, wrap_id, steps
              FROM generation_tasks
              WHERE id = $1 AND user_id = $2
              LIMIT 1`,
@@ -108,6 +122,20 @@ export async function POST(request: NextRequest) {
             }
 
             if (task.status === 'completed') {
+                const savedUrl = extractSavedUrlFromSteps(task.steps);
+                if (savedUrl) {
+                    const payload = {
+                        success: true,
+                        wrap: {
+                            id: taskId,
+                            preview_url: savedUrl,
+                            texture_url: savedUrl,
+                            generation_task_id: taskId
+                        }
+                    };
+                    cacheMap.set(cacheKey, { payload, status: 200, expiresAt: now + CACHE_TTL_MS });
+                    return NextResponse.json(payload);
+                }
                 const payload = {
                     success: true,
                     status: 'completed_missing',

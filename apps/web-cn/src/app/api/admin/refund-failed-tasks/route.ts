@@ -96,21 +96,43 @@ export async function POST(request: NextRequest) {
                     const credits = Number(task.credits_spent || 0);
                     const taskUserId = task.user_id as string;
 
-                    // 更新用户积分
-                    await client.query(
-                        `UPDATE user_credits
-             SET balance = balance + $2,
-                 total_spent = GREATEST(total_spent - $2, 0),
-                 updated_at = NOW()
-             WHERE user_id = $1`,
-                        [taskUserId, credits]
+                    const { rows: chargeRows } = await client.query(
+                        `SELECT amount
+                         FROM credit_ledger
+                         WHERE task_id = $1
+                           AND type IN ('generation', 'generation_charge')
+                         ORDER BY created_at ASC
+                         LIMIT 1`,
+                        [task.id]
                     );
+                    const refundableCredits = chargeRows[0]
+                        ? Math.abs(Number(chargeRows[0].amount || credits))
+                        : 0;
+
+                    // 更新用户积分（仅在该任务已实际扣费时）
+                    if (refundableCredits > 0) {
+                        await client.query(
+                            `UPDATE user_credits
+                             SET balance = balance + $2,
+                                 total_spent = GREATEST(total_spent - $2, 0),
+                                 updated_at = NOW()
+                             WHERE user_id = $1`,
+                            [taskUserId, refundableCredits]
+                        );
+                    }
 
                     // 记录退款
                     await client.query(
                         `INSERT INTO credit_ledger (user_id, task_id, amount, type, description, created_at)
              VALUES ($1, $2, $3, 'refund', $4, NOW())`,
-                        [taskUserId, task.id, credits, `Admin refund: ${task.error_message || 'Database error'}`]
+                        [
+                            taskUserId,
+                            task.id,
+                            refundableCredits,
+                            refundableCredits > 0
+                                ? `Admin refund: ${task.error_message || 'Database error'}`
+                                : `Admin mark refunded without charge: ${task.error_message || 'No charge ledger'}`
+                        ]
                     );
 
                     // 更新任务状态
@@ -128,7 +150,7 @@ export async function POST(request: NextRequest) {
                     refundResults.push({
                         taskId: task.id,
                         success: true,
-                        creditsRefunded: credits,
+                        creditsRefunded: refundableCredits,
                     });
 
                 } catch (err) {

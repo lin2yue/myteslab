@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64, generateBilingualMetadata } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, imageUrlToBase64 } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
@@ -17,16 +17,24 @@ import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
 import { db, dbQuery } from '@/lib/db';
 import { getModelBySlug } from '@/config/models';
 import { getSessionUser } from '@/lib/auth/session';
-import { writeFile, mkdir, readFile } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 import crypto from 'crypto';
+import sharp from 'sharp';
 
 // Allow longer execution time for AI generation (Vercel Pro: 300s, Hobby: 60s max)
 export const maxDuration = 300;
 
 const MAX_REFERENCE_IMAGES = 3;
 const MAX_REFERENCE_IMAGE_BYTES = 1.5 * 1024 * 1024;
+const DEFAULT_FREE_CREDITS = Number(process.env.DEFAULT_FREE_CREDITS ?? 30);
+const PER_USER_WINDOW_MS = Number(process.env.WRAP_GEN_RATE_WINDOW_MS ?? 60 * 1000);
+const PER_USER_MAX_REQUESTS = Number(process.env.WRAP_GEN_RATE_MAX_REQUESTS ?? 6);
+const PER_IP_WINDOW_MS = Number(process.env.WRAP_GEN_IP_RATE_WINDOW_MS ?? 60 * 1000);
+const PER_IP_MAX_REQUESTS = Number(process.env.WRAP_GEN_IP_RATE_MAX_REQUESTS ?? 20);
+const MAX_INFLIGHT_TASKS_PER_USER = Number(process.env.WRAP_GEN_MAX_INFLIGHT_TASKS ?? 2);
+const MASK_THRESHOLD = Number(process.env.WRAP_MASK_THRESHOLD ?? 180);
+
+const userRateMap = new Map<string, { count: number; windowStart: number }>();
+const ipRateMap = new Map<string, { count: number; windowStart: number }>();
 
 const allowedReferenceHosts = new Set(
     [
@@ -61,6 +69,40 @@ function estimateBase64Size(base64: string): number {
     return Math.floor((base64.length * 3) / 4) - padding;
 }
 
+function takeRateQuota(
+    map: Map<string, { count: number; windowStart: number }>,
+    key: string,
+    windowMs: number,
+    maxRequests: number
+): boolean {
+    if (!key) return true;
+    const now = Date.now();
+    const state = map.get(key);
+    if (!state || now - state.windowStart > windowMs) {
+        map.set(key, { count: 1, windowStart: now });
+        return true;
+    }
+    if (state.count >= maxRequests) {
+        return false;
+    }
+    state.count += 1;
+    map.set(key, state);
+    return true;
+}
+
+function buildLocalWrapMetadata(prompt: string, modelName: string) {
+    const normalizedPrompt = prompt.replace(/\s+/g, ' ').trim();
+    const titleSeed = normalizedPrompt.slice(0, 24) || 'AI 车贴';
+    const title = `${titleSeed}${titleSeed.endsWith('风') ? '' : '风'}`.slice(0, 30);
+    const description = `${modelName} · ${normalizedPrompt}`.slice(0, 120);
+    return {
+        name: title || 'AI 车贴',
+        name_en: title || 'AI Wrap',
+        description: description || '',
+        description_en: description || '',
+    };
+}
+
 function isAllowedReferenceUrl(input: string): boolean {
     if (!input) return false;
     if (input.startsWith('data:')) return true;
@@ -79,6 +121,73 @@ function isAllowedReferenceUrl(input: string): boolean {
     }
 }
 
+async function enforceMaskOnGeneratedImage(params: {
+    generatedBuffer: Buffer;
+    maskBuffer: Buffer;
+    width: number;
+    height: number;
+}) {
+    const { generatedBuffer, maskBuffer, width, height } = params;
+    const normalizedImageBuffer = await sharp(generatedBuffer)
+        .resize(width, height, { fit: 'fill' })
+        .removeAlpha()
+        .raw()
+        .toBuffer();
+
+    const normalizedMaskBuffer = await sharp(maskBuffer)
+        .resize(width, height, { fit: 'fill' })
+        .greyscale()
+        .threshold(MASK_THRESHOLD)
+        .raw()
+        .toBuffer();
+
+    let outsidePixelCount = 0;
+    let outsideNonBlackPixelCount = 0;
+    for (let i = 0; i < normalizedMaskBuffer.length; i += 1) {
+        const maskVal = normalizedMaskBuffer[i];
+        const pixelOffset = i * 3;
+        const r = normalizedImageBuffer[pixelOffset];
+        const g = normalizedImageBuffer[pixelOffset + 1];
+        const b = normalizedImageBuffer[pixelOffset + 2];
+        if (maskVal < 128) {
+            outsidePixelCount += 1;
+            if (r > 16 || g > 16 || b > 16) {
+                outsideNonBlackPixelCount += 1;
+            }
+        }
+    }
+
+    const outsideNonBlackRatio = outsidePixelCount > 0
+        ? outsideNonBlackPixelCount / outsidePixelCount
+        : 0;
+
+    const imageWithMaskAlpha = await sharp(normalizedImageBuffer, {
+        raw: { width, height, channels: 3 }
+    })
+        .joinChannel(normalizedMaskBuffer, {
+            raw: { width, height, channels: 1 }
+        })
+        .png()
+        .toBuffer();
+
+    const maskedPng = await sharp({
+        create: {
+            width,
+            height,
+            channels: 3,
+            background: { r: 0, g: 0, b: 0 }
+        }
+    })
+        .composite([{ input: imageWithMaskAlpha }])
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+
+    return {
+        buffer: maskedPng,
+        outsideNonBlackRatio
+    };
+}
+
 async function deductCreditsForGeneration(params: {
     userId: string;
     prompt: string;
@@ -92,7 +201,10 @@ async function deductCreditsForGeneration(params: {
 
         if (idempotencyKey) {
             const { rows: existing } = await client.query(
-                `SELECT id, status FROM generation_tasks WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1`,
+                `SELECT id, status, updated_at, created_at
+                 FROM generation_tasks
+                 WHERE idempotency_key = $1 AND user_id = $2
+                 LIMIT 1`,
                 [idempotencyKey, userId]
             );
             if (existing[0]) {
@@ -100,36 +212,64 @@ async function deductCreditsForGeneration(params: {
                     `SELECT balance FROM user_credits WHERE user_id = $1 LIMIT 1`,
                     [userId]
                 );
+                const balance = Number(balanceRows[0]?.balance ?? 0);
+                let remainingBalance = balance;
+                if (existing[0].status === 'pending' || existing[0].status === 'processing') {
+                    const { rows: inflightRows } = await client.query(
+                        `SELECT COALESCE(SUM(credits_spent), 0)::int AS reserved_credits
+                         FROM generation_tasks
+                         WHERE user_id = $1
+                           AND status IN ('pending', 'processing')`,
+                        [userId]
+                    );
+                    const reservedCredits = Number(inflightRows[0]?.reserved_credits || 0);
+                    remainingBalance = Math.max(balance - reservedCredits, 0);
+                }
                 await client.query('COMMIT');
                 return {
                     success: true,
                     taskId: existing[0].id as string,
                     status: existing[0].status,
-                    remainingBalance: balanceRows[0]?.balance ?? 0,
+                    updatedAt: existing[0].updated_at || existing[0].created_at,
+                    remainingBalance,
                     errorMsg: 'Idempotent hit'
                 };
             }
         }
 
+        await client.query(
+            `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
+             VALUES ($1, $2, $2, 0, NOW())
+             ON CONFLICT (user_id) DO NOTHING`,
+            [userId, DEFAULT_FREE_CREDITS]
+        );
+
         const { rows: creditRows } = await client.query(
             `SELECT balance FROM user_credits WHERE user_id = $1 FOR UPDATE`,
             [userId]
         );
+        const currentBalance = Number(creditRows[0]?.balance || 0);
 
-        if (!creditRows[0] || creditRows[0].balance < amount) {
+        const { rows: inflightRows } = await client.query(
+            `SELECT COUNT(*)::int AS inflight_count, COALESCE(SUM(credits_spent), 0)::int AS reserved_credits
+             FROM generation_tasks
+             WHERE user_id = $1
+               AND status IN ('pending', 'processing')`,
+            [userId]
+        );
+        const inflightCount = Number(inflightRows[0]?.inflight_count || 0);
+        const reservedCredits = Number(inflightRows[0]?.reserved_credits || 0);
+        const availableCredits = Math.max(currentBalance - reservedCredits, 0);
+
+        if (inflightCount >= MAX_INFLIGHT_TASKS_PER_USER) {
+            await client.query('ROLLBACK');
+            return { success: false, errorMsg: 'Too many tasks in progress. 请等待当前任务完成后再试。' };
+        }
+
+        if (availableCredits < amount) {
             await client.query('ROLLBACK');
             return { success: false, errorMsg: 'Insufficient credits or deduction failed' };
         }
-
-        const newBalance = Number(creditRows[0].balance) - amount;
-        await client.query(
-            `UPDATE user_credits
-             SET balance = $2,
-                 total_spent = total_spent + $3,
-                 updated_at = NOW()
-             WHERE user_id = $1`,
-            [userId, newBalance, amount]
-        );
 
         const { rows: taskRows } = await client.query(
             `INSERT INTO generation_tasks (user_id, prompt, status, credits_spent, idempotency_key, created_at, updated_at)
@@ -139,14 +279,90 @@ async function deductCreditsForGeneration(params: {
         );
 
         const taskId = taskRows[0].id as string;
+
+        await client.query('COMMIT');
+        return { success: true, taskId, remainingBalance: availableCredits - amount };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+async function settleTaskCredits(taskId: string, reason: string) {
+    const client = await db().connect();
+    try {
+        await client.query('BEGIN');
+
+        const { rows: taskRows } = await client.query(
+            `SELECT id, user_id, credits_spent
+             FROM generation_tasks
+             WHERE id = $1
+             FOR UPDATE`,
+            [taskId]
+        );
+        const task = taskRows[0];
+        if (!task) {
+            await client.query('ROLLBACK');
+            return { success: false, error: 'Task not found' };
+        }
+
+        const { rows: chargedRows } = await client.query(
+            `SELECT id
+             FROM credit_ledger
+             WHERE task_id = $1
+               AND type IN ('generation', 'generation_charge')
+             LIMIT 1`,
+            [taskId]
+        );
+        if (chargedRows[0]) {
+            await client.query('COMMIT');
+            return { success: true, alreadyCharged: true };
+        }
+
+        const credits = Number(task.credits_spent || 0);
+        if (!Number.isFinite(credits) || credits <= 0) {
+            await client.query('COMMIT');
+            return { success: true, alreadyCharged: true };
+        }
+
+        const userId = task.user_id as string;
+        const { rows: creditRows } = await client.query(
+            `SELECT balance
+             FROM user_credits
+             WHERE user_id = $1
+             FOR UPDATE`,
+            [userId]
+        );
+        if (!creditRows[0]) {
+            await client.query('ROLLBACK');
+            return { success: false, error: 'User credit row missing' };
+        }
+
+        const balance = Number(creditRows[0].balance || 0);
+        if (balance < credits) {
+            await client.query('ROLLBACK');
+            return { success: false, error: 'Insufficient balance at settlement' };
+        }
+
         await client.query(
-            `INSERT INTO credit_ledger (user_id, task_id, amount, type, description, created_at)
-             VALUES ($1, $2, $3, 'generation', 'AI generation', NOW())`,
-            [userId, taskId, -amount]
+            `UPDATE user_credits
+             SET balance = balance - $2,
+                 total_spent = total_spent + $2,
+                 updated_at = NOW()
+             WHERE user_id = $1`,
+            [userId, credits]
+        );
+
+        await client.query(
+            `INSERT INTO credit_ledger (user_id, task_id, amount, type, description, created_at, metadata)
+             VALUES ($1, $2, $3, 'generation_charge', $4, NOW(), $5::jsonb)`,
+            [userId, taskId, -credits, reason, JSON.stringify({ phase: 'settle' })]
         );
 
         await client.query('COMMIT');
-        return { success: true, taskId, remainingBalance: newBalance };
+        return { success: true, charged: credits };
     } catch (err) {
         await client.query('ROLLBACK');
         throw err;
@@ -176,34 +392,47 @@ async function refundTaskCredits(taskId: string, reason: string) {
             return { success: true, alreadyRefunded: true };
         }
 
-        const credits = Number(task.credits_spent || 0);
+        const { rows: chargedRows } = await client.query(
+            `SELECT amount, type
+             FROM credit_ledger
+             WHERE task_id = $1
+               AND type IN ('generation', 'generation_charge')
+             ORDER BY created_at ASC
+             LIMIT 1`,
+            [taskId]
+        );
+
+        const chargedLedger = chargedRows[0];
+        const credits = chargedLedger ? Math.abs(Number(chargedLedger.amount || task.credits_spent || 0)) : 0;
         const userId = task.user_id as string;
 
-        const { rows: creditRows } = await client.query(
-            `SELECT balance, total_spent FROM user_credits WHERE user_id = $1 FOR UPDATE`,
-            [userId]
-        );
-        if (creditRows.length === 0) {
-            await client.query(
-                `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
-                 VALUES ($1, $2, $2, 0, NOW())`,
-                [userId, credits]
+        if (credits > 0) {
+            const { rows: creditRows } = await client.query(
+                `SELECT balance, total_spent FROM user_credits WHERE user_id = $1 FOR UPDATE`,
+                [userId]
             );
-        } else {
-            await client.query(
-                `UPDATE user_credits
-                 SET balance = balance + $2,
-                     total_spent = GREATEST(total_spent - $2, 0),
-                     updated_at = NOW()
-                 WHERE user_id = $1`,
-                [userId, credits]
-            );
+            if (creditRows.length === 0) {
+                await client.query(
+                    `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
+                     VALUES ($1, $2, $2, 0, NOW())`,
+                    [userId, credits]
+                );
+            } else {
+                await client.query(
+                    `UPDATE user_credits
+                     SET balance = balance + $2,
+                         total_spent = GREATEST(total_spent - $2, 0),
+                         updated_at = NOW()
+                     WHERE user_id = $1`,
+                    [userId, credits]
+                );
+            }
         }
 
         await client.query(
             `INSERT INTO credit_ledger (user_id, task_id, amount, type, description, created_at)
              VALUES ($1, $2, $3, 'refund', $4, NOW())`,
-            [userId, taskId, credits, reason]
+            [userId, taskId, credits > 0 ? credits : 0, credits > 0 ? reason : `${reason} (no charged credits to refund)`]
         );
 
         await client.query(
@@ -221,7 +450,7 @@ async function refundTaskCredits(taskId: string, reason: string) {
         );
 
         await client.query('COMMIT');
-        return { success: true };
+        return { success: true, refunded: credits > 0, credits };
     } catch (err) {
         await client.query('ROLLBACK');
         throw err;
@@ -266,6 +495,7 @@ async function processGenerationTask(params: {
 
         // 2. 获取 Mask
         let maskImageBase64: string | null = null;
+        let maskBufferForPostProcess: Buffer | null = null;
         const maskDimensions = getMaskDimensions(modelSlug);
 
         // --- DEBUG: Log resolution info ---
@@ -284,6 +514,7 @@ async function processGenerationTask(params: {
                 const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
                 console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
                 maskImageBase64 = maskBuffer.toString('base64');
+                maskBufferForPostProcess = maskBuffer;
                 await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
 
             } else {
@@ -342,17 +573,8 @@ async function processGenerationTask(params: {
             }
         }
 
-        console.log(`[AI-GEN] Starting parallel tasks: Gemini image and bilingual metadata...`);
-
-        const metadataPromise = generateBilingualMetadata(prompt, modelName).catch(err => {
-            console.error('[AI-GEN] Failed to generate bilingual metadata, using fallback:', err);
-            return {
-                name: 'AI Generated Wrap',
-                name_en: 'AI Generated Wrap',
-                description: '',
-                description_en: ''
-            };
-        });
+        console.log(`[AI-GEN] Starting Gemini image generation...`);
+        const metadata = buildLocalWrapMetadata(prompt, modelName);
 
         const imageGenerationPromise = generateWrapTexture({
             modelSlug,
@@ -366,8 +588,9 @@ async function processGenerationTask(params: {
 
         if (!result.success) {
             console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${userId}...`);
-            await markTaskFailed(`AI API Error: ${result.error}`);
-            await refundTaskCredits(taskId, `AI API Error: ${result.error}`);
+            const failureMessage = result.error || 'AI generation failed';
+            await markTaskFailed(failureMessage);
+            await refundTaskCredits(taskId, `AI generation failed: ${failureMessage}`);
             return;
         }
 
@@ -379,14 +602,39 @@ async function processGenerationTask(params: {
             return;
         }
 
+        const settleResult = await settleTaskCredits(taskId, 'AI generation settled after successful image response');
+        if (!settleResult.success) {
+            await markTaskFailed(`Credit settlement failed: ${settleResult.error || 'unknown error'}`);
+            await logStep('credit_settlement_failed', 'failed', settleResult.error || 'unknown error');
+            return;
+        }
+        await logStep('credit_settled');
+
         let savedUrl = result.dataUrl;
-        let correctedDataUrl = result.dataUrl;
 
         try {
             const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
 
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
-            const buffer = Buffer.from(base64Data, 'base64');
+            const rawGeneratedBuffer = Buffer.from(base64Data, 'base64');
+
+            if (!maskBufferForPostProcess) {
+                throw new Error('Mask is missing at post-processing stage');
+            }
+
+            const maskedResult = await enforceMaskOnGeneratedImage({
+                generatedBuffer: rawGeneratedBuffer,
+                maskBuffer: maskBufferForPostProcess,
+                width: maskDimensions.width,
+                height: maskDimensions.height
+            });
+            const buffer = maskedResult.buffer;
+            if (maskedResult.outsideNonBlackRatio > 0.02) {
+                console.warn(
+                    `[AI-GEN] [Task:${taskId}] Model output leaked outside mask before clamp: ${(maskedResult.outsideNonBlackRatio * 100).toFixed(2)}% pixels`
+                );
+                await logStep('mask_leak_detected', 'processing', `outside_non_black_ratio=${maskedResult.outsideNonBlackRatio.toFixed(4)}`);
+            }
 
             await logStep('oss_upload_start');
 
@@ -397,7 +645,6 @@ async function processGenerationTask(params: {
                 } else {
                     savedUrl = `${rawUrl}?x-oss-process=image/rotate,180/resize,w_1024,h_1024`;
                 }
-                correctedDataUrl = savedUrl;
                 await logStep('oss_upload_success');
             } catch (ossErr) {
                 console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${userId}:`, ossErr);
@@ -413,8 +660,6 @@ async function processGenerationTask(params: {
         }
 
         await logStep('database_save_start');
-
-        const metadata = await metadataPromise;
 
         const slugBase = buildSlugBase({
             name: metadata.name,
@@ -460,8 +705,20 @@ async function processGenerationTask(params: {
         } catch (dbErr) {
             console.error(`❌ [AI-GEN] Database save failed for task ${taskId}, user ${userId}:`, dbErr);
             await logStep('database_save_failed', undefined, dbErr instanceof Error ? dbErr.message : 'Database error');
-            await markTaskFailed(`Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
-            await refundTaskCredits(taskId, `Database save failed: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`);
+            await dbQuery(
+                `UPDATE generation_tasks
+                 SET status = 'completed',
+                     error_message = COALESCE(error_message, $2),
+                     steps = COALESCE(steps, '[]'::jsonb) || $3::jsonb,
+                     updated_at = NOW()
+                 WHERE id = $1`,
+                [
+                    taskId,
+                    `Wrap save fallback: ${dbErr instanceof Error ? dbErr.message : 'Unknown error'}`,
+                    JSON.stringify([{ step: 'completed_with_saved_url', ts: new Date().toISOString(), savedUrl }])
+                ]
+            );
+            await logStep('completed_with_saved_url', 'completed', savedUrl);
             return;
         }
 
@@ -505,6 +762,21 @@ export async function POST(request: NextRequest) {
             console.warn(`[AI-GEN] [${requestId}] Unauthorized`);
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
+        const forwardedFor = request.headers.get('x-forwarded-for') || '';
+        const clientIp = forwardedFor.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+
+        if (!takeRateQuota(userRateMap, user.id, PER_USER_WINDOW_MS, PER_USER_MAX_REQUESTS)) {
+            return NextResponse.json({
+                success: false,
+                error: '请求过于频繁，请稍后再试。'
+            }, { status: 429 });
+        }
+        if (!takeRateQuota(ipRateMap, clientIp, PER_IP_WINDOW_MS, PER_IP_MAX_REQUESTS)) {
+            return NextResponse.json({
+                success: false,
+                error: '当前网络请求过于频繁，请稍后再试。'
+            }, { status: 429 });
+        }
 
         console.log(`[AI-GEN] [${requestId}] User authenticated: ${user.id}`);
 
@@ -521,8 +793,18 @@ export async function POST(request: NextRequest) {
         console.log(`[AI-GEN] [${requestId}] Payload parsed. Model: ${modelSlug}, Prompt len: ${prompt?.length}, Refs: ${referenceImages?.length}`);
 
         // 2. 参数校验
-        if (!modelSlug || !prompt) {
+        const normalizedPrompt = typeof prompt === 'string' ? prompt.trim() : '';
+        if (typeof modelSlug !== 'string' || !normalizedPrompt) {
             return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 });
+        }
+        if (normalizedPrompt.length < 3 || normalizedPrompt.length > 400) {
+            return NextResponse.json({ success: false, error: '提示词长度需在 3 到 400 字之间' }, { status: 400 });
+        }
+        if (idempotencyKey && (typeof idempotencyKey !== 'string' || idempotencyKey.length < 16 || idempotencyKey.length > 128)) {
+            return NextResponse.json({ success: false, error: 'Invalid idempotency key' }, { status: 400 });
+        }
+        if (idempotencyKey && !/^[a-zA-Z0-9_-]+$/.test(idempotencyKey)) {
+            return NextResponse.json({ success: false, error: 'Invalid idempotency key format' }, { status: 400 });
         }
         if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > MAX_REFERENCE_IMAGES) {
             return NextResponse.json({ success: false, error: 'Too many reference images' }, { status: 413 });
@@ -569,16 +851,18 @@ export async function POST(request: NextRequest) {
 
         const deductResultRaw = await deductCreditsForGeneration({
             userId: user.id,
-            prompt,
+            prompt: normalizedPrompt,
             amount: requiredCredits,
             idempotencyKey: idempotencyKey || null
         });
 
         if (!deductResultRaw?.success) {
+            const message = deductResultRaw?.errorMsg || 'Insufficient credits or deduction failed';
+            const statusCode = message.startsWith('Too many tasks') ? 429 : 402;
             return NextResponse.json({
                 success: false,
-                error: deductResultRaw?.errorMsg || 'Insufficient credits or deduction failed'
-            }, { status: 402 });
+                error: message
+            }, { status: statusCode });
         }
 
         taskId = deductResultRaw.taskId;
@@ -586,7 +870,36 @@ export async function POST(request: NextRequest) {
         // 3.1 幂等碰撞处理 (Idempotency Handling)
         if (deductResultRaw.errorMsg === 'Idempotent hit') {
             const taskStatus = (deductResultRaw as any).status;
+            const taskUpdatedAtRaw = (deductResultRaw as any).updatedAt;
+            const staleMs = Number(process.env.WRAP_TASK_STALE_MS ?? 10 * 60 * 1000);
             console.log(`[AI-GEN] ♻️ Idempotency hit: ${taskId}, Existing Status: ${taskStatus}`);
+
+            // Recover stale in-flight tasks (e.g. deployment restart interrupted async worker).
+            if ((taskStatus === 'pending' || taskStatus === 'processing') && taskUpdatedAtRaw) {
+                const taskUpdatedAt = new Date(taskUpdatedAtRaw).getTime();
+                const ageMs = Date.now() - taskUpdatedAt;
+                if (Number.isFinite(ageMs) && ageMs > staleMs) {
+                    if (!taskId) {
+                        throw new Error('Task ID is missing on stale task recovery');
+                    }
+                    console.warn(`[AI-GEN] ⚠️ Detected stale task ${taskId} (age=${Math.round(ageMs / 1000)}s), auto-refunding and allowing retry.`);
+                    await dbQuery(
+                        `UPDATE generation_tasks
+                         SET status = 'failed',
+                             error_message = COALESCE(error_message, $2),
+                             updated_at = NOW()
+                         WHERE id = $1 AND user_id = $3`,
+                        [taskId, 'Stale generation task detected (interrupted before completion)', user.id]
+                    );
+                    await refundTaskCredits(taskId, 'Auto refund: stale generation task');
+                    return NextResponse.json({
+                        success: false,
+                        error: '检测到上一次任务卡住，已自动重置并退款。请重新点击生成。',
+                        taskId,
+                        status: 'failed'
+                    }, { status: 200 });
+                }
+            }
 
             // 如果已成功，尝试返回作品
             if (taskStatus === 'completed') {
@@ -650,7 +963,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             modelSlug: currentModelSlug,
             modelName,
-            prompt,
+            prompt: normalizedPrompt,
             referenceImages,
             origin: request.nextUrl.origin
         });

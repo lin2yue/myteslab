@@ -32,6 +32,23 @@ interface GenerationHistory {
     created_at: string
 }
 
+function toBase64Url(input: string): string {
+    return btoa(unescape(encodeURIComponent(input)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '')
+}
+
+async function buildIdempotencyKey(raw: string): Promise<string> {
+    // Use SHA-256 hex to avoid collisions/truncation while keeping key compact.
+    if (typeof window !== 'undefined' && window.crypto?.subtle) {
+        const digest = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+        const bytes = Array.from(new Uint8Array(digest))
+        return bytes.map((b) => b.toString(16).padStart(2, '0')).join('')
+    }
+    return toBase64Url(raw)
+}
+
 export default function AIGeneratorMain({
     initialCredits,
     models,
@@ -225,6 +242,7 @@ export default function AIGeneratorMain({
                 if (!isActive) return
                 const elapsedMs = Date.now() - (pollStartRef.current || Date.now())
                 if (pollAttemptsRef.current >= 24 || elapsedMs > 3 * 60 * 1000) {
+                    retrySeedRef.current += 1
                     alert.info('生成可能仍在后台进行，请稍后刷新历史查看结果')
                     setPendingTaskId(null)
                     return
@@ -258,12 +276,14 @@ export default function AIGeneratorMain({
                     }
 
                     if (data?.status === 'failed') {
+                        retrySeedRef.current += 1
                         alert.error(`生成失败: ${data.error || '任务失败'}`)
                         setPendingTaskId(null)
                         return
                     }
 
                     if (data?.status === 'completed_missing') {
+                        retrySeedRef.current += 1
                         alert.error('任务已完成但未找到结果，请稍后刷新或联系客服')
                         setPendingTaskId(null)
                         return
@@ -315,8 +335,7 @@ export default function AIGeneratorMain({
             // 生成幂等键 (5分钟时窗 + Prompt + 模型 + 会话标识)
             const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000));
             const idempotencyRaw = `${sessionGuidRef.current}-${selectedModel}-${prompt.trim()}-${timeBucket}-${retrySeedRef.current}`;
-            // 简单的客户端哈希或直接编码
-            const idempotencyKey = btoa(unescape(encodeURIComponent(idempotencyRaw))).substring(0, 64);
+            const idempotencyKey = await buildIdempotencyKey(idempotencyRaw);
 
             // Check payload size estimate
             const payload = JSON.stringify({
