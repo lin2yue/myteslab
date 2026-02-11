@@ -48,7 +48,7 @@ type HistoryListItem =
     | { type: 'wrap'; createdAt: string; wrap: GenerationHistory }
     | { type: 'task'; createdAt: string; task: GenerationTaskHistory }
 
-const ESTIMATED_GENERATE_SECONDS = 25
+const ESTIMATED_GENERATE_SECONDS = 30
 
 function toBase64Url(input: string): string {
     return btoa(unescape(encodeURIComponent(input)))
@@ -273,7 +273,7 @@ export default function AIGeneratorMain({
                     model_slug: null
                 }
             }).filter(task => task.id)
-            setTaskHistory(prev => mergeTaskHistory(prev, tasksFromServer))
+            setTaskHistory(tasksFromServer)
         } catch (err) {
             console.error('Fetch history error:', err)
             // Optional: could set an error state here to show in UI
@@ -1361,25 +1361,24 @@ function HistoryItem({
     return (
         <div
             onClick={onClick}
-            className={`flex gap-3 p-2.5 rounded-lg border transition-all group cursor-pointer bg-white/70 dark:bg-zinc-900/70 backdrop-blur ${activeWrapId === item.id ? 'border-zinc-900 bg-zinc-50' : 'border-black/5 dark:border-white/10 hover:border-black/15 hover:bg-white/90'}`}
+            className={`h-[98px] flex gap-3 p-2.5 rounded-lg border transition-all group cursor-pointer bg-white/70 dark:bg-zinc-900/70 backdrop-blur ${activeWrapId === item.id ? 'border-zinc-900 bg-zinc-50' : 'border-black/5 dark:border-white/10 hover:border-black/15 hover:bg-white/90'}`}
         >
             <div
                 onClick={onImageClick}
-                className="w-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative cursor-zoom-in group/image"
-                style={{ aspectRatio: '4 / 3' }}
+                className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative cursor-zoom-in group/image"
             >
                 <ResponsiveOSSImage
                     src={textureUrl}
                     alt="wrap"
                     width={64}
-                    height={48} // 64 / (4/3) = 48
+                    height={64}
                     className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-all flex items-center justify-center">
                     <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover/image:opacity-100 transition-all drop-shadow-lg" />
                 </div>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div className="flex justify-between items-start mb-1">
                     <p className="text-xs text-gray-600 dark:text-zinc-400 line-clamp-1 italic flex-1">&quot;{item.prompt}&quot;</p>
                     {item.is_public && (
@@ -1388,13 +1387,13 @@ function HistoryItem({
                         </span>
                     )}
                 </div>
-                <div className="flex justify-between mt-2">
+                <div className="flex justify-between mt-1">
                     <span className="text-[10px] text-gray-400 uppercase">{getModelName(item.model_slug)}</span>
                     <span className="text-[10px] text-zinc-600 dark:text-zinc-400 opacity-0 group-hover:opacity-100 flex items-center gap-1">
                         Apply <ArrowRight className="w-3 h-3" />
                     </span>
                 </div>
-                <div className="mt-1 text-[10px] text-gray-400">
+                <div className="text-[10px] text-gray-400">
                     {formatDateTime(item.created_at, locale)}
                 </div>
             </div>
@@ -1419,17 +1418,17 @@ function TaskHistoryItemCard({
     const progress = Math.min(100, Math.round((elapsedSeconds / ESTIMATED_GENERATE_SECONDS) * 100))
 
     return (
-        <div className="p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70">
+        <div className="h-[98px] p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70 overflow-hidden flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
-                <p className="text-xs text-gray-700 dark:text-zinc-200 line-clamp-2 italic flex-1">&quot;{task.prompt}&quot;</p>
+                <p className="text-xs text-gray-700 dark:text-zinc-200 line-clamp-1 italic flex-1">&quot;{task.prompt}&quot;</p>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isPending ? 'bg-amber-100 text-amber-700' : isFailed ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-700'}`}>
                     {isPending ? '生成中' : isFailed ? '失败' : task.status}
                 </span>
             </div>
 
             {isPending && (
-                <div className="mt-2">
-                    <div className="text-[11px] text-gray-500">
+                <div className="mt-1">
+                    <div className="text-[10px] text-gray-500">
                         已生成 {elapsedSeconds}s · 预计 {ESTIMATED_GENERATE_SECONDS}s
                     </div>
                     <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
@@ -1439,20 +1438,20 @@ function TaskHistoryItemCard({
             )}
 
             {isFailed && (
-                <div className="mt-2">
-                    <div className="text-[11px] text-rose-600 line-clamp-2">
+                <div className="mt-1 flex items-center gap-2">
+                    <div className="text-[10px] text-rose-600 line-clamp-1 flex-1">
                         失败原因：{task.error_message || '未知错误'}
                     </div>
                     <button
                         onClick={onRetry}
-                        className="mt-2 h-8 px-3 rounded-lg text-xs font-semibold bg-black text-white dark:bg-white dark:text-black"
+                        className="h-6 px-2 rounded-md text-[10px] font-semibold bg-black text-white dark:bg-white dark:text-black flex-shrink-0"
                     >
                         重试
                     </button>
                 </div>
             )}
 
-            <div className="mt-2 text-[10px] text-gray-400">
+            <div className="text-[10px] text-gray-400">
                 {formatDateTime(task.created_at, locale)}
             </div>
         </div>
