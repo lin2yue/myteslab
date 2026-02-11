@@ -166,14 +166,21 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
         return {
             ok: false,
             retryable: false,
-            error: `生成失败：请求被 Gemini 阻断 (${summary.promptBlockReason})`
+            error: `生成失败：请求内容违反了 AI 服务条款 (${summary.promptBlockReason})`
         };
     }
     if (finishReasons.includes('SAFETY')) {
         return {
             ok: false,
             retryable: false,
-            error: '生成失败：该提示词触发了安全过滤器 (SAFETY)'
+            error: '生成失败：提示词或遮罩图触发了安全过滤器 (SAFETY)。请尝试修改描述词，避免可能触发敏感审查的内容。'
+        };
+    }
+    if (finishReasons.includes('RECITATION')) {
+        return {
+            ok: false,
+            retryable: false,
+            error: '生成失败：内容涉及版权或引用限制 (RECITATION)。'
         };
     }
 
@@ -187,11 +194,17 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
     }
 
     console.warn('[AI-GEN] Gemini response has no image payload:', JSON.stringify(summary));
-    const finishReasonText = finishReasons.length > 0 ? ` (finishReason=${finishReasons.join(',')})` : '';
+    const finishReasonText = finishReasons.length > 0 ? ` (Reason: ${finishReasons.join(',')})` : '';
+
+    let userFriendlyError = `生成失败：未能生成图片${finishReasonText}。`;
+    if (finishReasons.includes('OTHER')) {
+        userFriendlyError = '生成失败：AI 无法根据当前提示词或图片生成内容。这通常是由于提示词过于模糊、过于特殊或触发了隐含的策略限制。建议尝试简化或微调提示词。';
+    }
+
     return {
         ok: false,
         retryable: finishReasons.includes('OTHER') || finishReasons.length === 0,
-        error: `No image found in response${finishReasonText}`
+        error: userFriendlyError
     };
 }
 
