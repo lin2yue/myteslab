@@ -32,6 +32,24 @@ interface GenerationHistory {
     created_at: string
 }
 
+type TaskStatus = 'pending' | 'processing' | 'failed' | 'failed_refunded'
+
+interface GenerationTaskHistory {
+    id: string
+    prompt: string
+    status: TaskStatus
+    error_message: string | null
+    created_at: string
+    updated_at: string
+    model_slug?: string | null
+}
+
+type HistoryListItem =
+    | { type: 'wrap'; createdAt: string; wrap: GenerationHistory }
+    | { type: 'task'; createdAt: string; task: GenerationTaskHistory }
+
+const ESTIMATED_GENERATE_SECONDS = 25
+
 function toBase64Url(input: string): string {
     return btoa(unescape(encodeURIComponent(input)))
         .replace(/\+/g, '-')
@@ -47,6 +65,39 @@ async function buildIdempotencyKey(raw: string): Promise<string> {
         return bytes.map((b) => b.toString(16).padStart(2, '0')).join('')
     }
     return toBase64Url(raw)
+}
+
+function formatDateTime(ts: string, locale: string) {
+    const date = new Date(ts)
+    if (Number.isNaN(date.getTime())) return ts
+    const normalized = locale === 'zh' ? 'zh-CN' : 'en-US'
+    return date.toLocaleString(normalized, {
+        hour12: false,
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    })
+}
+
+function mergeTaskHistory(
+    previous: GenerationTaskHistory[],
+    incoming: GenerationTaskHistory[]
+): GenerationTaskHistory[] {
+    const byId = new Map<string, GenerationTaskHistory>()
+    previous.forEach(item => byId.set(item.id, item))
+    incoming.forEach(item => {
+        const prev = byId.get(item.id)
+        byId.set(item.id, {
+            ...prev,
+            ...item,
+            model_slug: item.model_slug || prev?.model_slug || null
+        })
+    })
+    return Array.from(byId.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 50)
 }
 
 export default function AIGeneratorMain({
@@ -120,14 +171,13 @@ export default function AIGeneratorMain({
     const [showPricing, setShowPricing] = useState(false)
     const router = useRouter()
     const [showPublishModal, setShowPublishModal] = useState(false)
-    const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
+    const [taskHistory, setTaskHistory] = useState<GenerationTaskHistory[]>([])
     const [isUploadingRefs, setIsUploadingRefs] = useState(false)
-    const pollAttemptsRef = useRef(0)
-    const pollStartRef = useRef<number | null>(null)
-    const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const sessionGuidRef = useRef<string>(Math.random().toString(36).substring(2, 15))
     const retrySeedRef = useRef<number>(0)
+    const submitSeqRef = useRef<number>(0)
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+    const [elapsedNow, setElapsedNow] = useState<number>(Date.now())
 
     // 3D 控制状态
     const [isNight, setIsNight] = useState(false)
@@ -201,6 +251,29 @@ export default function AIGeneratorMain({
                 throw new Error(data?.error || 'Failed to fetch history')
             }
             setHistory(data.wraps || [])
+            const tasksRaw = Array.isArray(data.tasks)
+                ? (data.tasks as Array<Record<string, unknown>>)
+                : []
+            const tasksFromServer: GenerationTaskHistory[] = tasksRaw.map((task) => {
+                const statusRaw = typeof task.status === 'string' ? task.status : 'pending'
+                const status: TaskStatus = (
+                    statusRaw === 'processing'
+                    || statusRaw === 'failed'
+                    || statusRaw === 'failed_refunded'
+                )
+                    ? statusRaw
+                    : 'pending'
+                return {
+                    id: String(task.id || ''),
+                    prompt: String(task.prompt || ''),
+                    status,
+                    error_message: task.error_message ? String(task.error_message) : null,
+                    created_at: String(task.created_at || new Date().toISOString()),
+                    updated_at: String(task.updated_at || task.created_at || new Date().toISOString()),
+                    model_slug: null
+                }
+            }).filter(task => task.id)
+            setTaskHistory(prev => mergeTaskHistory(prev, tasksFromServer))
         } catch (err) {
             console.error('Fetch history error:', err)
             // Optional: could set an error state here to show in UI
@@ -230,87 +303,113 @@ export default function AIGeneratorMain({
         fetchHistory()
     }, [checkAuth, fetchHistory])
 
-    useEffect(() => {
-        if (!pendingTaskId) return
-        let isActive = true
-        pollAttemptsRef.current = 0
-        pollStartRef.current = Date.now()
+    const pendingTaskIds = useMemo(
+        () => taskHistory
+            .filter(task => task.status === 'pending' || task.status === 'processing')
+            .map(task => task.id),
+        [taskHistory]
+    )
 
-        const poll = (delayMs: number) => {
-            if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
-            pollTimeoutRef.current = setTimeout(async () => {
-                if (!isActive) return
-                const elapsedMs = Date.now() - (pollStartRef.current || Date.now())
-                if (pollAttemptsRef.current >= 24 || elapsedMs > 3 * 60 * 1000) {
-                    retrySeedRef.current += 1
-                    alert.info('生成可能仍在后台进行，请稍后刷新历史查看结果')
-                    setPendingTaskId(null)
+    const pendingTaskKey = useMemo(
+        () => [...pendingTaskIds].sort().join(','),
+        [pendingTaskIds]
+    )
+
+    useEffect(() => {
+        if (pendingTaskIds.length === 0) return
+        const timer = window.setInterval(() => setElapsedNow(Date.now()), 1000)
+        return () => window.clearInterval(timer)
+    }, [pendingTaskKey])
+
+    useEffect(() => {
+        if (pendingTaskIds.length === 0) return
+        let active = true
+
+        const pollSingleTask = async (taskId: string) => {
+            try {
+                const res = await fetch('/api/wrap/by-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId })
+                })
+                if (!active) return
+                if (!res.ok) return
+                const data = await res.json()
+                if (!active) return
+
+                if (data?.wrap?.id) {
+                    setTaskHistory(prev => prev.filter(task => task.id !== taskId))
+                    setCurrentTexture(data.wrap.preview_url || data.wrap.texture_url)
+                    setActiveWrapId(data.wrap.id)
+                    fetchHistory()
                     return
                 }
-                pollAttemptsRef.current += 1
-                try {
-                    const res = await fetch('/api/wrap/by-task', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ taskId: pendingTaskId })
-                    })
 
-                    const retryAfterHeader = res.headers.get('Retry-After')
-                    const baseDelay = retryAfterHeader ? Number(retryAfterHeader) * 1000 : delayMs
-
-                    if (!res.ok) {
-                        if (res.status === 429) {
-                            poll(baseDelay || 5000)
-                        } else {
-                            poll(5000)
-                        }
-                        return
-                    }
-                    const data = await res.json()
-                    if (data?.wrap?.id) {
-                        setCurrentTexture(data.wrap.preview_url || data.wrap.texture_url)
-                        setActiveWrapId(data.wrap.id)
-                        setPendingTaskId(null)
-                        fetchHistory()
-                        return
-                    }
-
-                    if (data?.status === 'failed') {
-                        retrySeedRef.current += 1
-                        alert.error(`生成失败: ${data.error || '任务失败'}`)
-                        setPendingTaskId(null)
-                        return
-                    }
-
-                    if (data?.status === 'completed_missing') {
-                        retrySeedRef.current += 1
-                        alert.error('任务已完成但未找到结果，请稍后刷新或联系客服')
-                        setPendingTaskId(null)
-                        return
-                    }
-
-                    const nextBase = (data?.retryAfter || 5) * 1000
-                    const nextDelay = Math.min(30000, Math.round(nextBase * Math.pow(1.4, pollAttemptsRef.current)))
-                    poll(nextDelay)
-                } catch (err) {
-                    console.error('Polling wrap by task id failed:', err)
-                    poll(5000)
+                if (data?.status === 'failed') {
+                    retrySeedRef.current += 1
+                    setTaskHistory(prev => prev.map(task => (
+                        task.id === taskId
+                            ? {
+                                ...task,
+                                status: 'failed',
+                                error_message: data.error || task.error_message || '任务失败',
+                                updated_at: new Date().toISOString()
+                            }
+                            : task
+                    )))
+                    return
                 }
-            }, delayMs)
+
+                if (data?.status === 'completed_missing') {
+                    retrySeedRef.current += 1
+                    setTaskHistory(prev => prev.map(task => (
+                        task.id === taskId
+                            ? {
+                                ...task,
+                                status: 'failed',
+                                error_message: '任务已完成但结果缺失，请稍后重试',
+                                updated_at: new Date().toISOString()
+                            }
+                            : task
+                    )))
+                    return
+                }
+
+                setTaskHistory(prev => prev.map(task => (
+                    task.id === taskId
+                        ? {
+                            ...task,
+                            status: (data?.status === 'processing' ? 'processing' : 'pending'),
+                            updated_at: new Date().toISOString()
+                        }
+                        : task
+                )))
+            } catch (err) {
+                console.error('Polling wrap by task id failed:', err)
+            }
         }
 
-        poll(5000)
+        const pollAll = async () => {
+            await Promise.allSettled(pendingTaskIds.map(pollSingleTask))
+        }
+
+        void pollAll()
+        const timer = window.setInterval(() => void pollAll(), 5000)
 
         return () => {
-            isActive = false
-            if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+            active = false
+            window.clearInterval(timer)
         }
-    }, [pendingTaskId, fetchHistory])
+    }, [pendingTaskKey, fetchHistory, pendingTaskIds])
 
     // 生成逻辑
-    const isBusy = isGenerating || !!pendingTaskId
+    const isBusy = isGenerating
 
-    const handleGenerate = async () => {
+    const submitGeneration = async (options?: { promptValue?: string; modelSlug?: string; clearRefs?: boolean }) => {
+        const promptValue = (options?.promptValue ?? prompt).trim()
+        const modelSlugValue = options?.modelSlug ?? selectedModel
+        const usedReferenceImages = options?.clearRefs ? [] : referenceImages
+
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
             if (typeof window !== 'undefined') {
@@ -319,7 +418,7 @@ export default function AIGeneratorMain({
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }
-        if (!prompt.trim() || isBusy) return
+        if (!promptValue || isBusy) return
 
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
         const currentBalance = balance ?? 0
@@ -332,24 +431,23 @@ export default function AIGeneratorMain({
         setIsGenerating(true)
         let bumpIdempotency = false
         try {
-            // 生成幂等键 (5分钟时窗 + Prompt + 模型 + 会话标识)
-            const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000));
-            const idempotencyRaw = `${sessionGuidRef.current}-${selectedModel}-${prompt.trim()}-${timeBucket}-${retrySeedRef.current}`;
-            const idempotencyKey = await buildIdempotencyKey(idempotencyRaw);
+            submitSeqRef.current += 1
+            const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000))
+            const idempotencyRaw = `${sessionGuidRef.current}-${modelSlugValue}-${promptValue}-${timeBucket}-${retrySeedRef.current}-${submitSeqRef.current}`
+            const idempotencyKey = await buildIdempotencyKey(idempotencyRaw)
 
-            // Check payload size estimate
             const payload = JSON.stringify({
-                modelSlug: selectedModel,
-                prompt: prompt.trim(),
-                referenceImages: referenceImages,
+                modelSlug: modelSlugValue,
+                prompt: promptValue,
+                referenceImages: usedReferenceImages,
                 idempotencyKey
-            });
+            })
 
-            if (payload.length > 4 * 1024 * 1024) { // 4MB safety limit
-                throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`);
+            if (payload.length > 4 * 1024 * 1024) {
+                throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`)
             }
 
-            console.log(`[AI-GEN] Requesting with idempotencyKey: ${idempotencyKey}, size: ${(payload.length / 1024).toFixed(2)} KB`);
+            console.log(`[AI-GEN] Requesting with idempotencyKey: ${idempotencyKey}, size: ${(payload.length / 1024).toFixed(2)} KB`)
 
             const res = await fetch('/api/wrap/generate', {
                 method: 'POST',
@@ -362,45 +460,66 @@ export default function AIGeneratorMain({
                     bumpIdempotency = true
                 }
                 if (res.status === 413) {
-                    throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`);
+                    throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`)
                 }
                 if (res.status === 504) {
-                    throw new Error('服务器超时，任务可能在后台继续执行，请稍后刷新历史记录查看结果');
+                    throw new Error('服务器超时，任务可能在后台继续执行，请稍后刷新历史记录查看结果')
                 }
 
-                let errorMessage = `请求失败 (${res.status})`;
+                let errorMessage = `请求失败 (${res.status})`
                 try {
-                    const errorData = await res.json();
-                    errorMessage = errorData.error || errorMessage;
-                } catch (e) {
-                    const text = await res.text();
-                    if (text) errorMessage = `${errorMessage}: ${text.substring(0, 50)}`;
+                    const errorData = await res.json()
+                    errorMessage = errorData.error || errorMessage
+                } catch (_e) {
+                    const text = await res.text()
+                    if (text) errorMessage = `${errorMessage}: ${text.substring(0, 50)}`
                 }
-                throw new Error(errorMessage);
+                throw new Error(errorMessage)
             }
 
             const data = await res.json()
             if (!data.success) {
                 bumpIdempotency = true
+                if (data.taskId) {
+                    const nowIso = new Date().toISOString()
+                    setTaskHistory(prev => mergeTaskHistory(prev, [{
+                        id: data.taskId,
+                        prompt: promptValue,
+                        status: 'failed',
+                        error_message: data.error || '任务失败',
+                        created_at: nowIso,
+                        updated_at: nowIso,
+                        model_slug: modelSlugValue
+                    }]))
+                }
                 throw new Error(data.error)
             }
 
             if (data.status === 'pending') {
-                setPendingTaskId(data.taskId)
-                alert.info('任务已提交，正在后台生成，完成后会自动刷新')
+                const nowIso = new Date().toISOString()
+                setTaskHistory(prev => mergeTaskHistory(prev, [{
+                    id: data.taskId,
+                    prompt: promptValue,
+                    status: 'pending',
+                    error_message: null,
+                    created_at: nowIso,
+                    updated_at: nowIso,
+                    model_slug: modelSlugValue
+                }]))
+                alert.info('任务已提交，正在后台生成')
                 return
             }
 
-            setCurrentTexture(data.image.dataUrl) // 服务器已经返回了纠正后的贴图
-            setActiveWrapId(data.wrapId) // 使用作品 ID 而非任务 ID
+            if (data?.image?.dataUrl) {
+                setCurrentTexture(data.image.dataUrl)
+            }
+            if (data?.wrapId) {
+                setActiveWrapId(data.wrapId)
+            }
 
-            // 更新余额
             setBalance(data.remainingBalance)
             refreshCredits()
-
-            // 刷新历史
-            setTimeout(fetchHistory, 1000)
-
+            setTimeout(fetchHistory, 600)
         } catch (err) {
             if (bumpIdempotency) {
                 retrySeedRef.current += 1
@@ -410,6 +529,21 @@ export default function AIGeneratorMain({
         } finally {
             setIsGenerating(false)
         }
+    }
+
+    const handleGenerate = async () => {
+        await submitGeneration()
+    }
+
+    const handleRetryTask = async (task: GenerationTaskHistory) => {
+        const nextModel = task.model_slug || selectedModel
+        setPrompt(task.prompt)
+        setSelectedModel(nextModel)
+        await submitGeneration({
+            promptValue: task.prompt,
+            modelSlug: nextModel,
+            clearRefs: true
+        })
     }
 
     const handleDownload = async () => {
@@ -744,6 +878,21 @@ export default function AIGeneratorMain({
         setShowPricing(false)
     }
 
+    const historyItems = useMemo<HistoryListItem[]>(() => {
+        const taskItems: HistoryListItem[] = taskHistory.map(task => ({
+            type: 'task',
+            createdAt: task.created_at,
+            task
+        }))
+        const wrapItems: HistoryListItem[] = history.map(wrap => ({
+            type: 'wrap',
+            createdAt: wrap.created_at,
+            wrap
+        }))
+        return [...taskItems, ...wrapItems]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }, [history, taskHistory])
+
     return (
         <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-transparent overflow-y-auto lg:overflow-hidden">
             {/* Main Content Area */}
@@ -1052,7 +1201,7 @@ export default function AIGeneratorMain({
                                                     </div>
                                                 </div>
                                             ))
-                                        ) : history.length === 0 ? (
+                                        ) : historyItems.length === 0 ? (
                                             <div className="h-[200px] flex flex-col items-center justify-center text-gray-400 text-sm">
                                                 <Palette className="w-12 h-12 mb-4 text-gray-300" />
                                                 {tGen('no_history')}
@@ -1065,34 +1214,50 @@ export default function AIGeneratorMain({
                                                             style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(to right, transparent, #111827, transparent)' }} />
                                                     </div>
                                                 )}
-                                                {history.map((item) => (
-                                                    <HistoryItem
-                                                        key={item.id}
-                                                        item={item}
-                                                        activeWrapId={activeWrapId}
-                                                        getCdnUrl={getCdnUrl}
-                                                        getModelName={getModelName}
-                                                        onClick={() => {
-                                                            const itemCdnUrl = getCdnUrl(item.texture_url);
-                                                            let displayUrl = itemCdnUrl;
-                                                            if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
-                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`;
-                                                            }
-                                                            setCurrentTexture(displayUrl);
-                                                            setSelectedModel(item.model_slug);
-                                                            setActiveWrapId(item.id);
-                                                        }}
-                                                        onImageClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const itemCdnUrl = getCdnUrl(item.texture_url);
-                                                            let displayUrl = itemCdnUrl;
-                                                            if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
-                                                                displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`;
-                                                            }
-                                                            setImagePreviewUrl(displayUrl);
-                                                        }}
-                                                    />
-                                                ))}
+                                                {historyItems.map((entry) => {
+                                                    if (entry.type === 'task') {
+                                                        return (
+                                                            <TaskHistoryItemCard
+                                                                key={`task-${entry.task.id}`}
+                                                                task={entry.task}
+                                                                locale={_locale}
+                                                                nowTs={elapsedNow}
+                                                                onRetry={() => void handleRetryTask(entry.task)}
+                                                            />
+                                                        )
+                                                    }
+
+                                                    const item = entry.wrap
+                                                    return (
+                                                        <HistoryItem
+                                                            key={`wrap-${item.id}`}
+                                                            item={item}
+                                                            locale={_locale}
+                                                            activeWrapId={activeWrapId}
+                                                            getCdnUrl={getCdnUrl}
+                                                            getModelName={getModelName}
+                                                            onClick={() => {
+                                                                const itemCdnUrl = getCdnUrl(item.texture_url)
+                                                                let displayUrl = itemCdnUrl
+                                                                if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                    displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`
+                                                                }
+                                                                setCurrentTexture(displayUrl)
+                                                                setSelectedModel(item.model_slug)
+                                                                setActiveWrapId(item.id)
+                                                            }}
+                                                            onImageClick={(e) => {
+                                                                e.stopPropagation()
+                                                                const itemCdnUrl = getCdnUrl(item.texture_url)
+                                                                let displayUrl = itemCdnUrl
+                                                                if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                    displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`
+                                                                }
+                                                                setImagePreviewUrl(displayUrl)
+                                                            }}
+                                                        />
+                                                    )
+                                                })}
                                             </>
                                         )}
                                     </div>
@@ -1176,6 +1341,7 @@ export default function AIGeneratorMain({
 
 function HistoryItem({
     item,
+    locale,
     activeWrapId,
     onClick,
     onImageClick,
@@ -1183,6 +1349,7 @@ function HistoryItem({
     getModelName
 }: {
     item: GenerationHistory;
+    locale: string;
     activeWrapId: string | null;
     onClick: () => void;
     onImageClick?: (e: React.MouseEvent) => void;
@@ -1227,7 +1394,67 @@ function HistoryItem({
                         Apply <ArrowRight className="w-3 h-3" />
                     </span>
                 </div>
+                <div className="mt-1 text-[10px] text-gray-400">
+                    {formatDateTime(item.created_at, locale)}
+                </div>
             </div>
         </div>
-    );
+    )
+}
+
+function TaskHistoryItemCard({
+    task,
+    locale,
+    nowTs,
+    onRetry
+}: {
+    task: GenerationTaskHistory;
+    locale: string;
+    nowTs: number;
+    onRetry: () => void;
+}) {
+    const isPending = task.status === 'pending' || task.status === 'processing'
+    const isFailed = task.status === 'failed' || task.status === 'failed_refunded'
+    const elapsedSeconds = Math.max(0, Math.floor((nowTs - new Date(task.created_at).getTime()) / 1000))
+    const progress = Math.min(100, Math.round((elapsedSeconds / ESTIMATED_GENERATE_SECONDS) * 100))
+
+    return (
+        <div className="p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70">
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-xs text-gray-700 dark:text-zinc-200 line-clamp-2 italic flex-1">&quot;{task.prompt}&quot;</p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isPending ? 'bg-amber-100 text-amber-700' : isFailed ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-700'}`}>
+                    {isPending ? '生成中' : isFailed ? '失败' : task.status}
+                </span>
+            </div>
+
+            {isPending && (
+                <div className="mt-2">
+                    <div className="text-[11px] text-gray-500">
+                        已生成 {elapsedSeconds}s · 预计 {ESTIMATED_GENERATE_SECONDS}s
+                    </div>
+                    <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+                        <div className="h-full bg-black dark:bg-white transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                </div>
+            )}
+
+            {isFailed && (
+                <div className="mt-2">
+                    <div className="text-[11px] text-rose-600 line-clamp-2">
+                        失败原因：{task.error_message || '未知错误'}
+                    </div>
+                    <button
+                        onClick={onRetry}
+                        className="mt-2 h-8 px-3 rounded-lg text-xs font-semibold bg-black text-white dark:bg-white dark:text-black"
+                    >
+                        重试
+                    </button>
+                </div>
+            )}
+
+            <div className="mt-2 text-[10px] text-gray-400">
+                {formatDateTime(task.created_at, locale)}
+            </div>
+        </div>
+    )
 }
