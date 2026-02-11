@@ -400,11 +400,16 @@ export async function generateWrapTexture(
         const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
         const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
         const imageSize = (process.env.GEMINI_IMAGE_SIZE || '').trim();
-        const noImageRetryRounds = Math.min(readEnvInt('GEMINI_NO_IMAGE_RETRY_ROUNDS', 1), 3);
+        const noImageRetryRounds = Math.min(readEnvInt('GEMINI_NO_IMAGE_RETRY_ROUNDS', 0), 3);
+        const maxTotalMs = readEnvInt('GEMINI_IMAGE_MAX_TOTAL_MS', 65000);
+        const enableFallbackPrompt = (process.env.GEMINI_ENABLE_FALLBACK_PROMPT || '').trim() === '1';
+        const generationStartedAt = Date.now();
 
         try {
             const fallbackPrompt = `Create a clean, high-contrast, print-ready automotive wrap texture for ${modelName}. Theme: ${prompt}. No text, logos, watermark, UI, or letters.`;
-            const promptVariants = [textPrompt, fallbackPrompt].filter((v, i, arr) => arr.indexOf(v) === i);
+            const promptVariants = enableFallbackPrompt
+                ? [textPrompt, fallbackPrompt].filter((v, i, arr) => arr.indexOf(v) === i)
+                : [textPrompt];
             let lastFailure: string | null = null;
             let lastErrorCode: string | null = null;
 
@@ -413,6 +418,14 @@ export async function generateWrapTexture(
                 const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
 
                 for (let promptIndex = 0; promptIndex < promptVariants.length; promptIndex += 1) {
+                    if (Date.now() - generationStartedAt > maxTotalMs) {
+                        return {
+                            success: false,
+                            error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
+                            errorCode: 'timeout',
+                            finalPrompt: textPrompt
+                        };
+                    }
                     const promptToUse = promptVariants[promptIndex];
                     const isRetryAttempt = modelIndex > 0 || promptIndex > 0;
                     console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${currentGeminiApiUrl}${isRetryAttempt ? ' (fallback attempt)' : ''}`);
@@ -485,10 +498,26 @@ export async function generateWrapTexture(
 
             if (lastErrorCode === 'no_image_payload' && noImageRetryRounds > 0) {
                 for (let round = 0; round < noImageRetryRounds; round += 1) {
+                    if (Date.now() - generationStartedAt > maxTotalMs) {
+                        return {
+                            success: false,
+                            error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
+                            errorCode: 'timeout',
+                            finalPrompt: textPrompt
+                        };
+                    }
                     await sleep(700 * (round + 1));
                     const rescuePrompt = `Create a clear automotive wrap texture for ${modelName}. Theme: ${prompt}. Return image only. Keep outside mask black. No text or logos.`;
                     console.warn(`[AI-GEN] [${VERSION}] No-image rescue round ${round + 1}/${noImageRetryRounds}`);
                     for (const model of modelCandidates) {
+                        if (Date.now() - generationStartedAt > maxTotalMs) {
+                            return {
+                                success: false,
+                                error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
+                                errorCode: 'timeout',
+                                finalPrompt: textPrompt
+                            };
+                        }
                         const rescueUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
                         console.log(`[AI-GEN] [${VERSION}] Rescue attempt model=${model}`);
                         const rescueResponse = await fetchWithRetry(`${rescueUrl}?key=${apiKey}`, {
