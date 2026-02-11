@@ -19,16 +19,16 @@ You are a professional automotive wrap designer.
 Create finished wrap artwork for a real vehicle using the provided UV mask.
 
 ────────────────────────────────
-ABSOLUTE MASK RULES (NON-NEGOTIABLE)
+ABSOLUTE MASK RULES (PIXEL-PERFECT ADHERENCE REQUIRED)
 ────────────────────────────────
-WHITE = paintable surface, BLACK = void.
-Light gray (e.g., RGB ~239) is also paintable.
-Only draw inside WHITE. Keep BLACK pure #000000.
-No bleed, no shape changes, crisp edges aligned to the mask.
-Any content outside WHITE = failure.
-Fill EVERY paintable island completely. No blank/white gaps inside islands.
-Treat the mask as a stencil: if it’s white/gray, it must be fully covered by the design.
-The FIRST provided image is the UV mask. Any additional images are references.
+1. The WHITE/LIGHT GRAY areas in the mask are the ONLY paintable surfaces.
+2. The BLACK areas are voids and MUST remain pure #000000.
+3. Your design MUST be constrained within the WHITE islands. DO NOT ignore the mask.
+4. If you place any color, pattern, or logo outside the white areas, the design will fail.
+5. Align your artwork exactly to the mask edges. Any offset or "bleed" is a defect.
+6. The WHITE islands represent the car's body panels. Fill them completely with your design.
+7. Any white space left inside a white island will be interpreted as "unpainted/blank".
+────────────────────────────────
 `.trim();
 
 const DESIGN_MODE_PROMPT = (isPattern: boolean) => `

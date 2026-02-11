@@ -9,7 +9,7 @@ import '@/lib/proxy-config';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWrapTexture, imageUrlToBase64, generateBilingualMetadata } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
-import { getMaskUrl } from '@/lib/ai/mask-config';
+import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
 import { ServiceType, getServiceCost } from '@/lib/constants/credits';
@@ -266,23 +266,33 @@ async function processGenerationTask(params: {
 
         // 2. 获取 Mask
         let maskImageBase64: string | null = null;
+        const maskDimensions = getMaskDimensions(modelSlug);
+
+        // --- DEBUG: Log resolution info ---
+        console.log(`[AI-GEN] [Task:${taskId}] ModelSlug: "${modelSlug}", Dimensions: ${maskDimensions.width}x${maskDimensions.height} (${maskDimensions.aspectRatio})`);
+        if (!MASK_DIMENSIONS[modelSlug]) {
+            console.warn(`[AI-GEN] [Task:${taskId}] ⚠️ Using fallback dimensions for slug: "${modelSlug}"`);
+        }
+        // -----------------------------------
+
         try {
-            console.log(`[AI-GEN] Fetching mask for ${modelSlug}...`);
             const maskUrl = getMaskUrl(modelSlug, origin);
-            console.log(`[AI-GEN] Mask URL: ${maskUrl}`);
+            console.log(`[AI-GEN] [Task:${taskId}] Fetching mask from: ${maskUrl}`);
             const maskResponse = await fetch(maskUrl);
 
             if (maskResponse.ok) {
                 const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
-                console.log(`[AI-GEN] Mask fetched, size: ${maskBuffer.length} bytes`);
+                console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
                 maskImageBase64 = maskBuffer.toString('base64');
-                if (process.env.NODE_ENV === 'development') {
-                }
+                await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
+
             } else {
-                console.error(`[AI-GEN] Failed to fetch mask from: ${maskUrl}, Status: ${maskResponse.status}`);
+                console.error(`[AI-GEN] [Task:${taskId}] ❌ Failed to fetch mask. Status: ${maskResponse.status}`);
+                await logStep('mask_load_failed', 'failed', `HTTP ${maskResponse.status}`);
             }
-        } catch (error) {
-            console.error('[AI-GEN] ❌ Mask processing failed:', error);
+        } catch (error: any) {
+            console.error(`[AI-GEN] [Task:${taskId}] ❌ Mask fetch exception:`, error);
+            await logStep('mask_load_failed', 'failed', error.message || 'Exception during fetch');
         }
 
         if (!maskImageBase64) {

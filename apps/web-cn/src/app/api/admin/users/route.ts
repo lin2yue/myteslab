@@ -26,7 +26,9 @@ export async function GET(request: Request) {
             p.avatar_url,
             p.role,
             p.created_at,
-            uc.balance
+            uc.balance,
+            (SELECT COUNT(*) FROM user_downloads ud WHERE ud.user_id = p.id) as download_count,
+            (SELECT COALESCE(SUM(amount), 0) FROM credit_ledger cl WHERE cl.user_id = p.id AND cl.type = 'top-up') as total_top_up
          FROM profiles p
          LEFT JOIN user_credits uc ON uc.user_id = p.id
          ${where}
@@ -36,6 +38,8 @@ export async function GET(request: Request) {
 
     const users = rows.map((row: any) => ({
         ...row,
+        download_count: parseInt(row.download_count || '0'),
+        total_top_up: parseFloat(row.total_top_up || '0'),
         user_credits: {
             balance: row.balance ?? 0
         }

@@ -10,7 +10,8 @@ import {
     ArrowUpCircle,
     ArrowDownCircle,
     UserCircle,
-    FileText
+    FileText,
+    Filter
 } from 'lucide-react';
 import { useAlert } from '@/components/alert/AlertProvider';
 import { format } from 'date-fns';
@@ -41,11 +42,16 @@ export default function AdminCreditsPage() {
     const [logs, setLogs] = useState<CreditLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [filterType, setFilterType] = useState('all');
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/credits');
+            const params = new URLSearchParams();
+            if (filterType !== 'all') params.set('type', filterType);
+            params.set('limit', '100'); // Explicit limit
+
+            const res = await fetch(`/api/admin/credits?${params.toString()}`);
             const data = await res.json();
             if (!res.ok || !data?.success) {
                 throw new Error(data?.error || 'Failed to load credits');
@@ -59,7 +65,7 @@ export default function AdminCreditsPage() {
 
     useEffect(() => {
         fetchLogs();
-    }, []);
+    }, [filterType]);
 
     const filteredLogs = logs.filter(log =>
         log.user_id.toLowerCase().includes(search.toLowerCase()) ||
@@ -85,6 +91,20 @@ export default function AdminCreditsPage() {
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-10 pr-4 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all shrink-0 w-64"
                         />
+                    </div>
+
+                    <div className="relative">
+                        <select
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                            className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer h-full"
+                        >
+                            <option value="all">{t('filter_all')}</option>
+                            <option value="generation">{t('filter_generation')}</option>
+                            <option value="top-up">{t('filter_top_up')}</option>
+                            <option value="adjustment">{t('filter_adjustment')}</option>
+                        </select>
+                        <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
                     <button
                         onClick={fetchLogs}
