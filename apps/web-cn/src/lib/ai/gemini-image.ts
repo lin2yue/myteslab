@@ -88,7 +88,10 @@ export interface GenerateWrapResult {
     usage?: any; // Token usage info if available
     finalPrompt?: string; // The exact prompt sent to AI
     finishReasons?: string[];
+    finishMessages?: string[];
     promptBlockReason?: string | null;
+    responseId?: string | null;
+    modelVersion?: string | null;
 }
 
 type ParsedGeminiResult = {
@@ -98,7 +101,10 @@ type ParsedGeminiResult = {
     error?: string;
     errorCode?: string;
     finishReasons?: string[];
+    finishMessages?: string[];
     promptBlockReason?: string | null;
+    responseId?: string | null;
+    modelVersion?: string | null;
 };
 
 type ParsedGeminiHttpError = {
@@ -107,6 +113,9 @@ type ParsedGeminiHttpError = {
     errorCode: string;
     promptBlockReason?: string | null;
     finishReasons?: string[];
+    finishMessages?: string[];
+    responseId?: string | null;
+    modelVersion?: string | null;
 };
 
 const PROMPT_BLOCKED_REASONS = new Set(['SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'IMAGE_SAFETY']);
@@ -155,6 +164,15 @@ function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttp
         parsed = null;
     }
 
+    const candidateFinishReasons = Array.isArray(parsed?.candidates)
+        ? parsed.candidates.map((c: any) => String(c?.finishReason || '').toUpperCase()).filter(Boolean)
+        : [];
+    const candidateFinishMessages = Array.isArray(parsed?.candidates)
+        ? parsed.candidates.map((c: any) => String(c?.finishMessage || '').trim()).filter(Boolean)
+        : [];
+    const responseId = typeof parsed?.responseId === 'string' ? parsed.responseId : null;
+    const modelVersion = typeof parsed?.modelVersion === 'string' ? parsed.modelVersion : null;
+
     const message =
         parsed?.error?.message
         || parsed?.message
@@ -173,6 +191,10 @@ function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttp
             errorCode: 'prompt_blocked',
             error: buildPromptBlockedMessage(promptBlockReason),
             promptBlockReason,
+            finishReasons: candidateFinishReasons,
+            finishMessages: candidateFinishMessages,
+            responseId,
+            modelVersion,
         };
     }
 
@@ -181,6 +203,10 @@ function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttp
             retryable: true,
             errorCode: 'api_retryable_error',
             error: `AI 服务暂时不可用（HTTP ${status}），系统将自动重试。`,
+            finishReasons: candidateFinishReasons,
+            finishMessages: candidateFinishMessages,
+            responseId,
+            modelVersion,
         };
     }
 
@@ -188,6 +214,10 @@ function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttp
         retryable: false,
         errorCode: 'api_error',
         error: `Gemini API Error (${status}): ${message}`.slice(0, 600),
+        finishReasons: candidateFinishReasons,
+        finishMessages: candidateFinishMessages,
+        responseId,
+        modelVersion,
     };
 }
 
@@ -227,6 +257,9 @@ function summarizeGeminiResponse(payload: any) {
         promptBlockReason: payload?.promptFeedback?.blockReason || null,
         candidateCount: candidates.length,
         finishReasons: candidates.map((c: any) => c?.finishReason).filter(Boolean),
+        finishMessages: candidates.map((c: any) => c?.finishMessage).filter(Boolean),
+        responseId: payload?.responseId || null,
+        modelVersion: payload?.modelVersion || null,
         candidatePartShapes: candidates.map((c: any) => {
             const parts = Array.isArray(c?.content?.parts) ? c.content.parts : [];
             return parts.map((p: any) => ({
@@ -240,6 +273,8 @@ function summarizeGeminiResponse(payload: any) {
 
 function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGeminiResult {
     const usageMetadata = payload?.usageMetadata;
+    const responseId = typeof payload?.responseId === 'string' ? payload.responseId : null;
+    const modelVersion = typeof payload?.modelVersion === 'string' ? payload.modelVersion : null;
     const imagePart = extractInlineImagePart(payload);
     if (imagePart) {
         return {
@@ -253,6 +288,9 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
                 usage: usageMetadata,
                 finalPrompt,
                 finishReasons: [],
+                finishMessages: [],
+                responseId,
+                modelVersion,
                 promptBlockReason: null
             }
         };
@@ -261,6 +299,9 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
     const summary = summarizeGeminiResponse(payload);
     const finishReasons: string[] = Array.isArray(summary.finishReasons)
         ? summary.finishReasons.map((x: any) => String(x).toUpperCase())
+        : [];
+    const finishMessages: string[] = Array.isArray(summary.finishMessages)
+        ? summary.finishMessages.map((x: any) => String(x).trim()).filter(Boolean)
         : [];
     const promptBlockReason = summary.promptBlockReason ? String(summary.promptBlockReason).toUpperCase() : null;
 
@@ -271,6 +312,9 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
             errorCode: 'prompt_blocked',
             promptBlockReason,
             finishReasons,
+            finishMessages,
+            responseId,
+            modelVersion,
             error: buildPromptBlockedMessage(promptBlockReason)
         };
     }
@@ -280,7 +324,10 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
             retryable: false,
             errorCode: 'prompt_blocked',
             finishReasons,
+            finishMessages,
             promptBlockReason,
+            responseId,
+            modelVersion,
             error: buildFinishReasonMessage(finishReasons)
         };
     }
@@ -290,7 +337,10 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
             retryable: false,
             errorCode: 'recitation_blocked',
             finishReasons,
+            finishMessages,
             promptBlockReason,
+            responseId,
+            modelVersion,
             error: buildFinishReasonMessage(finishReasons)
         };
     }
@@ -302,7 +352,10 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
             retryable: true,
             errorCode: 'no_image_payload',
             finishReasons,
+            finishMessages,
             promptBlockReason,
+            responseId,
+            modelVersion,
             error: `Model returned non-image response: ${textPart.substring(0, 200)}`
         };
     }
@@ -317,7 +370,10 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
         retryable: finishReasons.length === 0 || finishReasons.some(reason => FINISH_RETRYABLE_REASONS.has(reason)),
         errorCode: 'no_image_payload',
         finishReasons,
+        finishMessages,
         promptBlockReason,
+        responseId,
+        modelVersion,
         error: userFriendlyError
     };
 }
@@ -412,6 +468,11 @@ export async function generateWrapTexture(
                 : [textPrompt];
             let lastFailure: string | null = null;
             let lastErrorCode: string | null = null;
+            let lastFinishReasons: string[] = [];
+            let lastFinishMessages: string[] = [];
+            let lastPromptBlockReason: string | null = null;
+            let lastResponseId: string | null = null;
+            let lastModelVersion: string | null = null;
 
             for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex += 1) {
                 const model = modelCandidates[modelIndex];
@@ -423,7 +484,12 @@ export async function generateWrapTexture(
                             success: false,
                             error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
                             errorCode: 'timeout',
-                            finalPrompt: textPrompt
+                            finalPrompt: textPrompt,
+                            finishReasons: lastFinishReasons,
+                            finishMessages: lastFinishMessages,
+                            promptBlockReason: lastPromptBlockReason,
+                            responseId: lastResponseId,
+                            modelVersion: lastModelVersion
                         };
                     }
                     const promptToUse = promptVariants[promptIndex];
@@ -460,6 +526,11 @@ export async function generateWrapTexture(
                         const parsedError = parseGeminiHttpError(response.status, errorText);
                         lastFailure = parsedError.error;
                         lastErrorCode = parsedError.errorCode;
+                        lastFinishReasons = parsedError.finishReasons || [];
+                        lastFinishMessages = parsedError.finishMessages || [];
+                        lastPromptBlockReason = parsedError.promptBlockReason || null;
+                        lastResponseId = parsedError.responseId || null;
+                        lastModelVersion = parsedError.modelVersion || null;
                         console.warn(`[AI-GEN] [${VERSION}] Gemini HTTP error model=${model} status=${response.status} code=${parsedError.errorCode}`);
                         if (!parsedError.retryable) {
                             return {
@@ -468,6 +539,9 @@ export async function generateWrapTexture(
                                 errorCode: parsedError.errorCode,
                                 promptBlockReason: parsedError.promptBlockReason || null,
                                 finishReasons: parsedError.finishReasons || [],
+                                finishMessages: parsedError.finishMessages || [],
+                                responseId: parsedError.responseId || null,
+                                modelVersion: parsedError.modelVersion || null,
                                 finalPrompt: promptToUse
                             };
                         }
@@ -483,6 +557,11 @@ export async function generateWrapTexture(
 
                     lastFailure = parsed.error || 'No image found in response';
                     lastErrorCode = parsed.errorCode || 'no_image_payload';
+                    lastFinishReasons = parsed.finishReasons || [];
+                    lastFinishMessages = parsed.finishMessages || [];
+                    lastPromptBlockReason = parsed.promptBlockReason || null;
+                    lastResponseId = parsed.responseId || null;
+                    lastModelVersion = parsed.modelVersion || null;
                     if (!parsed.retryable) {
                         return {
                             success: false,
@@ -490,6 +569,9 @@ export async function generateWrapTexture(
                             errorCode: parsed.errorCode || 'no_image_payload',
                             promptBlockReason: parsed.promptBlockReason || null,
                             finishReasons: parsed.finishReasons || [],
+                            finishMessages: parsed.finishMessages || [],
+                            responseId: parsed.responseId || null,
+                            modelVersion: parsed.modelVersion || null,
                             finalPrompt: promptToUse
                         };
                     }
@@ -503,7 +585,12 @@ export async function generateWrapTexture(
                             success: false,
                             error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
                             errorCode: 'timeout',
-                            finalPrompt: textPrompt
+                            finalPrompt: textPrompt,
+                            finishReasons: lastFinishReasons,
+                            finishMessages: lastFinishMessages,
+                            promptBlockReason: lastPromptBlockReason,
+                            responseId: lastResponseId,
+                            modelVersion: lastModelVersion
                         };
                     }
                     await sleep(700 * (round + 1));
@@ -515,7 +602,12 @@ export async function generateWrapTexture(
                                 success: false,
                                 error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
                                 errorCode: 'timeout',
-                                finalPrompt: textPrompt
+                                finalPrompt: textPrompt,
+                                finishReasons: lastFinishReasons,
+                                finishMessages: lastFinishMessages,
+                                promptBlockReason: lastPromptBlockReason,
+                                responseId: lastResponseId,
+                                modelVersion: lastModelVersion
                             };
                         }
                         const rescueUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
@@ -549,6 +641,11 @@ export async function generateWrapTexture(
                             const parsedError = parseGeminiHttpError(rescueResponse.status, errorText);
                             lastFailure = parsedError.error;
                             lastErrorCode = parsedError.errorCode;
+                            lastFinishReasons = parsedError.finishReasons || [];
+                            lastFinishMessages = parsedError.finishMessages || [];
+                            lastPromptBlockReason = parsedError.promptBlockReason || null;
+                            lastResponseId = parsedError.responseId || null;
+                            lastModelVersion = parsedError.modelVersion || null;
                             if (!parsedError.retryable) {
                                 continue;
                             }
@@ -564,6 +661,11 @@ export async function generateWrapTexture(
 
                         lastFailure = rescueParsed.error || 'No image found in response';
                         lastErrorCode = rescueParsed.errorCode || 'no_image_payload';
+                        lastFinishReasons = rescueParsed.finishReasons || [];
+                        lastFinishMessages = rescueParsed.finishMessages || [];
+                        lastPromptBlockReason = rescueParsed.promptBlockReason || null;
+                        lastResponseId = rescueParsed.responseId || null;
+                        lastModelVersion = rescueParsed.modelVersion || null;
                     }
                 }
             }
@@ -572,6 +674,11 @@ export async function generateWrapTexture(
                 success: false,
                 error: lastFailure || 'No image found in response',
                 errorCode: lastErrorCode || 'no_image_payload',
+                finishReasons: lastFinishReasons,
+                finishMessages: lastFinishMessages,
+                promptBlockReason: lastPromptBlockReason,
+                responseId: lastResponseId,
+                modelVersion: lastModelVersion,
                 finalPrompt: textPrompt
             };
 

@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64 } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, imageUrlToBase64, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
@@ -100,6 +100,70 @@ function buildLocalWrapMetadata(prompt: string, modelName: string) {
         name_en: title || 'AI Wrap',
         description: description || '',
         description_en: description || '',
+    };
+}
+
+function compactDiagnosticText(input: string, max = 160): string {
+    const normalized = String(input || '').replace(/\s+/g, ' ').trim();
+    return normalized.length > max ? `${normalized.slice(0, max)}...` : normalized;
+}
+
+function buildFailureDiagnosticSummary(result: Pick<GenerateWrapResult, 'errorCode' | 'promptBlockReason' | 'finishReasons' | 'finishMessages' | 'responseId' | 'modelVersion'>): string {
+    const finishReasons = (result.finishReasons || []).join('|') || '-';
+    const finishMessage = compactDiagnosticText((result.finishMessages || []).find(Boolean) || '-', 220);
+    return [
+        `code=${result.errorCode || 'unknown_error'}`,
+        `block=${result.promptBlockReason || '-'}`,
+        `finish=${finishReasons}`,
+        `message=${finishMessage}`,
+        `responseId=${result.responseId || '-'}`,
+        `modelVersion=${result.modelVersion || '-'}`
+    ].join('; ');
+}
+
+function mapGenerationFailureForUser(result: Pick<GenerateWrapResult, 'error' | 'errorCode' | 'finishReasons' | 'finishMessages' | 'promptBlockReason' | 'responseId'>) {
+    const errorCode = result.errorCode || 'unknown_error';
+    const finishReasons = (result.finishReasons || []).map(x => String(x).toUpperCase());
+    const finishMessage = (result.finishMessages || []).map(x => String(x).trim()).find(Boolean) || '';
+    const promptBlockReason = (result.promptBlockReason || '').toUpperCase();
+    const responseIdSuffix = result.responseId ? `（responseId=${result.responseId}）` : '';
+
+    if (errorCode === 'prompt_blocked') {
+        const reasonText = promptBlockReason || 'UNKNOWN';
+        const detail = finishMessage ? ` 模型反馈：${compactDiagnosticText(finishMessage, 120)}` : '';
+        return {
+            code: errorCode,
+            message: `生成失败：请求被模型策略拦截（${reasonText}）。${detail}${responseIdSuffix}`,
+        };
+    }
+
+    if (errorCode === 'recitation_blocked') {
+        const detail = finishMessage ? ` 模型反馈：${compactDiagnosticText(finishMessage, 120)}` : '';
+        return {
+            code: errorCode,
+            message: `生成失败：触发版权引用限制（RECITATION）。${detail}${responseIdSuffix}`,
+        };
+    }
+
+    if (errorCode === 'no_image_payload') {
+        const reasons = finishReasons.join(',');
+        const detail = finishMessage ? ` 模型反馈：${compactDiagnosticText(finishMessage, 120)}` : '';
+        return {
+            code: errorCode,
+            message: `生成失败：模型未返回图片（${reasons || 'UNKNOWN'}）。${detail}${responseIdSuffix}`,
+        };
+    }
+
+    if (errorCode === 'timeout') {
+        return {
+            code: errorCode,
+            message: `${result.error || '生成失败：AI生成超时，请稍后重试。'}${responseIdSuffix}`,
+        };
+    }
+
+    return {
+        code: errorCode,
+        message: `${result.error || 'AI generation failed'}${responseIdSuffix}`,
     };
 }
 
@@ -588,13 +652,19 @@ async function processGenerationTask(params: {
 
         if (!result.success) {
             console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${userId}...`);
-            const failureMessage = result.error || 'AI generation failed';
-            await markTaskFailed(failureMessage);
-            await refundTaskCredits(taskId, `AI generation failed: ${failureMessage}`);
+            const mappedFailure = mapGenerationFailureForUser(result);
+            const diagnosticSummary = buildFailureDiagnosticSummary(result);
+            await logStep('ai_call_failed', 'failed', diagnosticSummary);
+            await markTaskFailed(mappedFailure.message);
+            await refundTaskCredits(taskId, `AI generation failed: ${mappedFailure.message}`);
             return;
         }
 
-        await logStep('ai_response_received');
+        await logStep(
+            'ai_response_received',
+            undefined,
+            `responseId=${result.responseId || '-'}; modelVersion=${result.modelVersion || '-'}`
+        );
 
         if (!result.dataUrl) {
             await markTaskFailed('AI generated image but no data returned');
