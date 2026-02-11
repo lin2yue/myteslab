@@ -20,8 +20,10 @@ export default function Navbar() {
     const { balance, loading: creditsLoading } = useCredits();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // 检查当前是否在 AI 生成页面，如果是，可以做一些特殊的样式调整
+    // 当前主导航状态
     const isAiPage = pathname?.includes('/ai-generate/');
+    const isLockSoundsPage = pathname?.startsWith('/lock-sounds');
+    const isGalleryPage = !isAiPage && !isLockSoundsPage;
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
@@ -56,12 +58,21 @@ export default function Navbar() {
                         <nav className="hidden md:flex items-center gap-6 lg:gap-8 border-l border-gray-100 dark:border-zinc-800 pl-6 lg:pl-10 ml-2">
                             <Link
                                 href="/"
-                                className={`text-base font-bold transition-all ${!isAiPage
+                                className={`text-base font-bold transition-all ${isGalleryPage
                                     ? 'text-gray-950 dark:text-white'
                                     : 'text-gray-500 hover:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-200'
                                     }`}
                             >
                                 {tCommon('nav.gallery')}
+                            </Link>
+                            <Link
+                                href="/lock-sounds"
+                                className={`text-base font-bold transition-all ${isLockSoundsPage
+                                    ? 'text-gray-950 dark:text-white'
+                                    : 'text-gray-500 hover:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-200'
+                                    }`}
+                            >
+                                {tCommon('nav.lock_sounds')}
                             </Link>
                             <Link
                                 href="/ai-generate/generate"
@@ -78,12 +89,21 @@ export default function Navbar() {
                         <nav className="flex md:hidden items-center gap-2 border-l border-gray-100 dark:border-zinc-800 pl-3 ml-1 flex-nowrap overflow-x-auto no-scrollbar">
                             <Link
                                 href="/"
-                                className={`text-sm font-semibold whitespace-nowrap transition-colors ${!isAiPage
+                                className={`text-sm font-semibold whitespace-nowrap transition-colors ${isGalleryPage
                                     ? 'text-gray-900 dark:text-white'
                                     : 'text-gray-500 dark:text-zinc-400'
                                     }`}
                             >
                                 {tCommon('nav.gallery')}
+                            </Link>
+                            <Link
+                                href="/lock-sounds"
+                                className={`text-sm font-semibold whitespace-nowrap transition-colors ${isLockSoundsPage
+                                    ? 'text-gray-900 dark:text-white'
+                                    : 'text-gray-500 dark:text-zinc-400'
+                                    }`}
+                            >
+                                {tCommon('nav.lock_sounds')}
                             </Link>
                             <Link
                                 href="/ai-generate/generate"

@@ -39,6 +39,11 @@ export default function Footer() {
                                     {t('links.explore')}
                                 </Link>
                             </li>
+                            <li>
+                                <Link href="/lock-sounds" className="text-sm text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                                    {t('links.lock_sounds')}
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 
