@@ -35,6 +35,7 @@
         "nav": {
             "gallery": "发现",
             "ai_generator": "AI 设计",
+            "lock_sounds": "锁车音",
             "pricing": "定价"
         }
     },
@@ -190,12 +191,37 @@
         "confirm_publish": "确认发布作品",
         "preparing_preview": "正在准备预览图..."
     },
+    "LockSounds": {
+        "badge": "Tesla Lock Sounds",
+        "title": "锁车音效库",
+        "subtitle": "精选特斯拉锁车音效，支持在线试听与下载。可按热门/最新筛选，快速找到你的下一条锁车音。",
+        "tab_audios": "音频",
+        "tab_albums": "专辑",
+        "search_placeholder": "搜索音频或专辑...",
+        "search_album_placeholder": "搜索专辑...",
+        "sort_latest": "最新",
+        "sort_hot": "最热",
+        "filtered_by_album": "当前专辑",
+        "clear_album_filter": "清除专辑筛选",
+        "now_playing": "正在播放",
+        "paused": "已暂停",
+        "load_error": "加载失败，请稍后重试。",
+        "retry": "重试",
+        "empty_search": "未找到匹配的音频",
+        "empty_default": "暂无锁车音数据",
+        "empty_album_search": "未找到匹配的专辑",
+        "empty_album_default": "暂无专辑数据",
+        "load_more": "加载更多",
+        "loading_more": "加载中...",
+        "no_more": "已经到底了"
+    },
     "Footer": {
         "tagline": "终极特斯拉定制车身贴图设计工作室",
         "copyright": "© {year} 特玩. 版权所有。",
         "disclaimer": "我们是一个独立的第三方创意平台，不与 Tesla, Inc. 关联、联合或由其背书。",
         "links": {
             "explore": "发现",
+            "lock_sounds": "锁车音",
             "ai_generator": "AI 设计",
             "pricing": "定价",
             "terms": "服务条款",

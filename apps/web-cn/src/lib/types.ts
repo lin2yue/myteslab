@@ -55,3 +55,25 @@ export interface UserDownload {
     wrap_id: string
     downloaded_at: string
 }
+
+// 锁车音频
+export interface LockAudio {
+    id: string
+    title: string
+    album?: string | null
+    file_url: string
+    cover_url?: string | null
+    duration?: number | null
+    tags?: string[] | null
+    play_count: number
+    download_count: number
+    created_at: string
+}
+
+export interface LockAudioAlbum {
+    album: string
+    cover_url?: string | null
+    audio_count: number
+    total_play_count: number
+    latest_created_at?: string | null
+}
