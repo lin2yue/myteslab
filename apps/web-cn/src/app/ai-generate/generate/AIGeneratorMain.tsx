@@ -506,10 +506,7 @@ export default function AIGeneratorMain({
                     updated_at: nowIso,
                     model_slug: modelSlugValue
                 }]))
-                const submitTip = data.promptRewritten && data.promptRewriteMessage
-                    ? `${data.promptRewriteMessage} 任务已提交，正在后台生成。`
-                    : '任务已提交，正在后台生成'
-                alert.info(submitTip)
+                alert.info('任务已提交，正在后台生成')
                 return
             }
 
