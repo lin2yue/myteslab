@@ -947,7 +947,7 @@ export default function AIGeneratorMain({
 
         try {
             // 手动拍照时不干预视角 (zoomOut: false)
-            const dataUrl = await viewerRef.current.takeHighResScreenshot({ zoomOut: false });
+            const dataUrl = await viewerRef.current.takeHighResScreenshot({ zoomOut: false, preserveAspect: true });
             if (dataUrl) {
                 const link = document.createElement('a');
                 link.download = `tewan-design-${selectedModel}-${Date.now()}.png`;

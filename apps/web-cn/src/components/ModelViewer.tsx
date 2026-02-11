@@ -21,7 +21,7 @@ interface ModelViewerProps {
 }
 
 export interface ModelViewerRef {
-    takeHighResScreenshot: (options?: { zoomOut?: boolean, useStandardView?: boolean }) => Promise<string | null>;
+    takeHighResScreenshot: (options?: { zoomOut?: boolean, useStandardView?: boolean, preserveAspect?: boolean }) => Promise<string | null>;
     waitForReady: (timeout?: number) => Promise<boolean>;
 }
 
@@ -71,6 +71,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         takeHighResScreenshot: async (options) => {
             const viewer = viewerElementRef.current;
             if (!viewer) return null;
+            const useStandardView = Boolean(options?.useStandardView);
 
             // Define Standard View Configuration
             const DEFAULT_ORBIT = "225deg 75deg 85%";
@@ -89,16 +90,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             const originalOrbit = viewer.getAttribute('camera-orbit');
             const originalExposure = viewer.getAttribute('exposure');
             const originalBG = viewer.style.backgroundColor;
-            const originalWidth = viewer.style.width;
-            const originalHeight = viewer.style.height;
-            const originalParent = viewer.parentElement;
-            const nextSibling = viewer.nextSibling;
 
             try {
                 // Temporarily boost quality
                 viewer.setAttribute('min-render-scale', '1');
 
-                if (options?.useStandardView) {
+                if (useStandardView) {
                     viewer.removeAttribute('auto-rotate');
                     viewer.setAttribute('camera-orbit', targetOrbit);
                     viewer.setAttribute('field-of-view', STANDARD_FOV);
@@ -131,6 +128,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 // Composite onto Background Canvas for consistent color/alignment
                 return new Promise((resolve) => {
                     const img = new Image();
+                    const objectUrl = URL.createObjectURL(blob);
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         canvas.width = 1024;
@@ -145,48 +143,64 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         ctx.fillStyle = STANDARD_BG;
                         ctx.fillRect(0, 0, 1024, 768);
 
-                        // Draw model image
-                        console.log(`[ModelViewer-Debug] Drawing image to canvas: ${img.width}x${img.height} -> 1024x768`);
-                        ctx.drawImage(img, 0, 0, 1024, 768);
+                        if (options?.preserveAspect) {
+                            // Draw image with aspect-ratio preserved (contain) to avoid stretching
+                            const srcW = img.width || 1;
+                            const srcH = img.height || 1;
+                            const scale = Math.min(canvas.width / srcW, canvas.height / srcH);
+                            const drawW = Math.round(srcW * scale);
+                            const drawH = Math.round(srcH * scale);
+                            const offsetX = Math.round((canvas.width - drawW) / 2);
+                            const offsetY = Math.round((canvas.height - drawH) / 2);
+                            console.log(`[ModelViewer-Debug] Drawing image to canvas (contain): ${img.width}x${img.height} -> ${drawW}x${drawH} @ (${offsetX}, ${offsetY})`);
+                            ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                        } else {
+                            // Keep legacy behavior for publish/admin snapshots.
+                            console.log(`[ModelViewer-Debug] Drawing image to canvas: ${img.width}x${img.height} -> 1024x768`);
+                            ctx.drawImage(img, 0, 0, 1024, 768);
+                        }
 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                        URL.revokeObjectURL(objectUrl);
                         resolve(dataUrl);
                     };
-                    img.src = URL.createObjectURL(blob);
+                    img.onerror = () => {
+                        URL.revokeObjectURL(objectUrl);
+                        resolve(null);
+                    };
+                    img.src = objectUrl;
                 });
 
             } finally {
-                // Restore auto-rotate state
-                if (originalAutoRotate) viewer.setAttribute('auto-rotate', 'true');
-                else viewer.removeAttribute('auto-rotate');
-
-                // Restore View Attributes
+                // Always restore render scale after capture.
                 if (originalMinRenderScale) viewer.setAttribute('min-render-scale', originalMinRenderScale);
                 else viewer.removeAttribute('min-render-scale');
 
-                if (originalFOV) viewer.setAttribute('field-of-view', originalFOV);
-                else viewer.removeAttribute('field-of-view');
+                // Only restore camera/view state when we intentionally switched to standard view.
+                // For manual snapshot, keep user's current camera unchanged to avoid sudden rotation.
+                if (useStandardView) {
+                    if (originalAutoRotate) viewer.setAttribute('auto-rotate', 'true');
+                    else viewer.removeAttribute('auto-rotate');
 
-                if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
-                else viewer.removeAttribute('camera-orbit');
+                    if (originalFOV) viewer.setAttribute('field-of-view', originalFOV);
+                    else viewer.removeAttribute('field-of-view');
 
-                if (originalExposure) viewer.setAttribute('exposure', originalExposure);
-                // Force model-viewer to recalculate bounds
-                if ((viewer as any).updateFraming) {
-                    (viewer as any).updateFraming()
-                } else if (viewer.updateBoundingBox) {
-                    viewer.updateBoundingBox()
-                }
+                    if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
+                    else viewer.removeAttribute('camera-orbit');
 
-                // Trigger camera update to zoom in to new bounds
-                if (typeof viewer.jumpCameraToGoal === 'function') {
-                    viewer.jumpCameraToGoal()
-                }
-                // Restore Style
-                viewer.style.backgroundColor = originalBG;
+                    if (originalExposure) viewer.setAttribute('exposure', originalExposure);
+                    else viewer.removeAttribute('exposure');
 
-                if (typeof viewer.jumpCameraToGoal === 'function') {
-                    viewer.jumpCameraToGoal();
+                    viewer.style.backgroundColor = originalBG;
+
+                    if ((viewer as any).updateFraming) {
+                        (viewer as any).updateFraming()
+                    } else if (viewer.updateBoundingBox) {
+                        viewer.updateBoundingBox()
+                    }
+                    if (typeof viewer.jumpCameraToGoal === 'function') {
+                        viewer.jumpCameraToGoal()
+                    }
                 }
             }
         }
