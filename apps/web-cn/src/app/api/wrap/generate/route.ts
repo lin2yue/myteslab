@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64, type GenerateWrapResult } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, imageUrlToBase64, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
@@ -32,6 +32,7 @@ const PER_IP_WINDOW_MS = Number(process.env.WRAP_GEN_IP_RATE_WINDOW_MS ?? 60 * 1
 const PER_IP_MAX_REQUESTS = Number(process.env.WRAP_GEN_IP_RATE_MAX_REQUESTS ?? 20);
 const MAX_INFLIGHT_TASKS_PER_USER = Number(process.env.WRAP_GEN_MAX_INFLIGHT_TASKS ?? 2);
 const MASK_THRESHOLD = Number(process.env.WRAP_MASK_THRESHOLD ?? 180);
+const ENABLE_PROMPT_OPTIMIZE_RETRY = (process.env.WRAP_GEN_ENABLE_PROMPT_OPTIMIZE_RETRY ?? '1').trim() !== '0';
 
 const userRateMap = new Map<string, { count: number; windowStart: number }>();
 const ipRateMap = new Map<string, { count: number; windowStart: number }>();
@@ -165,6 +166,19 @@ function mapGenerationFailureForUser(result: Pick<GenerateWrapResult, 'error' | 
         code: errorCode,
         message: `${result.error || 'AI generation failed'}${responseIdSuffix}`,
     };
+}
+
+function shouldRetryWithOptimizedPrompt(result: Pick<GenerateWrapResult, 'errorCode' | 'finishReasons'>): boolean {
+    const code = String(result.errorCode || '').toLowerCase();
+    const reasons = (result.finishReasons || []).map(x => String(x).toUpperCase());
+
+    if (code === 'prompt_blocked' || code === 'recitation_blocked') return true;
+    if (code === 'no_image_payload') {
+        if (reasons.length === 0) return true;
+        return reasons.some(reason => reason === 'OTHER' || reason === 'IMAGE_OTHER' || reason === 'NO_IMAGE');
+    }
+
+    return false;
 }
 
 function isAllowedReferenceUrl(input: string): boolean {
@@ -639,16 +653,60 @@ async function processGenerationTask(params: {
 
         console.log(`[AI-GEN] Starting Gemini image generation...`);
         const metadata = buildLocalWrapMetadata(prompt, modelName);
+        let finalPromptUsed = prompt;
+        let optimizedPromptUsed: string | null = null;
 
-        const imageGenerationPromise = generateWrapTexture({
+        let result = await generateWrapTexture({
             modelSlug,
             modelName,
-            prompt,
+            prompt: finalPromptUsed,
             maskImageBase64: maskImageBase64 || undefined,
             referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
         });
 
-        const result = await imageGenerationPromise;
+        if (!result.success && ENABLE_PROMPT_OPTIMIZE_RETRY && shouldRetryWithOptimizedPrompt(result)) {
+            await logStep('ai_first_attempt_failed', 'processing', buildFailureDiagnosticSummary(result));
+
+            const optimization = await optimizePromptForPolicyRetry({
+                userPrompt: prompt,
+                modelName,
+                failureSignal: {
+                    errorCode: result.errorCode,
+                    promptBlockReason: result.promptBlockReason || null,
+                    finishReasons: result.finishReasons || [],
+                    finishMessages: result.finishMessages || []
+                }
+            });
+
+            if (optimization.success && optimization.changed && optimization.optimizedPrompt.trim()) {
+                optimizedPromptUsed = optimization.optimizedPrompt.trim();
+                finalPromptUsed = optimizedPromptUsed;
+                await logStep(
+                    'prompt_retry_optimized',
+                    'processing',
+                    `reason=${compactDiagnosticText(optimization.reason || '-', 120)}; responseId=${optimization.responseId || '-'}; modelVersion=${optimization.modelVersion || '-'}`
+                );
+
+                result = await generateWrapTexture({
+                    modelSlug,
+                    modelName,
+                    prompt: finalPromptUsed,
+                    maskImageBase64: maskImageBase64 || undefined,
+                    referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
+                });
+
+                if (result.success) {
+                    await logStep('prompt_retry_success', 'processing');
+                } else {
+                    await logStep('prompt_retry_failed', 'processing', buildFailureDiagnosticSummary(result));
+                }
+            } else {
+                const skipReason = optimization.success
+                    ? 'optimizer_returned_same_prompt'
+                    : `optimizer_error=${compactDiagnosticText(optimization.error || 'unknown', 160)}`;
+                await logStep('prompt_retry_skipped', 'processing', skipReason);
+            }
+        }
 
         if (!result.success) {
             console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${userId}...`);
@@ -663,8 +721,11 @@ async function processGenerationTask(params: {
         await logStep(
             'ai_response_received',
             undefined,
-            `responseId=${result.responseId || '-'}; modelVersion=${result.modelVersion || '-'}`
+            `responseId=${result.responseId || '-'}; modelVersion=${result.modelVersion || '-'}; promptRetry=${optimizedPromptUsed ? '1' : '0'}`
         );
+        if (optimizedPromptUsed) {
+            await logStep('prompt_retry_applied', undefined, `prompt=${compactDiagnosticText(optimizedPromptUsed, 160)}`);
+        }
 
         if (!result.dataUrl) {
             await markTaskFailed('AI generated image but no data returned');

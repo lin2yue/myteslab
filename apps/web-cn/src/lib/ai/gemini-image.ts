@@ -78,6 +78,23 @@ interface GenerateWrapParams {
     referenceImagesBase64?: string[];
 }
 
+export type PromptRetryFailureSignal = {
+    errorCode?: string;
+    promptBlockReason?: string | null;
+    finishReasons?: string[];
+    finishMessages?: string[];
+};
+
+export type PromptOptimizationResult = {
+    success: boolean;
+    changed: boolean;
+    optimizedPrompt: string;
+    reason?: string;
+    responseId?: string | null;
+    modelVersion?: string | null;
+    error?: string;
+};
+
 export interface GenerateWrapResult {
     success: boolean;
     imageBase64?: string;
@@ -736,6 +753,143 @@ export function validateImageDimensions(
         valid: false,
         message: `Image dimensions ${width}x${height} do not match expected ${expectedWidth}x${expectedHeight}`
     };
+}
+
+function parseJsonObjectFromText(raw: string): any | null {
+    const trimmed = (raw || '').trim();
+    if (!trimmed) return null;
+    try {
+        return JSON.parse(trimmed);
+    } catch {
+        const start = trimmed.indexOf('{');
+        const end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            const slice = trimmed.slice(start, end + 1);
+            try {
+                return JSON.parse(slice);
+            } catch {
+                return null;
+            }
+        }
+        return null;
+    }
+}
+
+/**
+ * Only used after a failed image attempt to do a minimal prompt rewrite.
+ * Keep user intent, avoid aggressive changes.
+ */
+export async function optimizePromptForPolicyRetry(params: {
+    userPrompt: string;
+    modelName: string;
+    failureSignal?: PromptRetryFailureSignal;
+}): Promise<PromptOptimizationResult> {
+    const originalPrompt = (params.userPrompt || '').trim();
+    if (!originalPrompt) {
+        return {
+            success: false,
+            changed: false,
+            optimizedPrompt: originalPrompt,
+            error: 'Empty prompt'
+        };
+    }
+
+    try {
+        const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+        if (!apiKey) throw new Error('GEMINI_API_KEY missing');
+
+        const model = (process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash').trim();
+        if (!model) throw new Error('GEMINI_TEXT_MODEL is empty');
+
+        const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
+        const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const timeoutMs = readEnvInt('GEMINI_PROMPT_OPTIMIZE_TIMEOUT_MS', 20000);
+        const maxRetries = readEnvInt('GEMINI_PROMPT_OPTIMIZE_RETRIES', 1);
+        const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
+        const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
+
+        const signal = params.failureSignal || {};
+        const signalText = JSON.stringify({
+            errorCode: signal.errorCode || '',
+            promptBlockReason: signal.promptBlockReason || '',
+            finishReasons: signal.finishReasons || [],
+            finishMessages: signal.finishMessages || []
+        });
+
+        const systemInstruction = `You optimize a failed automotive wrap prompt with MINIMAL edits.
+Rules:
+1) Preserve user intent, style, colors and mood as much as possible.
+2) If explicit copyrighted character names, trademarks, logos, or franchise titles appear, replace them with generic style descriptions.
+3) Do not add new themes unrelated to the original prompt.
+4) Keep final prompt within 120 Chinese characters or 220 English characters.
+Return JSON only with keys: optimized_prompt, changed, reason.`;
+
+        const userInput = `Model: ${params.modelName}
+Original prompt: ${originalPrompt}
+Last failure signal: ${signalText}`;
+
+        const response = await fetchWithRetry(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: userInput }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    responseMimeType: 'application/json'
+                }
+            }),
+            timeoutMs,
+            maxRetries,
+            retryBaseMs,
+            retryMaxMs,
+            logPrefix: '[AI-GEN]'
+        } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
+
+        if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            throw new Error(`Prompt optimization failed: HTTP ${response.status}${body ? ` ${body.slice(0, 200)}` : ''}`);
+        }
+
+        const payload = await response.json();
+        const responseId = typeof payload?.responseId === 'string' ? payload.responseId : null;
+        const modelVersion = typeof payload?.modelVersion === 'string' ? payload.modelVersion : null;
+        const rawText = extractTextPart(payload) || '';
+        const parsed = parseJsonObjectFromText(rawText);
+
+        const optimizedPromptRaw = typeof parsed?.optimized_prompt === 'string'
+            ? parsed.optimized_prompt.trim()
+            : '';
+        const reason = typeof parsed?.reason === 'string' ? parsed.reason.trim() : '';
+
+        let optimizedPrompt = optimizedPromptRaw || originalPrompt;
+        optimizedPrompt = optimizedPrompt.replace(/\s+/g, ' ').trim();
+        if (optimizedPrompt.length > 400) {
+            optimizedPrompt = optimizedPrompt.slice(0, 400).trim();
+        }
+
+        const changedByContent = optimizedPrompt !== originalPrompt;
+        const changed = typeof parsed?.changed === 'boolean' ? parsed.changed : changedByContent;
+
+        return {
+            success: true,
+            changed,
+            optimizedPrompt,
+            reason,
+            responseId,
+            modelVersion
+        };
+    } catch (error: any) {
+        return {
+            success: false,
+            changed: false,
+            optimizedPrompt: originalPrompt,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
 }
 
 /**
