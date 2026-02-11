@@ -186,20 +186,8 @@ export default function AIGeneratorMain({
         return effectiveUrl;
     }, [cdnUrl])
 
-    // 从 localStorage 读取上次选择的模型
-    const getInitialModel = () => {
-        if (typeof window === 'undefined') return models[0]?.slug || 'cybertruck'
-
-        const savedModel = localStorage.getItem('ai_generator_last_model')
-        // 验证保存的模型是否仍然存在于当前模型列表中
-        if (savedModel && models.some(m => m.slug === savedModel)) {
-            return savedModel
-        }
-        return models[0]?.slug || 'cybertruck'
-    }
-
     const { balance, setBalance, refresh: refreshCredits } = useCredits()
-    const [selectedModel, setSelectedModel] = useState(getInitialModel())
+    const [selectedModel, setSelectedModel] = useState(models[0]?.slug || 'cybertruck')
     const [prompt, setPrompt] = useState('')
     const [activeMode, setActiveMode] = useState<'ai' | 'diy'>('ai')
     const [isGenerating, setIsGenerating] = useState(false)
@@ -237,6 +225,15 @@ export default function AIGeneratorMain({
             localStorage.setItem('ai_generator_last_model', selectedModel)
         }
     }, [selectedModel])
+
+    // Hydration-safe restore: only read localStorage after mount.
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const savedModel = localStorage.getItem('ai_generator_last_model')
+        if (savedModel && models.some(m => m.slug === savedModel)) {
+            setSelectedModel(savedModel)
+        }
+    }, [models])
 
     // Sync 3D day/night with theme by default, unless user manually overrides
     useEffect(() => {
