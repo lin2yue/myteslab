@@ -87,6 +87,13 @@ export interface GenerateWrapResult {
     finalPrompt?: string; // The exact prompt sent to AI
 }
 
+type ParsedGeminiResult = {
+    ok: boolean;
+    result?: GenerateWrapResult;
+    retryable: boolean;
+    error?: string;
+};
+
 function extractInlineImagePart(payload: any): { mimeType: string; data: string } | null {
     const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
     for (const candidate of candidates) {
@@ -134,6 +141,60 @@ function summarizeGeminiResponse(payload: any) {
     };
 }
 
+function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGeminiResult {
+    const usageMetadata = payload?.usageMetadata;
+    const imagePart = extractInlineImagePart(payload);
+    if (imagePart) {
+        return {
+            ok: true,
+            retryable: false,
+            result: {
+                success: true,
+                imageBase64: imagePart.data,
+                dataUrl: `data:${imagePart.mimeType};base64,${imagePart.data}`,
+                mimeType: imagePart.mimeType,
+                usage: usageMetadata,
+                finalPrompt
+            }
+        };
+    }
+
+    const summary = summarizeGeminiResponse(payload);
+    const finishReasons: string[] = Array.isArray(summary.finishReasons) ? summary.finishReasons : [];
+
+    if (summary.promptBlockReason) {
+        return {
+            ok: false,
+            retryable: false,
+            error: `生成失败：请求被 Gemini 阻断 (${summary.promptBlockReason})`
+        };
+    }
+    if (finishReasons.includes('SAFETY')) {
+        return {
+            ok: false,
+            retryable: false,
+            error: '生成失败：该提示词触发了安全过滤器 (SAFETY)'
+        };
+    }
+
+    const textPart = extractTextPart(payload);
+    if (textPart) {
+        return {
+            ok: false,
+            retryable: true,
+            error: `Model returned non-image response: ${textPart.substring(0, 200)}`
+        };
+    }
+
+    console.warn('[AI-GEN] Gemini response has no image payload:', JSON.stringify(summary));
+    const finishReasonText = finishReasons.length > 0 ? ` (finishReason=${finishReasons.join(',')})` : '';
+    return {
+        ok: false,
+        retryable: finishReasons.includes('OTHER') || finishReasons.length === 0,
+        error: `No image found in response${finishReasonText}`
+    };
+}
+
 /**
  * Generate a wrap texture using Gemini's image generation
  */
@@ -160,42 +221,46 @@ export async function generateWrapTexture(
             outputSize: { width: maskDimensions.width, height: maskDimensions.height }
         });
 
-        const MODEL = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
-        if (!MODEL) {
+        const primaryModel = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
+        if (!primaryModel) {
             throw new Error('GEMINI_IMAGE_MODEL is empty');
         }
+        const fallbackModels = (process.env.GEMINI_IMAGE_FALLBACK_MODELS || '')
+            .split(',')
+            .map(m => m.trim())
+            .filter(Boolean)
+            .filter(m => m !== primaryModel);
+        const modelCandidates = [primaryModel, ...fallbackModels];
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
-        const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent`;
+        const buildParts = (promptValue: string) => {
+            const built: any[] = [{ text: promptValue }];
 
-        console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${currentGeminiApiUrl}`);
+            // Keep text as first part to match Google's image-editing examples.
+            if (maskImageBase64) {
+                const cleanMaskBase64 = maskImageBase64.includes('base64,')
+                    ? maskImageBase64.split('base64,')[1]
+                    : maskImageBase64;
 
-        const parts: any[] = [];
-
-        if (maskImageBase64) {
-            const cleanMaskBase64 = maskImageBase64.includes('base64,')
-                ? maskImageBase64.split('base64,')[1]
-                : maskImageBase64;
-
-            parts.push({
-                inlineData: {
-                    mimeType: 'image/png',
-                    data: cleanMaskBase64
-                }
-            });
-        }
-
-        parts.push({ text: textPrompt });
-
-        if (referenceImagesBase64 && referenceImagesBase64.length > 0) {
-            referenceImagesBase64.forEach((base64: string) => {
-                parts.push({
+                built.push({
                     inlineData: {
-                        mimeType: 'image/jpeg',
-                        data: base64
+                        mimeType: 'image/png',
+                        data: cleanMaskBase64
                     }
                 });
-            });
-        }
+            }
+
+            if (referenceImagesBase64 && referenceImagesBase64.length > 0) {
+                referenceImagesBase64.forEach((base64: string) => {
+                    built.push({
+                        inlineData: {
+                            mimeType: 'image/jpeg',
+                            data: base64
+                        }
+                    });
+                });
+            }
+            return built;
+        };
 
         const imageTimeoutMs = readEnvInt('GEMINI_IMAGE_TIMEOUT_MS', 60000);
         const imageMaxRetries = readEnvInt('GEMINI_IMAGE_RETRIES', 2);
@@ -203,71 +268,60 @@ export async function generateWrapTexture(
         const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
 
         try {
-            const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                },
-                body: JSON.stringify({
-                    contents: [{ parts }],
-                    generationConfig: {
-                        responseModalities: ['Image'],
-                        imageConfig: {
-                            aspectRatio: maskDimensions.aspectRatio,
-                        }
-                    },
-                }),
-                timeoutMs: imageTimeoutMs,
-                maxRetries: imageMaxRetries,
-                retryBaseMs,
-                retryMaxMs,
-                logPrefix: '[AI-GEN]'
-            } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
+            const fallbackPrompt = `Create a clean, high-contrast, print-ready automotive wrap texture for ${modelName}. Theme: ${prompt}. No text, logos, watermark, UI, or letters.`;
+            const promptVariants = [textPrompt, fallbackPrompt].filter((v, i, arr) => arr.indexOf(v) === i);
+            let lastFailure: string | null = null;
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+            for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex += 1) {
+                const model = modelCandidates[modelIndex];
+                const currentGeminiApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
+
+                for (let promptIndex = 0; promptIndex < promptVariants.length; promptIndex += 1) {
+                    const promptToUse = promptVariants[promptIndex];
+                    const isRetryAttempt = modelIndex > 0 || promptIndex > 0;
+                    console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${currentGeminiApiUrl}${isRetryAttempt ? ' (fallback attempt)' : ''}`);
+
+                    const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        },
+                        body: JSON.stringify({
+                            contents: [{ parts: buildParts(promptToUse) }],
+                            generationConfig: {
+                                responseModalities: ['TEXT', 'IMAGE'],
+                                imageConfig: {
+                                    aspectRatio: maskDimensions.aspectRatio,
+                                }
+                            },
+                        }),
+                        timeoutMs: imageTimeoutMs,
+                        maxRetries: imageMaxRetries,
+                        retryBaseMs,
+                        retryMaxMs,
+                        logPrefix: '[AI-GEN]'
+                    } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+                    }
+
+                    const content = await response.json();
+                    const parsed = parseGeminiImageResponse(content, promptToUse);
+                    if (parsed.ok && parsed.result) {
+                        return parsed.result;
+                    }
+
+                    lastFailure = parsed.error || 'No image found in response';
+                    if (!parsed.retryable) {
+                        return { success: false, error: lastFailure, finalPrompt: promptToUse };
+                    }
+                }
             }
 
-            const content = await response.json();
-            const usageMetadata = content.usageMetadata;
-            const imagePart = extractInlineImagePart(content);
-
-            if (imagePart) {
-                return {
-                    success: true,
-                    imageBase64: imagePart.data,
-                    dataUrl: `data:${imagePart.mimeType};base64,${imagePart.data}`,
-                    mimeType: imagePart.mimeType,
-                    usage: usageMetadata,
-                    finalPrompt: textPrompt
-                };
-            }
-
-            const summary = summarizeGeminiResponse(content);
-            const finishReasons: string[] = Array.isArray(summary.finishReasons) ? summary.finishReasons : [];
-            if (summary.promptBlockReason) {
-                return {
-                    success: false,
-                    error: `生成失败：请求被 Gemini 阻断 (${summary.promptBlockReason})`
-                };
-            }
-            if (finishReasons.includes('SAFETY')) {
-                return { success: false, error: '生成失败：该提示词触发了安全过滤器 (SAFETY)' };
-            }
-
-            const textPart = extractTextPart(content);
-            if (textPart) {
-                return {
-                    success: false,
-                    error: `Model returned non-image response: ${textPart.substring(0, 200)}`
-                };
-            }
-
-            console.warn('[AI-GEN] Gemini response has no image payload:', JSON.stringify(summary));
-            const finishReasonText = finishReasons.length > 0 ? ` (finishReason=${finishReasons.join(',')})` : '';
-            return { success: false, error: `No image found in response${finishReasonText}` };
+            return { success: false, error: lastFailure || 'No image found in response', finalPrompt: textPrompt };
 
         } catch (error: any) {
             throw error;
