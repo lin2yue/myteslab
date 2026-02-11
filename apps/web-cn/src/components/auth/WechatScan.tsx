@@ -14,11 +14,13 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
     const [sceneId, setSceneId] = useState<string | null>(null);
     const [status, setStatus] = useState<'LOADING' | 'READY' | 'SCANNED' | 'EXPIRED' | 'ERROR'>('LOADING');
     const [error, setError] = useState<string | null>(null);
+    const [imageLoadFailed, setImageLoadFailed] = useState(false);
     const pollTimer = useRef<NodeJS.Timeout | null>(null);
 
     const fetchTicket = async () => {
         setStatus('LOADING');
         setError(null);
+        setImageLoadFailed(false);
         if (pollTimer.current) clearInterval(pollTimer.current);
 
         try {
@@ -33,10 +35,16 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
                 setError(data.error || t('error_default'));
                 setStatus('ERROR');
             }
-        } catch (err) {
+        } catch {
             setError(t('error_default'));
             setStatus('ERROR');
         }
+    };
+
+    const handleImageError = () => {
+        setImageLoadFailed(true);
+        setError('二维码加载失败，请点击重试');
+        setStatus('ERROR');
     };
 
     const pollStatus = async (currentSceneId: string) => {
@@ -62,8 +70,12 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
     };
 
     useEffect(() => {
-        fetchTicket();
+        const timeoutId = window.setTimeout(() => {
+            void fetchTicket();
+        }, 0);
+
         return () => {
+            window.clearTimeout(timeoutId);
             if (pollTimer.current) clearInterval(pollTimer.current);
         };
     }, []);
@@ -85,6 +97,7 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
                     <img
                         src={qrUrl}
                         alt="WeChat QR Code"
+                        onError={handleImageError}
                         className={`w-full h-full transition-opacity duration-300 ${status === 'SCANNED' ? 'opacity-20 grayscale' : 'opacity-100'}`}
                     />
                 )}
@@ -96,7 +109,7 @@ export default function WechatScan({ onSuccess }: WechatScanProps) {
                     </div>
                 )}
 
-                {(status === 'EXPIRED' || status === 'ERROR') && (
+                {(status === 'EXPIRED' || status === 'ERROR' || imageLoadFailed) && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm">
                         <p className="text-xs text-gray-500 mb-3">{error || t('wechat_scan_expired')}</p>
                         <button
