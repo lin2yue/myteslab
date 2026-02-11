@@ -36,6 +36,8 @@ interface UserProfile {
     user_credits?: {
         balance: number;
     };
+    wraps_download_count: number;
+    audio_download_count: number;
     download_count: number;
     total_top_up: number;
 }
@@ -189,7 +191,8 @@ export default function AdminUsersPage() {
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Role</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Balance</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Top Up</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Downloads</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Wraps DL</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Audio DL</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Joined</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                             </tr>
@@ -197,11 +200,11 @@ export default function AdminUsersPage() {
                         <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">Fetching user data...</td>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 italic">Fetching user data...</td>
                                 </tr>
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">No users found matching your criteria.</td>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 italic">No users found matching your criteria.</td>
                                 </tr>
                             ) : filteredUsers.map((user) => (
                                 <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors group">
@@ -269,13 +272,23 @@ export default function AdminUsersPage() {
                                         </span>
                                     </td>
 
-                                    {/* Downloads */}
+                                    {/* Wrap Downloads */}
                                     <td className="px-6 py-4 text-center">
                                         <span className={cn(
                                             "text-sm font-mono font-medium",
-                                            user.download_count > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
+                                            user.wraps_download_count > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
                                         )}>
-                                            {user.download_count > 0 ? user.download_count : '-'}
+                                            {user.wraps_download_count > 0 ? user.wraps_download_count : '-'}
+                                        </span>
+                                    </td>
+
+                                    {/* Audio Downloads */}
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={cn(
+                                            "text-sm font-mono font-medium",
+                                            user.audio_download_count > 0 ? "text-cyan-600 dark:text-cyan-400" : "text-gray-400"
+                                        )}>
+                                            {user.audio_download_count > 0 ? user.audio_download_count : '-'}
                                         </span>
                                     </td>
 

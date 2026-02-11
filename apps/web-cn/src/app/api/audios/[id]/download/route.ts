@@ -38,9 +38,20 @@ export async function GET(
                 'UPDATE audios SET download_count = COALESCE(download_count, 0) + 1 WHERE id = $1',
                 [id]
             )
+
+            const { rows: relationRows } = await dbQuery<{ table_name: string | null }>(
+                `SELECT to_regclass('public.user_audio_downloads') AS table_name`
+            )
+            if (relationRows[0]?.table_name) {
+                await dbQuery(
+                    `INSERT INTO user_audio_downloads (user_id, audio_id, downloaded_at)
+                     VALUES ($1, $2, NOW())`,
+                    [user.id, id]
+                )
+            }
         } catch (error) {
             // 统计失败不阻塞下载
-            console.error('[api/audios/download] 更新下载计数失败:', error)
+            console.error('[api/audios/download] 下载统计记录失败:', error)
         }
 
         const downloadUrl = getAudioDownloadUrl(audio.file_url, audio.id)

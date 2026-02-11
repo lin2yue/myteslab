@@ -156,6 +156,14 @@ CREATE TABLE IF NOT EXISTS audios (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 10. 用户音频下载历史记录
+CREATE TABLE IF NOT EXISTS user_audio_downloads (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  audio_id UUID REFERENCES audios(id) ON DELETE SET NULL,
+  downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ============================================
 -- 索引配置
 -- ============================================
@@ -172,6 +180,7 @@ CREATE INDEX IF NOT EXISTS idx_wraps_name_search ON wraps USING gin (name gin_tr
 CREATE INDEX IF NOT EXISTS idx_wraps_name_plain ON wraps(name);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_idempotency ON generation_tasks(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_user_audio_downloads_user_id ON user_audio_downloads(user_id);
 
 -- ============================================
 -- 安全触发器 (Triggers)
@@ -376,6 +385,10 @@ CREATE POLICY "Own Credits" ON user_credits FOR SELECT USING (auth.uid() = user_
 ALTER TABLE user_downloads ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own Downloads" ON user_downloads FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Insert Downloads" ON user_downloads FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+ALTER TABLE user_audio_downloads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own Audio Downloads" ON user_audio_downloads FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Insert Audio Downloads" ON user_audio_downloads FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- 生成追踪
 ALTER TABLE generation_tasks ENABLE ROW LEVEL SECURITY;

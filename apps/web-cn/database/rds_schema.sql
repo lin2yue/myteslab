@@ -141,6 +141,13 @@ CREATE TABLE IF NOT EXISTS audios (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS user_audio_downloads (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  audio_id UUID REFERENCES audios(id) ON DELETE SET NULL,
+  downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_wraps_category ON wraps(category);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public ON wraps(is_public);
@@ -155,3 +162,4 @@ CREATE INDEX IF NOT EXISTS idx_wraps_name_search ON wraps USING gin (name gin_tr
 CREATE INDEX IF NOT EXISTS idx_wraps_name_plain ON wraps(name);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_idempotency ON generation_tasks(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_user_audio_downloads_user_id ON user_audio_downloads(user_id);

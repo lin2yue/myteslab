@@ -18,6 +18,15 @@ export async function GET(request: Request) {
         where = `WHERE p.role = $1`;
     }
 
+    const { rows: relationRows } = await dbQuery<{ table_name: string | null }>(
+        `SELECT to_regclass('public.user_audio_downloads') AS table_name`
+    );
+    const hasAudioDownloadsTable = Boolean(relationRows[0]?.table_name);
+
+    const audioDownloadCountSelect = hasAudioDownloadsTable
+        ? `(SELECT COUNT(*) FROM user_audio_downloads uad WHERE uad.user_id = p.id) as audio_download_count,`
+        : `0::bigint as audio_download_count,`;
+
     const { rows } = await dbQuery(
         `SELECT
             p.id,
@@ -27,7 +36,8 @@ export async function GET(request: Request) {
             p.role,
             p.created_at,
             uc.balance,
-            (SELECT COUNT(*) FROM user_downloads ud WHERE ud.user_id = p.id) as download_count,
+            (SELECT COUNT(*) FROM user_downloads ud WHERE ud.user_id = p.id) as wraps_download_count,
+            ${audioDownloadCountSelect}
             (SELECT COALESCE(SUM(amount), 0) FROM credit_ledger cl WHERE cl.user_id = p.id AND cl.type = 'top-up') as total_top_up
          FROM profiles p
          LEFT JOIN user_credits uc ON uc.user_id = p.id
@@ -38,7 +48,9 @@ export async function GET(request: Request) {
 
     const users = rows.map((row: any) => ({
         ...row,
-        download_count: parseInt(row.download_count || '0'),
+        wraps_download_count: parseInt(row.wraps_download_count || '0'),
+        audio_download_count: parseInt(row.audio_download_count || '0'),
+        download_count: parseInt(row.wraps_download_count || '0') + parseInt(row.audio_download_count || '0'),
         total_top_up: parseFloat(row.total_top_up || '0'),
         user_credits: {
             balance: row.balance ?? 0
@@ -47,4 +59,3 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, users });
 }
-
