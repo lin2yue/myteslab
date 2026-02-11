@@ -87,6 +87,53 @@ export interface GenerateWrapResult {
     finalPrompt?: string; // The exact prompt sent to AI
 }
 
+function extractInlineImagePart(payload: any): { mimeType: string; data: string } | null {
+    const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+    for (const candidate of candidates) {
+        const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+        for (const part of parts) {
+            const inlineData = part?.inlineData || part?.inline_data;
+            if (inlineData?.data) {
+                return {
+                    mimeType: inlineData?.mimeType || inlineData?.mime_type || 'image/png',
+                    data: inlineData.data
+                };
+            }
+        }
+    }
+    return null;
+}
+
+function extractTextPart(payload: any): string | null {
+    const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+    for (const candidate of candidates) {
+        const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+        for (const part of parts) {
+            if (typeof part?.text === 'string' && part.text.trim()) {
+                return part.text.trim();
+            }
+        }
+    }
+    return null;
+}
+
+function summarizeGeminiResponse(payload: any) {
+    const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+    return {
+        promptBlockReason: payload?.promptFeedback?.blockReason || null,
+        candidateCount: candidates.length,
+        finishReasons: candidates.map((c: any) => c?.finishReason).filter(Boolean),
+        candidatePartShapes: candidates.map((c: any) => {
+            const parts = Array.isArray(c?.content?.parts) ? c.content.parts : [];
+            return parts.map((p: any) => ({
+                hasInlineData: Boolean(p?.inlineData || p?.inline_data),
+                hasText: typeof p?.text === 'string',
+                keys: Object.keys(p || {})
+            }));
+        })
+    };
+}
+
 /**
  * Generate a wrap texture using Gemini's image generation
  */
@@ -185,43 +232,42 @@ export async function generateWrapTexture(
 
             const content = await response.json();
             const usageMetadata = content.usageMetadata;
+            const imagePart = extractInlineImagePart(content);
 
-            if (content.candidates && content.candidates.length > 0) {
-                const candidate = content.candidates[0];
-                const part = candidate.content?.parts?.[0];
-
-                if (part && part.inlineData) {
-                    const mimeType = part.inlineData.mimeType || 'image/png';
-                    const base64 = part.inlineData.data;
-
-                    return {
-                        success: true,
-                        imageBase64: base64,
-                        dataUrl: `data:${mimeType};base64,${base64}`,
-                        mimeType: mimeType,
-                        usage: usageMetadata,
-                        finalPrompt: textPrompt
-                    };
-                }
-
-                if (candidate.finishReason === 'SAFETY') {
-                    return { success: false, error: '生成失败：该提示词触发了安全过滤器 (SAFETY)' };
-                }
-
-                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                    console.warn(`[AI-GEN] Task ${params.modelSlug} finished with reason: ${candidate.finishReason}`);
-                }
-            }
-
-            const textPart = content.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text);
-            if (textPart) {
+            if (imagePart) {
                 return {
-                    success: false,
-                    error: `Model returned text instead of image: ${textPart.text.substring(0, 200)}`
+                    success: true,
+                    imageBase64: imagePart.data,
+                    dataUrl: `data:${imagePart.mimeType};base64,${imagePart.data}`,
+                    mimeType: imagePart.mimeType,
+                    usage: usageMetadata,
+                    finalPrompt: textPrompt
                 };
             }
 
-            return { success: false, error: 'No image found in response' };
+            const summary = summarizeGeminiResponse(content);
+            const finishReasons: string[] = Array.isArray(summary.finishReasons) ? summary.finishReasons : [];
+            if (summary.promptBlockReason) {
+                return {
+                    success: false,
+                    error: `生成失败：请求被 Gemini 阻断 (${summary.promptBlockReason})`
+                };
+            }
+            if (finishReasons.includes('SAFETY')) {
+                return { success: false, error: '生成失败：该提示词触发了安全过滤器 (SAFETY)' };
+            }
+
+            const textPart = extractTextPart(content);
+            if (textPart) {
+                return {
+                    success: false,
+                    error: `Model returned non-image response: ${textPart.substring(0, 200)}`
+                };
+            }
+
+            console.warn('[AI-GEN] Gemini response has no image payload:', JSON.stringify(summary));
+            const finishReasonText = finishReasons.length > 0 ? ` (finishReason=${finishReasons.join(',')})` : '';
+            return { success: false, error: `No image found in response${finishReasonText}` };
 
         } catch (error: any) {
             throw error;
