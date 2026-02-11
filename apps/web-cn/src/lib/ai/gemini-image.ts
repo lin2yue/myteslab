@@ -187,7 +187,9 @@ export async function generateWrapTexture(
             const usageMetadata = content.usageMetadata;
 
             if (content.candidates && content.candidates.length > 0) {
-                const part = content.candidates[0].content.parts[0];
+                const candidate = content.candidates[0];
+                const part = candidate.content?.parts?.[0];
+
                 if (part && part.inlineData) {
                     const mimeType = part.inlineData.mimeType || 'image/png';
                     const base64 = part.inlineData.data;
@@ -200,6 +202,14 @@ export async function generateWrapTexture(
                         usage: usageMetadata,
                         finalPrompt: textPrompt
                     };
+                }
+
+                if (candidate.finishReason === 'SAFETY') {
+                    return { success: false, error: '生成失败：该提示词触发了安全过滤器 (SAFETY)' };
+                }
+
+                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                    console.warn(`[AI-GEN] Task ${params.modelSlug} finished with reason: ${candidate.finishReason}`);
                 }
             }
 
