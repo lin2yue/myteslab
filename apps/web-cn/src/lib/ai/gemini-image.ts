@@ -122,9 +122,7 @@ export async function generateWrapTexture(
 
         console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${currentGeminiApiUrl}`);
 
-        const parts: any[] = [
-            { text: textPrompt }
-        ];
+        const parts: any[] = [];
 
         if (maskImageBase64) {
             const cleanMaskBase64 = maskImageBase64.includes('base64,')
@@ -138,6 +136,8 @@ export async function generateWrapTexture(
                 }
             });
         }
+
+        parts.push({ text: textPrompt });
 
         if (referenceImagesBase64 && referenceImagesBase64.length > 0) {
             referenceImagesBase64.forEach((base64: string) => {
