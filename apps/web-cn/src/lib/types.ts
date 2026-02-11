@@ -69,3 +69,11 @@ export interface LockAudio {
     download_count: number
     created_at: string
 }
+
+export interface LockAudioAlbum {
+    album: string
+    cover_url?: string | null
+    audio_count: number
+    total_play_count: number
+    latest_created_at?: string | null
+}

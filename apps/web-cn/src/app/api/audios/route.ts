@@ -9,9 +9,10 @@ export async function GET(request: Request) {
         const pageSize = Number(searchParams.get('pageSize') || '20')
         const sortParam = searchParams.get('sort') || 'latest'
         const q = (searchParams.get('q') || '').trim()
+        const album = (searchParams.get('album') || '').trim()
 
         const sortBy = sortParam === 'hot' ? 'hot' : 'latest'
-        const data = await getLockAudios(page, pageSize, sortBy, q)
+        const data = await getLockAudios(page, pageSize, sortBy, q, album)
 
         return NextResponse.json({
             success: true,
