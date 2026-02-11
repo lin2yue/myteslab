@@ -98,15 +98,15 @@ export default async function ModelPage({
 
     return (
         <div className="flex flex-col">
-            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex-1 w-full">
-                {/* 页面标题与描述 - 增强 SEO 内容深度 */}
-                <section className="sr-only">
-                    <h1 className="text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex-1 w-full">
+                {/* 页面标题与描述：保持可见，避免切换车型时页面跳动 */}
+                <section className="mb-8 text-center">
+                    <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
                         {locale === 'en'
                             ? `Free Tesla ${currentModel.name_en || currentModel.name} Wrap Designs`
                             : `特斯拉 ${currentModel.name} 改色贴膜与涂装设计库`}
                     </h1>
-                    <p className="text-gray-600 dark:text-zinc-400 max-w-4xl text-lg leading-relaxed font-medium">
+                    <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
                         {modelDescription}
                     </p>
                 </section>

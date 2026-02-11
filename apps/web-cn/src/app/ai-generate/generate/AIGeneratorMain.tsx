@@ -19,6 +19,7 @@ import { ServiceType, getServiceCost } from '@/lib/constants/credits'
 import { useCredits } from '@/components/credits/CreditsProvider'
 import Select from '@/components/ui/Select'
 import { createModelNameResolver } from '@/lib/model-display'
+import { sortModelsByPreferredOrder } from '@/lib/model-order'
 import { getEffectiveTheme, THEME_CHANGE_EVENT } from '@/utils/theme'
 
 interface GenerationHistory {
@@ -58,6 +59,7 @@ type HistoryListItem =
     | { type: 'task'; createdAt: string; task: GenerationTaskHistory }
 
 const ESTIMATED_GENERATE_SECONDS = 30
+const BALANCE_LABEL_MIN_WIDTH = 260
 
 function toBase64Url(input: string): string {
     return btoa(unescape(encodeURIComponent(input)))
@@ -158,7 +160,8 @@ export default function AIGeneratorMain({
     const tGen = useTranslations('Generator')
     const alert = useAlert()
     const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.tewan.club'
-    const getModelName = useMemo(() => createModelNameResolver(models, _locale), [models, _locale])
+    const sortedModels = useMemo(() => sortModelsByPreferredOrder(models), [models])
+    const getModelName = useMemo(() => createModelNameResolver(sortedModels, _locale), [sortedModels, _locale])
 
     const getCdnUrl = (url: string) => {
         if (url && url.includes('aliyuncs.com')) {
@@ -187,7 +190,7 @@ export default function AIGeneratorMain({
     }, [cdnUrl])
 
     const { balance, setBalance, refresh: refreshCredits } = useCredits()
-    const [selectedModel, setSelectedModel] = useState(models[0]?.slug || 'cybertruck')
+    const [selectedModel, setSelectedModel] = useState(sortedModels[0]?.slug || 'cybertruck')
     const [prompt, setPrompt] = useState('')
     const [activeMode, setActiveMode] = useState<'ai' | 'diy'>('ai')
     const [isGenerating, setIsGenerating] = useState(false)
@@ -214,8 +217,10 @@ export default function AIGeneratorMain({
     const isNightManualRef = useRef(false)
     const [autoRotate, setAutoRotate] = useState(true)
     const viewerRef = useRef<ModelViewerRef>(null)
+    const balancePanelRef = useRef<HTMLDivElement>(null)
     const isFetchingRef = useRef(false)
     const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
+    const [showBalanceLabels, setShowBalanceLabels] = useState(false)
 
     const aiThemeStorageKey = 'ai_viewer_theme'
 
@@ -230,10 +235,16 @@ export default function AIGeneratorMain({
     useEffect(() => {
         if (typeof window === 'undefined') return
         const savedModel = localStorage.getItem('ai_generator_last_model')
-        if (savedModel && models.some(m => m.slug === savedModel)) {
-            setSelectedModel(savedModel)
-        }
-    }, [models])
+        setSelectedModel((prev) => {
+            if (savedModel && sortedModels.some(m => m.slug === savedModel)) {
+                return savedModel
+            }
+            if (sortedModels.some(m => m.slug === prev)) {
+                return prev
+            }
+            return sortedModels[0]?.slug || prev
+        })
+    }, [sortedModels])
 
     // Sync 3D day/night with theme by default, unless user manually overrides
     useEffect(() => {
@@ -263,6 +274,28 @@ export default function AIGeneratorMain({
     useEffect(() => {
         setIsLoggedInInternal(isLoggedIn)
     }, [isLoggedIn])
+
+    // 自适应积分区域文案：空间不足时优先显示数字
+    useEffect(() => {
+        const el = balancePanelRef.current
+        if (!el) return
+
+        const update = () => {
+            const nextVisible = el.clientWidth >= BALANCE_LABEL_MIN_WIDTH
+            setShowBalanceLabels((prev) => (prev === nextVisible ? prev : nextVisible))
+        }
+
+        update()
+
+        if (typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(() => update())
+            observer.observe(el)
+            return () => observer.disconnect()
+        }
+
+        window.addEventListener('resize', update)
+        return () => window.removeEventListener('resize', update)
+    }, [])
 
     // Seed initial credits if provider hasn't loaded yet
     useEffect(() => {
@@ -1105,7 +1138,7 @@ export default function AIGeneratorMain({
                                     <div className="flex-[3]">
                                         <Select
                                             value={selectedModel}
-                                            options={models.map((m: any) => ({
+                                            options={sortedModels.map((m: any) => ({
                                                 value: m.slug,
                                                 label: _locale === 'en' ? (m.name_en || m.name) : m.name
                                             }))}
@@ -1117,22 +1150,29 @@ export default function AIGeneratorMain({
                                         />
                                     </div>
 
-                                    <div className="flex-[2] flex items-center gap-2 h-12 bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-xl px-2.5">
+                                    <div
+                                        ref={balancePanelRef}
+                                        className="flex-[2] min-w-0 flex items-center gap-2 h-12 bg-white/90 dark:bg-zinc-900/70 border border-black/10 dark:border-white/10 rounded-xl px-2.5"
+                                    >
                                         <div className="flex items-baseline gap-2 min-w-0">
-                                            <span className="text-[11px] text-gray-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">
-                                                {tGen('balance_label')}
+                                            {showBalanceLabels && (
+                                                <span className="text-[11px] text-gray-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">
+                                                    {tGen('balance_label')}
+                                                </span>
+                                            )}
+                                            <span className="text-base font-semibold text-gray-900 dark:text-white truncate whitespace-nowrap">
+                                                {isLoggedInInternal ? (balance ?? 0) : (showBalanceLabels ? tGen('login_to_view') : '--')}
                                             </span>
-                                            <span className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                                                {isLoggedInInternal ? (balance ?? 0) : tGen('login_to_view')}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400 dark:text-zinc-400 uppercase tracking-wide">
-                                                {tGen('credits_label')}
-                                            </span>
+                                            {showBalanceLabels && (
+                                                <span className="text-[10px] text-gray-400 dark:text-zinc-400 uppercase tracking-wide">
+                                                    {tGen('credits_label')}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex-1" />
                                         <button
                                             onClick={handleBuyCredits}
-                                            className="btn-secondary h-9 px-3 text-xs whitespace-nowrap"
+                                            className="btn-secondary h-9 px-3 text-xs whitespace-nowrap flex-shrink-0"
                                         >
                                             {tGen('buy_short')}
                                         </button>
@@ -1207,7 +1247,7 @@ export default function AIGeneratorMain({
                                     <button
                                         onClick={handleGenerate}
                                         disabled={isBusy || isUploadingRefs || !prompt.trim()}
-                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all ${isBusy
+                                        className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold transition-all cursor-pointer disabled:cursor-not-allowed ${isBusy
                                             ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed shadow-none'
                                             : 'bg-black text-white dark:bg-white dark:text-black shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]'
                                             }`}
@@ -1328,7 +1368,7 @@ export default function AIGeneratorMain({
                                 <div className="mx-4 mt-4">
                                     <Select
                                         value={selectedModel}
-                                        options={models.map((m: any) => ({
+                                        options={sortedModels.map((m: any) => ({
                                             value: m.slug,
                                             label: _locale === 'en' ? (m.name_en || m.name) : m.name
                                         }))}
