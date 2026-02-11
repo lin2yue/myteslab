@@ -317,7 +317,7 @@ export default function AIGeneratorMain({
 
     useEffect(() => {
         if (pendingTaskIds.length === 0) return
-        const timer = window.setInterval(() => setElapsedNow(Date.now()), 1000)
+        const timer = window.setInterval(() => setElapsedNow(Date.now()), 100)
         return () => window.clearInterval(timer)
     }, [pendingTaskKey])
 
@@ -1414,8 +1414,10 @@ function TaskHistoryItemCard({
 }) {
     const isPending = task.status === 'pending' || task.status === 'processing'
     const isFailed = task.status === 'failed' || task.status === 'failed_refunded'
-    const elapsedSeconds = Math.max(0, Math.floor((nowTs - new Date(task.created_at).getTime()) / 1000))
-    const progress = Math.min(100, Math.round((elapsedSeconds / ESTIMATED_GENERATE_SECONDS) * 100))
+    const isRefunded = task.status === 'failed_refunded'
+    const elapsedMs = Math.max(0, nowTs - new Date(task.created_at).getTime())
+    const elapsedSeconds = elapsedMs / 1000
+    const progress = Math.min(100, (elapsedMs / (ESTIMATED_GENERATE_SECONDS * 1000)) * 100)
 
     return (
         <div className="h-[98px] p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70 overflow-hidden flex flex-col justify-between">
@@ -1429,10 +1431,21 @@ function TaskHistoryItemCard({
             {isPending && (
                 <div className="mt-1">
                     <div className="text-[10px] text-gray-500">
-                        已生成 {elapsedSeconds}s · 预计 {ESTIMATED_GENERATE_SECONDS}s
+                        已生成 {elapsedSeconds.toFixed(1)}s · 预计 {ESTIMATED_GENERATE_SECONDS}s
                     </div>
                     <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-                        <div className="h-full bg-black dark:bg-white transition-all" style={{ width: `${progress}%` }} />
+                        <div
+                            className="h-full bg-black dark:bg-white relative overflow-hidden transition-[width] duration-100 ease-linear"
+                            style={{ width: `${progress}%` }}
+                        >
+                            <div
+                                className="absolute inset-y-0 -left-1/2 w-1/2 animate-[loading_1.2s_infinite_linear]"
+                                style={{
+                                    backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)',
+                                    backgroundSize: '200% 100%'
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
@@ -1441,6 +1454,7 @@ function TaskHistoryItemCard({
                 <div className="mt-1 flex items-center gap-2">
                     <div className="text-[10px] text-rose-600 line-clamp-1 flex-1">
                         失败原因：{task.error_message || '未知错误'}
+                        {isRefunded && <span className="ml-1 text-emerald-600">· 积分已退还</span>}
                     </div>
                     <button
                         onClick={onRetry}
