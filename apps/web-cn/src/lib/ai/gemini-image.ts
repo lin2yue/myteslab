@@ -68,6 +68,7 @@ async function fetchWithRetry(url: string, options: RequestInit & { timeoutMs: n
 
 // Gemini API configuration
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
+const DEFAULT_IMAGE_FALLBACK_MODELS = ['gemini-2.5-flash-image', 'gemini-2.0-flash-exp-image-generation'];
 
 interface GenerateWrapParams {
     modelSlug: string;
@@ -351,11 +352,14 @@ export async function generateWrapTexture(
         if (!primaryModel) {
             throw new Error('GEMINI_IMAGE_MODEL is empty');
         }
-        const fallbackModels = (process.env.GEMINI_IMAGE_FALLBACK_MODELS || '')
+        const fallbackModelsFromEnv = (process.env.GEMINI_IMAGE_FALLBACK_MODELS || '')
             .split(',')
             .map(m => m.trim())
             .filter(Boolean)
             .filter(m => m !== primaryModel);
+        const fallbackModels = fallbackModelsFromEnv.length > 0
+            ? fallbackModelsFromEnv
+            : DEFAULT_IMAGE_FALLBACK_MODELS.filter(m => m !== primaryModel);
         const modelCandidates = [primaryModel, ...fallbackModels];
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
         const buildParts = (promptValue: string) => {
@@ -456,6 +460,7 @@ export async function generateWrapTexture(
                     const content = await response.json();
                     const parsed = parseGeminiImageResponse(content, promptToUse);
                     if (parsed.ok && parsed.result) {
+                        console.log(`[AI-GEN] [${VERSION}] Gemini image success with model ${model}`);
                         return parsed.result;
                     }
 
