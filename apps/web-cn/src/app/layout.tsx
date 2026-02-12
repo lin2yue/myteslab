@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
@@ -139,8 +137,6 @@ export default function RootLayout({
                 <GoogleAnalytics />
                 <BaiduAnalytics />
                 <BaiduPush />
-                <Analytics />
-                <SpeedInsights />
                 <AlertProvider>
                     <CreditsProvider>
                         <Navbar />

@@ -54,11 +54,10 @@ const nextConfig: NextConfig = {
       default-src 'self';
       script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' data: blob: https://cdn.tewan.club https://www.googletagmanager.com https://www.google-analytics.com https://www.myteslab.com https://myteslab.com;
+      img-src 'self' data: blob: https://cdn.tewan.club https://www.googletagmanager.com https://www.google-analytics.com https://www.myteslab.com https://myteslab.com https://ui-avatars.com;
       font-src 'self' https://fonts.gstatic.com;
       connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://*.supabase.co https://vitals.vercel-insights.com https://*.paddle.com;
       frame-ancestors 'self';
-      upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim();
 
     return [
@@ -106,4 +105,3 @@ import bundleAnalyzer from '@next/bundle-analyzer'
 const withBundleAnalyzer = bundleAnalyzer({ enabled: isAnalyze })
 
 export default withBundleAnalyzer(configWithIntl)
-

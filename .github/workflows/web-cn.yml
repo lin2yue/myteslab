@@ -130,3 +130,8 @@ jobs:
               -e HTTP_PROXY="" \
               -e HTTPS_PROXY="" \
               ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_REPO }}:${{ steps.set_env.outputs.IMAGE_TAG }}
+
+            # 清理未使用镜像，避免磁盘占满导致 Nginx 代理静态资源异常中断
+            docker image prune -af || true
+            docker builder prune -af || true
+            docker system df || true

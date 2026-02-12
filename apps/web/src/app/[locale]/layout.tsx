@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { NextIntlClientProvider } from 'next-intl';
@@ -138,8 +136,6 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 flex flex-col`}
       >
         <GoogleAnalytics />
-        <Analytics />
-        <SpeedInsights />
         <NextIntlClientProvider messages={messages}>
           <AlertProvider>
             <CreditsProvider>

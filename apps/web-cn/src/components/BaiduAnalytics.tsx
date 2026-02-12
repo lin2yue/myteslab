@@ -12,12 +12,11 @@ export function BaiduAnalytics() {
   const BAIDU_ID = process.env.NEXT_PUBLIC_BAIDU_ANALYTICS_ID
 
   // 如果没有配置 ID,不渲染
-  if (!BAIDU_ID) {
-    console.warn('[Baidu Analytics] NEXT_PUBLIC_BAIDU_ANALYTICS_ID not configured')
+  const isPlaceholderValue = BAIDU_ID === 'NEXT_PUBLIC_BAIDU_ANALYTICS_ID'
+  if (!BAIDU_ID || isPlaceholderValue) {
+    console.warn('[Baidu Analytics] NEXT_PUBLIC_BAIDU_ANALYTICS_ID is missing or invalid')
     return null
   }
-
-  console.log('[Baidu Analytics] Initializing with ID:', BAIDU_ID)
 
   return (
     <Script id="baidu-analytics" strategy="afterInteractive">
