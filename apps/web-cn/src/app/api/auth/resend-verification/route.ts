@@ -27,7 +27,11 @@ export async function POST(req: Request) {
         await updateVerificationToken(user.id, newToken);
 
         // 发送邮件
-        await sendActivationEmail(email, newToken);
+        const mailResult = await sendActivationEmail(email, newToken);
+        if (!mailResult.success) {
+            console.error('[Auth] Resend email failed:', mailResult.error);
+            return NextResponse.json({ error: 'Failed to send verification email' }, { status: 502 });
+        }
 
         return NextResponse.json({ success: true, message: 'Verification email resent.' });
 

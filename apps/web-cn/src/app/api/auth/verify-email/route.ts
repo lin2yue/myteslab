@@ -16,7 +16,7 @@ export async function GET(req: Request) {
         if (!user) {
             // 可能是令牌无效或已过期 (24小时)
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tewan.club';
-            return NextResponse.redirect(`${appUrl}/zh/auth/verify-error`);
+            return NextResponse.redirect(`${appUrl}/auth/verify-error`);
         }
 
         // 验证成功，自动为用户创建会话并登录
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
         // 验证成功，跳转到验证成功页
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tewan.club';
-        return NextResponse.redirect(`${appUrl}/zh/auth/verify-success`);
+        return NextResponse.redirect(`${appUrl}/auth/verify-success`);
 
     } catch (error) {
         console.error('[Auth] Verification error:', error);

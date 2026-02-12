@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSession } from '@/lib/auth/session';
 import { createUser, findUserByWechatOpenId, linkWechatIdentity } from '@/lib/auth/users';
+import { normalizeNextPath } from '@/lib/auth/redirect';
 
 type AccessTokenResponse = {
     access_token?: string;
@@ -31,16 +32,15 @@ export async function GET(request: Request) {
     const appSecret = process.env.WECHAT_APP_SECRET;
 
     if (!code || !state || !appId || !appSecret) {
-        return NextResponse.redirect(new URL('/zh/login?error=wechat_invalid', request.url));
+        return NextResponse.redirect(new URL('/login?error=wechat_invalid', request.url));
     }
 
     const cookieStore = await cookies();
     const storedState = cookieStore.get('wechat_oauth_state')?.value;
-    const nextRaw = cookieStore.get('wechat_oauth_next')?.value || '/';
-    const next = nextRaw.startsWith('/') ? nextRaw : '/';
+    const next = normalizeNextPath(cookieStore.get('wechat_oauth_next')?.value, '/');
 
     if (!storedState || storedState !== state) {
-        return NextResponse.redirect(new URL('/zh/login?error=wechat_state', request.url));
+        return NextResponse.redirect(new URL('/login?error=wechat_state', request.url));
     }
 
     cookieStore.set('wechat_oauth_state', '', { path: '/', maxAge: 0 });
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 
     if (!tokenData.access_token || !tokenData.openid) {
         console.error('[wechat] access_token error', tokenData);
-        return NextResponse.redirect(new URL('/zh/login?error=wechat_token', request.url));
+        return NextResponse.redirect(new URL('/login?error=wechat_token', request.url));
     }
 
     const infoUrl = new URL('https://api.weixin.qq.com/sns/userinfo');
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 
     if (!infoData.openid) {
         console.error('[wechat] userinfo error', infoData);
-        return NextResponse.redirect(new URL('/zh/login?error=wechat_user', request.url));
+        return NextResponse.redirect(new URL('/login?error=wechat_user', request.url));
     }
 
     let user = await findUserByWechatOpenId(infoData.openid);
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
     }
 
     if (!user) {
-        return NextResponse.redirect(new URL('/zh/login?error=wechat_user_create', request.url));
+        return NextResponse.redirect(new URL('/login?error=wechat_user_create', request.url));
     }
 
     await createSession(user.id);

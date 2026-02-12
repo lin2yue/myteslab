@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations, useLocale } from '@/lib/i18n';
+import { useTranslations } from '@/lib/i18n';
 import { useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { login, signup, resendVerificationAction } from './actions';
@@ -9,13 +9,13 @@ import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff, QrCode } from 'lucide-re
 import { useAlert } from '@/components/alert/AlertProvider';
 import WechatScan from '@/components/auth/WechatScan';
 import { ShieldCheck } from 'lucide-react';
+import { normalizeNextPath } from '@/lib/auth/redirect';
 
 type AuthMode = 'LOGIN' | 'SIGNUP';
 
 export default function LoginForm() {
     const t = useTranslations('Login');
     const alert = useAlert();
-    const locale = useLocale();
     const searchParams = useSearchParams();
 
     // UI State
@@ -34,11 +34,18 @@ export default function LoginForm() {
     const [isPending, startTransition] = useTransition();
 
     const getNext = () => {
-        let next = searchParams.get('next');
-        if (!next && typeof window !== 'undefined') {
-            next = localStorage.getItem('auth_redirect_next');
+        const queryNext = searchParams.get('next');
+
+        if (queryNext) {
+            return normalizeNextPath(queryNext, '/');
         }
-        return next || `/${locale}`;
+
+        if (typeof window !== 'undefined') {
+            const storedNext = localStorage.getItem('auth_redirect_next');
+            return normalizeNextPath(storedNext, '/');
+        }
+
+        return '/';
     };
 
     const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -100,7 +107,7 @@ export default function LoginForm() {
             } else {
                 setError(result.error || '重发失败');
             }
-        } catch (e) {
+        } catch {
             setError('网络错误');
         } finally {
             setIsResending(false);

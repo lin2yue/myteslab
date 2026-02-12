@@ -3,16 +3,17 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { randomBytes } from 'crypto';
+import { normalizeNextPath } from '@/lib/auth/redirect';
 
 export async function GET(request: Request) {
     const url = new URL(request.url);
-    const next = url.searchParams.get('next') || '/';
+    const next = normalizeNextPath(url.searchParams.get('next'), '/');
 
     const appId = process.env.WECHAT_APP_ID;
     const appSecret = process.env.WECHAT_APP_SECRET;
 
     if (!appId || !appSecret) {
-        return NextResponse.redirect(new URL(`/zh/login?error=wechat_not_configured`, request.url));
+        return NextResponse.redirect(new URL('/login?error=wechat_not_configured', request.url));
     }
 
     const state = randomBytes(16).toString('hex');

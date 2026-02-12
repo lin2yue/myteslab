@@ -67,9 +67,22 @@ export async function signup(formData: FormData) {
 
     // 发送激活邮件
     try {
-        await sendActivationEmail(email, verificationToken);
+        const mailResult = await sendActivationEmail(email, verificationToken);
+        if (!mailResult.success) {
+            console.error('[signup] Failed to send email:', mailResult.error);
+            return {
+                success: true,
+                requiresVerification: true,
+                message: '注册成功，但激活邮件发送失败，请稍后使用“重发激活邮件”重试'
+            };
+        }
     } catch (err) {
         console.error('[signup] Failed to send email:', err);
+        return {
+            success: true,
+            requiresVerification: true,
+            message: '注册成功，但激活邮件发送失败，请稍后使用“重发激活邮件”重试'
+        };
     }
 
     return {
@@ -92,7 +105,10 @@ export async function resendVerificationAction(email: string) {
     const newToken = crypto.randomBytes(32).toString('hex');
     const { updateVerificationToken } = await import('@/lib/auth/users');
     await updateVerificationToken(user.id, newToken);
-    await sendActivationEmail(email, newToken);
+    const mailResult = await sendActivationEmail(email, newToken);
+    if (!mailResult.success) {
+        return { success: false, error: '激活邮件发送失败，请稍后重试' };
+    }
 
     return { success: true, message: '验证邮件已重发' };
 }
