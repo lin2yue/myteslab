@@ -118,6 +118,7 @@ jobs:
               -e GEMINI_RETRY_BASE_MS="${{ secrets.GEMINI_RETRY_BASE_MS }}" \
               -e GEMINI_RETRY_MAX_MS="${{ secrets.GEMINI_RETRY_MAX_MS }}" \
               -e GEMINI_PROMPT_VERSION="${{ secrets.GEMINI_PROMPT_VERSION }}" \
+              -e GEMINI_IMAGE_USE_SYSTEM_INSTRUCTION="1" \
               -e WECHAT_MP_APP_ID="${{ secrets.WECHAT_MP_APP_ID }}" \
               -e WECHAT_MP_APP_SECRET="${{ secrets.WECHAT_MP_APP_SECRET }}" \
               -e WECHAT_MP_TOKEN="${{ secrets.WECHAT_MP_TOKEN }}" \

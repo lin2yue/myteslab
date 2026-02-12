@@ -1,4 +1,10 @@
-import { buildWrapPrompt, getPromptVersionFromEnv } from './prompts';
+import {
+    buildWrapPrompt,
+    getPromptVersionFromEnv,
+    buildMaskHardConstraintSnippet,
+    buildFinalMaskCheckReminder,
+    buildImageGenerationSystemInstruction
+} from './prompts';
 import { getMaskDimensions } from './mask-config';
 import dns from 'dns';
 
@@ -420,6 +426,12 @@ export async function generateWrapTexture(
             version: promptVersion,
             outputSize: { width: maskDimensions.width, height: maskDimensions.height }
         });
+        const maskHardConstraintSnippet = buildMaskHardConstraintSnippet({
+            outputSize: { width: maskDimensions.width, height: maskDimensions.height }
+        });
+        const finalMaskCheckReminder = buildFinalMaskCheckReminder();
+        const useImageSystemInstruction = (process.env.GEMINI_IMAGE_USE_SYSTEM_INSTRUCTION || '').trim() === '1';
+        const imageSystemInstruction = buildImageGenerationSystemInstruction();
 
         const primaryModel = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
         if (!primaryModel) {
@@ -438,8 +450,8 @@ export async function generateWrapTexture(
         const buildParts = (promptValue: string) => {
             const built: any[] = [];
 
-            // Keep request layout aligned with main branch behavior:
-            // mask first, then prompt text, then references.
+            // Keep request layout explicit:
+            // mask first, then prompt text, then references, then final mask reminder.
             if (maskImageBase64) {
                 const cleanMaskBase64 = maskImageBase64.includes('base64,')
                     ? maskImageBase64.split('base64,')[1]
@@ -465,7 +477,44 @@ export async function generateWrapTexture(
                     });
                 });
             }
+
+            built.push({ text: finalMaskCheckReminder });
             return built;
+        };
+        const buildRequestPayload = (promptValue: string) => {
+            const payload: any = {
+                contents: [{ role: 'user', parts: buildParts(promptValue) }],
+                generationConfig: {
+                    // Follow Gemini API docs: modality enum values are uppercase in REST payload.
+                    responseModalities: ['IMAGE'],
+                    candidateCount: 1,
+                    imageConfig: {
+                        aspectRatio: maskDimensions.aspectRatio,
+                        ...(imageSize ? { imageSize } : {})
+                    }
+                },
+            };
+
+            if (useImageSystemInstruction) {
+                payload.systemInstruction = {
+                    parts: [{ text: imageSystemInstruction }]
+                };
+            }
+
+            return payload;
+        };
+        const buildRetryPrompt = (mode: 'fallback' | 'rescue') => {
+            const modeHint = mode === 'rescue'
+                ? 'RESCUE MODE: model did not return a valid image. Keep constraints strict and simplify visual complexity.'
+                : 'FALLBACK MODE: keep theme intent while prioritizing boundary compliance and print-ready output.';
+
+            return [
+                `TASK: Create a print-ready automotive wrap texture for ${modelName}.`,
+                modeHint,
+                maskHardConstraintSnippet,
+                `Theme Request: "${prompt}"`,
+                'No text, logos, watermark, UI, or letters.'
+            ].join('\n\n');
         };
 
         const imageTimeoutMs = readEnvInt('GEMINI_IMAGE_TIMEOUT_MS', 60000);
@@ -479,7 +528,7 @@ export async function generateWrapTexture(
         const generationStartedAt = Date.now();
 
         try {
-            const fallbackPrompt = `Create a clean, high-contrast, print-ready automotive wrap texture for ${modelName}. Theme: ${prompt}. No text, logos, watermark, UI, or letters.`;
+            const fallbackPrompt = buildRetryPrompt('fallback');
             const promptVariants = enableFallbackPrompt
                 ? [textPrompt, fallbackPrompt].filter((v, i, arr) => arr.indexOf(v) === i)
                 : [textPrompt];
@@ -519,18 +568,7 @@ export async function generateWrapTexture(
                             'Content-Type': 'application/json',
                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                         },
-                        body: JSON.stringify({
-                            contents: [{ role: 'user', parts: buildParts(promptToUse) }],
-                            generationConfig: {
-                                // Follow Gemini API docs: modality enum values are uppercase in REST payload.
-                                responseModalities: ['IMAGE'],
-                                candidateCount: 1,
-                                imageConfig: {
-                                    aspectRatio: maskDimensions.aspectRatio,
-                                    ...(imageSize ? { imageSize } : {})
-                                }
-                            },
-                        }),
+                        body: JSON.stringify(buildRequestPayload(promptToUse)),
                         timeoutMs: imageTimeoutMs,
                         maxRetries: imageMaxRetries,
                         retryBaseMs,
@@ -611,7 +649,7 @@ export async function generateWrapTexture(
                         };
                     }
                     await sleep(700 * (round + 1));
-                    const rescuePrompt = `Create a clear automotive wrap texture for ${modelName}. Theme: ${prompt}. Return image only. Keep outside mask black. No text or logos.`;
+                    const rescuePrompt = buildRetryPrompt('rescue');
                     console.warn(`[AI-GEN] [${VERSION}] No-image rescue round ${round + 1}/${noImageRetryRounds}`);
                     for (const model of modelCandidates) {
                         if (Date.now() - generationStartedAt > maxTotalMs) {
@@ -635,17 +673,7 @@ export async function generateWrapTexture(
                                 'Content-Type': 'application/json',
                                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                             },
-                            body: JSON.stringify({
-                                contents: [{ role: 'user', parts: buildParts(rescuePrompt) }],
-                                generationConfig: {
-                                    responseModalities: ['IMAGE'],
-                                    candidateCount: 1,
-                                    imageConfig: {
-                                        aspectRatio: maskDimensions.aspectRatio,
-                                        ...(imageSize ? { imageSize } : {})
-                                    }
-                                },
-                            }),
+                            body: JSON.stringify(buildRequestPayload(rescuePrompt)),
                             timeoutMs: imageTimeoutMs,
                             maxRetries: imageMaxRetries,
                             retryBaseMs,

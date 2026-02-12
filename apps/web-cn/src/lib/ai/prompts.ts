@@ -14,6 +14,27 @@ function isPatternPrompt(userPrompt: string): boolean {
   return /pattern|texture|camo|camouflage|carbon|geometric|stripe|gradient|wave|abstract|seamless|repeat/i.test(userPrompt);
 }
 
+const PRIORITY_ORDER = `
+────────────────────────────────
+PRIORITY ORDER (STRICT)
+────────────────────────────────
+1) Mask boundary integrity
+2) Output format and resolution requirements
+3) Reference style transfer
+4) Creativity and decoration
+If any conflict occurs, obey higher-priority rules first.
+`.trim();
+
+const IMAGE_ROLE_BINDING = `
+────────────────────────────────
+INPUT IMAGE ROLES
+────────────────────────────────
+- Image #1 = UV mask (hard boundary, immutable layout).
+- Image #2..N (if any) = reference style only.
+- References can influence color palette, brushwork, texture feel, lighting mood.
+- References MUST NOT override composition, subject placement, or panel layout.
+`.trim();
+
 const BASE_SYSTEM_PROMPT = `
 You are a professional automotive wrap designer.
 Create finished wrap artwork for a real vehicle using the provided UV mask.
@@ -61,6 +82,7 @@ const REFERENCES = `
 REFERENCES
 ────────────────────────────────
 If reference images are provided, use them for style, color palette, mood, or thematic inspiration.
+Never copy or transfer exact composition, focal placement, or panel positioning from references.
 `.trim();
 
 const OUTPUT_REQUIREMENTS = (width: number, height: number) => `
@@ -85,6 +107,48 @@ REAR COVERAGE & LICENSE PLATE SAFE AREA (IMPORTANT)
   If using a hero element, keep it on side doors/hood; the rear plate area should stay low-detail.
 `.trim();
 
+const FINAL_MASK_CHECK = `
+────────────────────────────────
+FINAL MASK CHECK (MANDATORY)
+────────────────────────────────
+- Any non-black pixel outside white mask islands = FAILURE.
+- Any obvious blank area inside white mask islands = FAILURE.
+- Panel edges must be crisp and pixel-aligned to the mask boundary.
+`.trim();
+
+export function buildMaskHardConstraintSnippet(params?: {
+  outputSize?: { width: number; height: number };
+}): string {
+  const width = params?.outputSize?.width ?? 1024;
+  const height = params?.outputSize?.height ?? 1024;
+
+  const blocks = [
+    PRIORITY_ORDER,
+    IMAGE_ROLE_BINDING,
+    BASE_SYSTEM_PROMPT,
+    OUTPUT_REQUIREMENTS(width, height),
+    FINAL_MASK_CHECK,
+  ];
+
+  return blocks.join('\n\n').trim();
+}
+
+export function buildFinalMaskCheckReminder(): string {
+  return `FINAL MASK CHECK:
+- Keep all non-black content strictly inside white mask islands.
+- Keep outside-mask background pure #000000.
+- Do not transfer composition or subject placement from references.`;
+}
+
+export function buildImageGenerationSystemInstruction(): string {
+  return [
+    'You are an automotive wrap generation engine.',
+    'Never violate mask boundary rules.',
+    'If user request or references conflict with mask boundaries, obey mask boundaries.',
+    'Prefer complete, panel-aligned coverage with clean edges.',
+  ].join(' ');
+}
+
 export function buildWrapPrompt(params: {
   userPrompt: string;
   modelName: string;
@@ -98,6 +162,8 @@ export function buildWrapPrompt(params: {
   const height = outputSize?.height ?? 1024;
 
   const sections = [
+    PRIORITY_ORDER,
+    IMAGE_ROLE_BINDING,
     BASE_SYSTEM_PROMPT,
     DESIGN_MODE_PROMPT(isPattern),
     AUTO_WRAP_GUIDELINES,
@@ -105,6 +171,7 @@ export function buildWrapPrompt(params: {
     STYLE_QUALITY,
     REFERENCES,
     OUTPUT_REQUIREMENTS(width, height),
+    FINAL_MASK_CHECK,
     `Model: ${modelName}`,
     `User Request: "${userPrompt}"`,
   ].filter(Boolean);
