@@ -237,27 +237,10 @@ export default function AIGeneratorMain({
         return effectiveUrl;
     }, [cdnUrl])
 
-    const getInitialModel = () => {
-        if (typeof window === 'undefined') return sortedModels[0]?.slug || 'cybertruck'
-
-        const params = new URLSearchParams(window.location.search)
-        if (params.get('regenFromWrap') === '1') {
-            const targetModel = params.get('targetModel')
-            if (targetModel && sortedModels.some(m => m.slug === targetModel)) {
-                return targetModel
-            }
-        }
-
-        const savedModel = localStorage.getItem('ai_generator_last_model')
-        if (savedModel && sortedModels.some(m => m.slug === savedModel)) {
-            return savedModel
-        }
-
-        return sortedModels[0]?.slug || 'cybertruck'
-    }
+    const initialModelSlug = sortedModels[0]?.slug || 'cybertruck'
 
     const { balance, setBalance, refresh: refreshCredits } = useCredits()
-    const [selectedModel, setSelectedModel] = useState(getInitialModel)
+    const [selectedModel, setSelectedModel] = useState(initialModelSlug)
     const [prompt, setPrompt] = useState('')
     const [activeMode, setActiveMode] = useState<'ai' | 'diy'>('ai')
     const [isGenerating, setIsGenerating] = useState(false)

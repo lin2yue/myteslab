@@ -7,6 +7,11 @@ type TaskStepRecord = {
     reason?: unknown;
     maskUrl?: unknown;
     assembledPrompt?: unknown;
+    requestPayload?: unknown;
+    requestModel?: unknown;
+    requestMode?: unknown;
+    requestApiUrl?: unknown;
+    requestAttempt?: unknown;
 };
 
 type TaskRow = Record<string, unknown> & {
@@ -15,13 +20,34 @@ type TaskRow = Record<string, unknown> & {
     profile_email?: string | null;
 };
 
-function extractTaskInputArtifacts(steps: unknown): { maskUrl: string | null; assembledPrompt: string | null } {
+function extractTaskInputArtifacts(steps: unknown): {
+    maskUrl: string | null;
+    assembledPrompt: string | null;
+    geminiRequestPayload: Record<string, unknown> | null;
+    geminiRequestModel: string | null;
+    geminiRequestMode: string | null;
+    geminiRequestApiUrl: string | null;
+    geminiRequestAttempt: number | null;
+} {
     if (!Array.isArray(steps)) {
-        return { maskUrl: null, assembledPrompt: null };
+        return {
+            maskUrl: null,
+            assembledPrompt: null,
+            geminiRequestPayload: null,
+            geminiRequestModel: null,
+            geminiRequestMode: null,
+            geminiRequestApiUrl: null,
+            geminiRequestAttempt: null
+        };
     }
 
     let maskUrl: string | null = null;
     let assembledPrompt: string | null = null;
+    let geminiRequestPayload: Record<string, unknown> | null = null;
+    let geminiRequestModel: string | null = null;
+    let geminiRequestMode: string | null = null;
+    let geminiRequestApiUrl: string | null = null;
+    let geminiRequestAttempt: number | null = null;
 
     for (let i = steps.length - 1; i >= 0; i -= 1) {
         const step = steps[i] as TaskStepRecord;
@@ -43,10 +69,43 @@ function extractTaskInputArtifacts(steps: unknown): { maskUrl: string | null; as
             assembledPrompt = step.reason.trim();
         }
 
-        if (maskUrl && assembledPrompt) break;
+        if (!geminiRequestPayload && step.requestPayload && typeof step.requestPayload === 'object' && !Array.isArray(step.requestPayload)) {
+            geminiRequestPayload = step.requestPayload as Record<string, unknown>;
+        }
+
+        if (!geminiRequestModel && typeof step.requestModel === 'string' && step.requestModel.trim()) {
+            geminiRequestModel = step.requestModel.trim();
+        }
+        if (!geminiRequestMode && typeof step.requestMode === 'string' && step.requestMode.trim()) {
+            geminiRequestMode = step.requestMode.trim();
+        }
+        if (!geminiRequestApiUrl && typeof step.requestApiUrl === 'string' && step.requestApiUrl.trim()) {
+            geminiRequestApiUrl = step.requestApiUrl.trim();
+        }
+        if (!geminiRequestAttempt && typeof step.requestAttempt === 'number' && Number.isFinite(step.requestAttempt)) {
+            geminiRequestAttempt = step.requestAttempt;
+        }
+
+        if (
+            maskUrl
+            && assembledPrompt
+            && geminiRequestPayload
+            && geminiRequestModel
+            && geminiRequestMode
+            && geminiRequestApiUrl
+            && geminiRequestAttempt
+        ) break;
     }
 
-    return { maskUrl, assembledPrompt };
+    return {
+        maskUrl,
+        assembledPrompt,
+        geminiRequestPayload,
+        geminiRequestModel,
+        geminiRequestMode,
+        geminiRequestApiUrl,
+        geminiRequestAttempt
+    };
 }
 
 export async function GET(request: Request) {
@@ -77,6 +136,11 @@ export async function GET(request: Request) {
             ...row,
             mask_url: artifacts.maskUrl,
             assembled_prompt: artifacts.assembledPrompt,
+            gemini_request_payload: artifacts.geminiRequestPayload,
+            gemini_request_model: artifacts.geminiRequestModel,
+            gemini_request_mode: artifacts.geminiRequestMode,
+            gemini_request_api_url: artifacts.geminiRequestApiUrl,
+            gemini_request_attempt: artifacts.geminiRequestAttempt,
             profiles: row.profile_display_name || row.profile_email ? {
                 display_name: row.profile_display_name,
                 email: row.profile_email,

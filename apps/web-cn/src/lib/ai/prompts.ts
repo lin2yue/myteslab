@@ -1,6 +1,7 @@
 // Centralized, versioned prompts for AI wrap generation
 
 export type PromptVersion = 'v1' | 'v2';
+export type PromptControlMode = 'minimal' | 'strict';
 
 const DEFAULT_PROMPT_VERSION: PromptVersion = 'v2';
 
@@ -8,6 +9,11 @@ function normalizeVersion(input?: string): PromptVersion {
   const v = (input || '').trim().toLowerCase();
   if (v === 'v1' || v === 'v2') return v;
   return DEFAULT_PROMPT_VERSION;
+}
+
+function normalizeControlMode(input?: string): PromptControlMode {
+  const v = (input || '').trim().toLowerCase();
+  return v === 'strict' ? 'strict' : 'minimal';
 }
 
 function isPatternPrompt(userPrompt: string): boolean {
@@ -116,6 +122,8 @@ FINAL MASK CHECK (MANDATORY)
 - Panel edges must be crisp and pixel-aligned to the mask boundary.
 `.trim();
 
+const PRIMARY_ELEMENT_PLACEMENT = 'If using a primary element, place it on side doors/hood; keep the rear license plate area low-detail, and keep reverse orientation.';
+
 export function buildMaskHardConstraintSnippet(params?: {
   outputSize?: { width: number; height: number };
 }): string {
@@ -142,11 +150,28 @@ export function buildFinalMaskCheckReminder(): string {
 
 export function buildImageGenerationSystemInstruction(): string {
   return [
-    'You are an automotive wrap generation engine.',
-    'Never violate mask boundary rules.',
-    'If user request or references conflict with mask boundaries, obey mask boundaries.',
-    'Prefer complete, panel-aligned coverage with clean edges.',
+    'Generate automotive wrap texture on provided UV mask.',
+    'Only draw inside white/light-gray mask areas.',
+    'Outside mask must stay pure #000000.',
+    'Use reference images (if any) for style inspiration.',
+    'Front is bottom, rear is top.',
   ].join(' ');
+}
+
+function buildMinimalWrapPrompt(userPrompt: string, hasReferences: boolean): string {
+  const cleanPrompt = userPrompt.trim() || 'Create a print-ready automotive wrap texture for the selected model.';
+  const lines = [
+    'Create artwork on the car 3D model UV map, painting only the white regions.',
+    `User prompt: ${cleanPrompt}`,
+    'Orientation: front at the bottom, rear at the top.',
+    PRIMARY_ELEMENT_PLACEMENT,
+  ];
+
+  if (hasReferences) {
+    lines.splice(1, 0, 'Use attached reference images for style guidance only; do not transfer composition or subject placement.');
+  }
+
+  return lines.join('\n');
 }
 
 export function buildWrapPrompt(params: {
@@ -154,8 +179,14 @@ export function buildWrapPrompt(params: {
   modelName: string;
   version?: string;
   outputSize?: { width: number; height: number };
+  hasReferences?: boolean;
 }): string {
-  const { userPrompt, modelName, version, outputSize } = params;
+  const { userPrompt, modelName, version, outputSize, hasReferences = false } = params;
+  const controlMode = normalizeControlMode(process.env.GEMINI_PROMPT_CONTROL_MODE);
+  if (controlMode === 'minimal') {
+    return buildMinimalWrapPrompt(userPrompt, hasReferences);
+  }
+
   const promptVersion = normalizeVersion(version);
   const isPattern = isPatternPrompt(userPrompt);
   const width = outputSize?.width ?? 1024;
@@ -174,6 +205,7 @@ export function buildWrapPrompt(params: {
     FINAL_MASK_CHECK,
     `Model: ${modelName}`,
     `User Request: "${userPrompt}"`,
+    PRIMARY_ELEMENT_PLACEMENT,
   ].filter(Boolean);
 
   return sections.join('\n\n').trim();
@@ -181,4 +213,8 @@ export function buildWrapPrompt(params: {
 
 export function getPromptVersionFromEnv(): PromptVersion {
   return normalizeVersion(process.env.GEMINI_PROMPT_VERSION);
+}
+
+export function getPromptControlModeFromEnv(): PromptControlMode {
+  return normalizeControlMode(process.env.GEMINI_PROMPT_CONTROL_MODE);
 }

@@ -2,8 +2,6 @@ import {
     buildWrapPrompt,
     getPromptVersionFromEnv,
     buildMaskHardConstraintSnippet,
-    buildFinalMaskCheckReminder,
-    buildImageGenerationSystemInstruction
 } from './prompts';
 import { getMaskDimensions } from './mask-config';
 import dns from 'dns';
@@ -90,6 +88,8 @@ interface GenerateWrapParams {
     referenceImagesBase64?: string[];
 }
 
+type RequestPartsLayoutMode = 'mask_first' | 'legacy';
+
 export type PromptRetryFailureSignal = {
     errorCode?: string;
     promptBlockReason?: string | null;
@@ -121,6 +121,11 @@ export interface GenerateWrapResult {
     promptBlockReason?: string | null;
     responseId?: string | null;
     modelVersion?: string | null;
+    requestPayload?: Record<string, unknown>;
+    requestModel?: string | null;
+    requestMode?: 'uri' | 'inline';
+    requestApiUrl?: string | null;
+    requestAttempt?: number;
 }
 
 type ParsedGeminiResult = {
@@ -281,6 +286,80 @@ function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttp
         responseId,
         modelVersion,
     };
+}
+
+function resolveRequestPartsLayoutMode(): RequestPartsLayoutMode {
+    const raw = (process.env.GEMINI_IMAGE_PARTS_LAYOUT || '').trim().toLowerCase();
+    return raw === 'legacy' ? 'legacy' : 'mask_first';
+}
+
+function buildRequestTextWithInputContract(params: {
+    prompt: string;
+}): string {
+    return params.prompt.trim();
+}
+
+function summarizeRequestPartKinds(parts: any[]): string {
+    return parts.map((part) => {
+        if (part?.fileData) return 'fileData';
+        if (part?.inlineData) return 'inlineData';
+        if (typeof part?.text === 'string') return 'text';
+        return 'unknown';
+    }).join(' > ');
+}
+
+function sanitizeGeminiRequestPayload(payload: any): Record<string, unknown> {
+    const sanitizePart = (part: any): Record<string, unknown> => {
+        if (!part || typeof part !== 'object') return {};
+
+        if (part.fileData && typeof part.fileData === 'object') {
+            return {
+                fileData: {
+                    mimeType: part.fileData.mimeType,
+                    fileUri: part.fileData.fileUri
+                }
+            };
+        }
+
+        if (part.inlineData && typeof part.inlineData === 'object') {
+            const rawData = typeof part.inlineData.data === 'string' ? part.inlineData.data : '';
+            return {
+                inlineData: {
+                    mimeType: part.inlineData.mimeType,
+                    data: `<base64_omitted:${rawData.length}_chars>`
+                }
+            };
+        }
+
+        if (typeof part.text === 'string') {
+            return { text: part.text };
+        }
+
+        return { ...part };
+    };
+
+    const safePayload: Record<string, unknown> = {};
+
+    if (Array.isArray(payload?.contents)) {
+        safePayload.contents = payload.contents.map((content: any) => ({
+            ...(typeof content?.role === 'string' ? { role: content.role } : {}),
+            parts: Array.isArray(content?.parts) ? content.parts.map(sanitizePart) : []
+        }));
+    }
+
+    if (payload?.systemInstruction && typeof payload.systemInstruction === 'object') {
+        safePayload.systemInstruction = {
+            parts: Array.isArray(payload.systemInstruction.parts)
+                ? payload.systemInstruction.parts.map(sanitizePart)
+                : []
+        };
+    }
+
+    if (payload?.generationConfig && typeof payload.generationConfig === 'object') {
+        safePayload.generationConfig = payload.generationConfig;
+    }
+
+    return safePayload;
 }
 
 function extractInlineImagePart(payload: any): { mimeType: string; data: string } | null {
@@ -451,6 +530,20 @@ export async function generateWrapTexture(
 
     const maskDimensions = getMaskDimensions(modelSlug);
     let textPrompt = '';
+    let lastRequestPayload: Record<string, unknown> | null = null;
+    let lastRequestModel: string | null = null;
+    let lastRequestMode: 'uri' | 'inline' | null = null;
+    let lastRequestApiUrl: string | null = null;
+    let lastRequestAttempt = 0;
+
+    const withRequestDebug = (result: GenerateWrapResult): GenerateWrapResult => ({
+        ...result,
+        ...(lastRequestPayload ? { requestPayload: lastRequestPayload } : {}),
+        ...(lastRequestModel ? { requestModel: lastRequestModel } : {}),
+        ...(lastRequestMode ? { requestMode: lastRequestMode } : {}),
+        ...(lastRequestApiUrl ? { requestApiUrl: lastRequestApiUrl } : {}),
+        ...(lastRequestAttempt > 0 ? { requestAttempt: lastRequestAttempt } : {}),
+    });
 
     try {
         const apiKey = (process.env.GEMINI_API_KEY || '').trim();
@@ -459,18 +552,21 @@ export async function generateWrapTexture(
         }
 
         const promptVersion = getPromptVersionFromEnv();
+        const hasReferenceInputs = Boolean(
+            (referenceImageUrls || []).some((url) => typeof url === 'string' && url.trim())
+            || (referenceImagesBase64 || []).some((image) => typeof image === 'string' && image.trim())
+        );
         textPrompt = buildWrapPrompt({
             userPrompt: prompt,
             modelName,
             version: promptVersion,
-            outputSize: { width: maskDimensions.width, height: maskDimensions.height }
+            outputSize: { width: maskDimensions.width, height: maskDimensions.height },
+            hasReferences: hasReferenceInputs
         });
         const maskHardConstraintSnippet = buildMaskHardConstraintSnippet({
             outputSize: { width: maskDimensions.width, height: maskDimensions.height }
         });
-        const finalMaskCheckReminder = buildFinalMaskCheckReminder();
-        const useImageSystemInstruction = (process.env.GEMINI_IMAGE_USE_SYSTEM_INSTRUCTION || '').trim() === '1';
-        const imageSystemInstruction = buildImageGenerationSystemInstruction();
+        const requestPartsLayoutMode = resolveRequestPartsLayoutMode();
 
         const primaryModel = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
         if (!primaryModel) {
@@ -513,13 +609,11 @@ export async function generateWrapTexture(
         };
 
         const buildParts = async (promptValue: string, mode: 'uri' | 'inline') => {
-            const built: any[] = [];
-
-            // Request layout: text + mask + references
-            built.push({ text: promptValue });
+            const maskParts: any[] = [];
+            const referenceParts: any[] = [];
 
             if (mode === 'uri' && maskImageUrl) {
-                built.push({
+                maskParts.push({
                     fileData: {
                         mimeType: 'image/png',
                         fileUri: maskImageUrl
@@ -530,7 +624,7 @@ export async function generateWrapTexture(
                     ? maskImageBase64.split('base64,')[1]
                     : maskImageBase64;
 
-                built.push({
+                maskParts.push({
                     inlineData: {
                         mimeType: 'image/png',
                         data: cleanMaskBase64
@@ -540,7 +634,7 @@ export async function generateWrapTexture(
 
             if (mode === 'uri') {
                 for (const refUrl of normalizedReferenceImageUrls) {
-                    built.push({
+                    referenceParts.push({
                         fileData: {
                             mimeType: inferMimeTypeFromUrl(refUrl),
                             fileUri: refUrl
@@ -559,7 +653,7 @@ export async function generateWrapTexture(
 
             if (inlineRefs.length > 0) {
                 inlineRefs.forEach((base64) => {
-                    built.push({
+                    referenceParts.push({
                         inlineData: {
                             mimeType: 'image/jpeg',
                             data: base64
@@ -568,8 +662,23 @@ export async function generateWrapTexture(
                 });
             }
 
-            built.push({ text: finalMaskCheckReminder });
-            return built;
+            if (requestPartsLayoutMode === 'legacy') {
+                return [
+                    { text: promptValue },
+                    ...maskParts,
+                    ...referenceParts
+                ];
+            }
+
+            const contractPrompt = buildRequestTextWithInputContract({
+                prompt: promptValue
+            });
+
+            return [
+                ...maskParts,
+                { text: contractPrompt },
+                ...referenceParts
+            ];
         };
         const buildRequestPayload = async (promptValue: string, mode: 'uri' | 'inline') => {
             const payload: any = {
@@ -584,12 +693,6 @@ export async function generateWrapTexture(
                     }
                 },
             };
-
-            if (useImageSystemInstruction) {
-                payload.systemInstruction = {
-                    parts: [{ text: imageSystemInstruction }]
-                };
-            }
 
             return payload;
         };
@@ -612,6 +715,7 @@ export async function generateWrapTexture(
         const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
         const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
         const imageSize = (process.env.GEMINI_IMAGE_SIZE || '').trim();
+        const logRequestParts = (process.env.GEMINI_LOG_REQUEST_PARTS || '').trim() === '1';
         const noImageRetryRounds = Math.min(readEnvInt('GEMINI_NO_IMAGE_RETRY_ROUNDS', 0), 3);
         const maxTotalMs = readEnvInt('GEMINI_IMAGE_MAX_TOTAL_MS', 65000);
         const enableFallbackPrompt = (process.env.GEMINI_ENABLE_FALLBACK_PROMPT || '').trim() === '1';
@@ -636,7 +740,7 @@ export async function generateWrapTexture(
 
                 for (let promptIndex = 0; promptIndex < promptVariants.length; promptIndex += 1) {
                     if (Date.now() - generationStartedAt > maxTotalMs) {
-                        return {
+                        return withRequestDebug({
                             success: false,
                             error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
                             errorCode: 'timeout',
@@ -646,7 +750,7 @@ export async function generateWrapTexture(
                             promptBlockReason: lastPromptBlockReason,
                             responseId: lastResponseId,
                             modelVersion: lastModelVersion
-                        };
+                        });
                     }
                     const promptToUse = promptVariants[promptIndex];
                     const isRetryAttempt = modelIndex > 0 || promptIndex > 0;
@@ -656,6 +760,15 @@ export async function generateWrapTexture(
 
                     while (true) {
                         const payload = await buildRequestPayload(promptToUse, mode);
+                        lastRequestAttempt += 1;
+                        lastRequestPayload = sanitizeGeminiRequestPayload(payload);
+                        lastRequestModel = model;
+                        lastRequestMode = mode;
+                        lastRequestApiUrl = currentGeminiApiUrl;
+                        if (logRequestParts) {
+                            const parts = payload?.contents?.[0]?.parts || [];
+                            console.log(`[AI-GEN] [${VERSION}] request layout mode=${requestPartsLayoutMode}, inputMode=${mode}, parts=${summarizeRequestPartKinds(parts)}`);
+                        }
                         const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
                             method: 'POST',
                             headers: {
@@ -694,7 +807,7 @@ export async function generateWrapTexture(
                             }
 
                             if (!parsedError.retryable) {
-                                return {
+                                return withRequestDebug({
                                     success: false,
                                     error: parsedError.error,
                                     errorCode: parsedError.errorCode,
@@ -704,7 +817,7 @@ export async function generateWrapTexture(
                                     responseId: parsedError.responseId || null,
                                     modelVersion: parsedError.modelVersion || null,
                                     finalPrompt: promptToUse
-                                };
+                                });
                             }
                             break;
                         }
@@ -713,7 +826,7 @@ export async function generateWrapTexture(
                         const parsed = parseGeminiImageResponse(content, promptToUse);
                         if (parsed.ok && parsed.result) {
                             console.log(`[AI-GEN] [${VERSION}] Gemini image success with model ${model}`);
-                            return parsed.result;
+                            return withRequestDebug(parsed.result);
                         }
 
                         lastFailure = parsed.error || 'No image found in response';
@@ -736,7 +849,7 @@ export async function generateWrapTexture(
                         }
 
                         if (!parsed.retryable) {
-                            return {
+                            return withRequestDebug({
                                 success: false,
                                 error: lastFailure,
                                 errorCode: parsed.errorCode || 'no_image_payload',
@@ -746,7 +859,7 @@ export async function generateWrapTexture(
                                 responseId: parsed.responseId || null,
                                 modelVersion: parsed.modelVersion || null,
                                 finalPrompt: promptToUse
-                            };
+                            });
                         }
                         break;
                     }
@@ -756,7 +869,7 @@ export async function generateWrapTexture(
             if (lastErrorCode === 'no_image_payload' && noImageRetryRounds > 0) {
                 for (let round = 0; round < noImageRetryRounds; round += 1) {
                     if (Date.now() - generationStartedAt > maxTotalMs) {
-                        return {
+                        return withRequestDebug({
                             success: false,
                             error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
                             errorCode: 'timeout',
@@ -766,14 +879,14 @@ export async function generateWrapTexture(
                             promptBlockReason: lastPromptBlockReason,
                             responseId: lastResponseId,
                             modelVersion: lastModelVersion
-                        };
+                        });
                     }
                     await sleep(700 * (round + 1));
                     const rescuePrompt = buildRetryPrompt('rescue');
                     console.warn(`[AI-GEN] [${VERSION}] No-image rescue round ${round + 1}/${noImageRetryRounds}`);
                     for (const model of modelCandidates) {
                         if (Date.now() - generationStartedAt > maxTotalMs) {
-                            return {
+                            return withRequestDebug({
                                 success: false,
                                 error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
                                 errorCode: 'timeout',
@@ -783,17 +896,23 @@ export async function generateWrapTexture(
                                 promptBlockReason: lastPromptBlockReason,
                                 responseId: lastResponseId,
                                 modelVersion: lastModelVersion
-                            };
+                            });
                         }
                         const rescueUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
                         console.log(`[AI-GEN] [${VERSION}] Rescue attempt model=${model}`);
+                        const rescuePayload = await buildRequestPayload(rescuePrompt, hasUriInputs ? 'uri' : 'inline');
+                        lastRequestAttempt += 1;
+                        lastRequestPayload = sanitizeGeminiRequestPayload(rescuePayload);
+                        lastRequestModel = model;
+                        lastRequestMode = hasUriInputs ? 'uri' : 'inline';
+                        lastRequestApiUrl = rescueUrl;
                         const rescueResponse = await fetchWithRetry(`${rescueUrl}?key=${apiKey}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                             },
-                            body: JSON.stringify(await buildRequestPayload(rescuePrompt, hasUriInputs ? 'uri' : 'inline')),
+                            body: JSON.stringify(rescuePayload),
                             timeoutMs: imageTimeoutMs,
                             maxRetries: imageMaxRetries,
                             retryBaseMs,
@@ -821,7 +940,7 @@ export async function generateWrapTexture(
                         const rescueParsed = parseGeminiImageResponse(rescueContent, rescuePrompt);
                         if (rescueParsed.ok && rescueParsed.result) {
                             console.log(`[AI-GEN] [${VERSION}] Gemini image success in rescue mode with model ${model}`);
-                            return rescueParsed.result;
+                            return withRequestDebug(rescueParsed.result);
                         }
 
                         lastFailure = rescueParsed.error || 'No image found in response';
@@ -835,7 +954,7 @@ export async function generateWrapTexture(
                 }
             }
 
-            return {
+            return withRequestDebug({
                 success: false,
                 error: lastFailure || 'No image found in response',
                 errorCode: lastErrorCode || 'no_image_payload',
@@ -845,7 +964,7 @@ export async function generateWrapTexture(
                 responseId: lastResponseId,
                 modelVersion: lastModelVersion,
                 finalPrompt: textPrompt
-            };
+            });
 
         } catch (error: any) {
             throw error;
@@ -855,12 +974,12 @@ export async function generateWrapTexture(
         console.error('Error calling Gemini API:', error);
         if (error instanceof Error && (error as any).cause) {
         }
-        return {
+        return withRequestDebug({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
             errorCode: 'unknown_error',
             finalPrompt: textPrompt
-        };
+        });
     }
 }
 

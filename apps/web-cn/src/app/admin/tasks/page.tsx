@@ -41,6 +41,11 @@ interface GenerationTask {
     steps: TaskStep[];
     mask_url?: string | null;
     assembled_prompt?: string | null;
+    gemini_request_payload?: Record<string, unknown> | null;
+    gemini_request_model?: string | null;
+    gemini_request_mode?: string | null;
+    gemini_request_api_url?: string | null;
+    gemini_request_attempt?: number | null;
     created_at: string;
     profiles: {
         display_name: string;
@@ -370,6 +375,39 @@ export default function AdminTasksPage() {
                                                                             <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Assembled Prompt</span>
                                                                             <pre className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words bg-gray-50/70 dark:bg-zinc-900 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
                                                                                 {task.assembled_prompt}
+                                                                            </pre>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {task.gemini_request_payload && (
+                                                                        <div>
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Gemini Request Payload</span>
+                                                                            <div className="mb-2 text-[10px] text-gray-500 flex flex-wrap gap-3">
+                                                                                {task.gemini_request_model && (
+                                                                                    <span>model: <code className="font-mono">{task.gemini_request_model}</code></span>
+                                                                                )}
+                                                                                {task.gemini_request_mode && (
+                                                                                    <span>mode: <code className="font-mono">{task.gemini_request_mode}</code></span>
+                                                                                )}
+                                                                                {task.gemini_request_attempt ? (
+                                                                                    <span>attempt: <code className="font-mono">{task.gemini_request_attempt}</code></span>
+                                                                                ) : null}
+                                                                            </div>
+                                                                            {task.gemini_request_api_url && (
+                                                                                <div className="mb-2">
+                                                                                    <a
+                                                                                        href={task.gemini_request_api_url}
+                                                                                        target="_blank"
+                                                                                        rel="noreferrer"
+                                                                                        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline break-all"
+                                                                                    >
+                                                                                        {task.gemini_request_api_url}
+                                                                                        <ExternalLink size={12} />
+                                                                                    </a>
+                                                                                </div>
+                                                                            )}
+                                                                            <pre className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words bg-gray-50/70 dark:bg-zinc-900 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
+                                                                                {JSON.stringify(task.gemini_request_payload, null, 2)}
                                                                             </pre>
                                                                         </div>
                                                                     )}

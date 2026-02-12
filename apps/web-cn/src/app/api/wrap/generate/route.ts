@@ -717,6 +717,15 @@ export async function processGenerationTask(params: {
                 promptRetryApplied: Boolean(optimizedPromptUsed)
             });
         }
+        if (result.requestPayload) {
+            await logStep('gemini_request_payload', undefined, undefined, {
+                requestPayload: result.requestPayload,
+                requestModel: result.requestModel || null,
+                requestMode: result.requestMode || null,
+                requestApiUrl: result.requestApiUrl || null,
+                requestAttempt: result.requestAttempt || null
+            });
+        }
 
         if (!result.success) {
             console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${userId}...`);
