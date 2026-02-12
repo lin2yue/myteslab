@@ -988,6 +988,9 @@ export async function POST(request: NextRequest) {
         }
 
         taskId = deductResultRaw.taskId;
+        if (!taskId) {
+            throw new Error('Task ID is missing from deduction result');
+        }
 
         // 3.1 幂等碰撞处理 (Idempotency Handling)
         if (deductResultRaw.errorMsg === 'Idempotent hit') {
