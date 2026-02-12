@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { processGenerationTask, refundTaskCredits } from '@/app/api/wrap/generate/route';
+import { verifyInternalRequest } from '@/lib/internal-auth';
 
 export const maxDuration = 300;
 
+const WORKER_ENABLED = (process.env.WRAP_GEN_V2_WORKER ?? '1').trim() !== '0';
 const WORKER_SECRET = (process.env.WRAP_WORKER_SECRET || '').trim();
+const WORKER_HMAC_SECRET = (process.env.WRAP_WORKER_HMAC_SECRET || '').trim();
+const WORKER_ALLOW_LEGACY_TOKEN = (process.env.WRAP_WORKER_ALLOW_LEGACY_TOKEN ?? '1').trim() !== '0';
+const WORKER_HMAC_SKEW_SECONDS = Math.max(30, Number(process.env.WRAP_WORKER_HMAC_SKEW_SECONDS ?? 300));
 const DEFAULT_BATCH_SIZE = Math.max(1, Number(process.env.WRAP_WORKER_BATCH_SIZE ?? 2));
 const MAX_BATCH_SIZE = Math.max(DEFAULT_BATCH_SIZE, Number(process.env.WRAP_WORKER_MAX_BATCH_SIZE ?? 5));
 const LEASE_SECONDS = Math.max(30, Number(process.env.WRAP_WORKER_LEASE_SECONDS ?? 240));
@@ -35,24 +40,6 @@ function clampBatchSize(input: unknown): number {
     const value = Number(input);
     if (!Number.isFinite(value)) return DEFAULT_BATCH_SIZE;
     return Math.max(1, Math.min(MAX_BATCH_SIZE, Math.floor(value)));
-}
-
-function readWorkerToken(request: NextRequest): string {
-    const headerToken = (request.headers.get('x-wrap-worker-secret') || '').trim();
-    if (headerToken) return headerToken;
-
-    const auth = (request.headers.get('authorization') || '').trim();
-    if (auth.toLowerCase().startsWith('bearer ')) {
-        return auth.slice('bearer '.length).trim();
-    }
-    return '';
-}
-
-function timingSafeEqualString(left: string, right: string): boolean {
-    const leftBuffer = Buffer.from(left);
-    const rightBuffer = Buffer.from(right);
-    if (leftBuffer.length !== rightBuffer.length) return false;
-    return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -164,23 +151,38 @@ async function failAndRefundTask(taskId: string, reason: string) {
 }
 
 export async function POST(request: NextRequest) {
-    if (!WORKER_SECRET) {
+    if (!WORKER_ENABLED) {
         return NextResponse.json(
-            { success: false, error: 'Worker not configured: missing WRAP_WORKER_SECRET' },
+            { success: false, error: 'Worker disabled by WRAP_GEN_V2_WORKER=0' },
             { status: 503 }
         );
     }
 
-    const token = readWorkerToken(request);
-    if (!token || !timingSafeEqualString(token, WORKER_SECRET)) {
+    if (!WORKER_SECRET && !WORKER_HMAC_SECRET) {
+        return NextResponse.json(
+            { success: false, error: 'Worker not configured: missing WRAP_WORKER_SECRET/WRAP_WORKER_HMAC_SECRET' },
+            { status: 503 }
+        );
+    }
+
+    const rawBody = await request.text();
+    const authed = verifyInternalRequest(request, rawBody, {
+        legacySecret: WORKER_SECRET,
+        hmacSecret: WORKER_HMAC_SECRET,
+        allowLegacyToken: WORKER_ALLOW_LEGACY_TOKEN,
+        maxSkewSeconds: WORKER_HMAC_SKEW_SECONDS
+    });
+    if (!authed) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     let body: unknown = null;
-    try {
-        body = await request.json();
-    } catch {
-        body = null;
+    if (rawBody.trim()) {
+        try {
+            body = JSON.parse(rawBody);
+        } catch {
+            body = null;
+        }
     }
 
     const batchSize = isRecord(body) ? clampBatchSize(body.batchSize) : DEFAULT_BATCH_SIZE;

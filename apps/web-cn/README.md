@@ -37,11 +37,18 @@
 - `GEMINI_PROMPT_VERSION`（可选，默认 v2）
 - `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET`
 - `WRAP_GEN_V2_SUBMIT`（可选，默认 0。`1` 表示仅提交任务不在接口内执行）
+- `WRAP_GEN_V2_WORKER`（可选，默认 1。`0` 时强制回退到接口内执行）
 - `WRAP_TASK_RETRY_AFTER_SECONDS`（可选，默认 5）
 - `WRAP_WORKER_SECRET`（启用 submit-only 时必填，内部 worker 调用鉴权）
+- `WRAP_WORKER_HMAC_SECRET`（可选，启用后支持 `x-wrap-timestamp/x-wrap-signature` HMAC 鉴权）
+- `WRAP_WORKER_HMAC_SKEW_SECONDS`（可选，默认 300）
+- `WRAP_WORKER_ALLOW_LEGACY_TOKEN`（可选，默认 1；设为 0 后仅允许 HMAC）
 - `WRAP_WORKER_BATCH_SIZE`（可选，默认 2）
 - `WRAP_WORKER_MAX_BATCH_SIZE`（可选，默认 5）
 - `WRAP_WORKER_LEASE_SECONDS`（可选，默认 240）
+- `WRAP_GEN_SWEEPER_ENABLED`（可选，默认 1）
+- `WRAP_SWEEPER_BATCH_SIZE` / `WRAP_SWEEPER_MAX_BATCH_SIZE`（可选，默认 50 / 200）
+- `WRAP_REFERENCE_ALLOWED_HOSTS`（可选，逗号分隔白名单，默认包含 `cdn.tewan.club`）
 
 ### 本地运行
 ```bash
@@ -57,6 +64,29 @@ curl -X POST "http://localhost:3000/api/internal/generation/worker-tick" \
   -H "Authorization: Bearer ${WRAP_WORKER_SECRET}" \
   -H "Content-Type: application/json" \
   -d '{"batchSize":2}'
+```
+
+可选 HMAC 鉴权（推荐）：
+
+```bash
+BODY='{"batchSize":2}'
+TS=$(date +%s)
+SIG=$(printf "%s.%s" "$TS" "$BODY" | openssl dgst -sha256 -hmac "$WRAP_WORKER_HMAC_SECRET" -hex | sed 's/^.* //')
+curl -X POST "http://localhost:3000/api/internal/generation/worker-tick" \
+  -H "x-wrap-timestamp: ${TS}" \
+  -H "x-wrap-signature: ${SIG}" \
+  -H "Content-Type: application/json" \
+  -d "${BODY}"
+```
+
+### Sweeper Tick（卡任务恢复）
+`/api/wrap/history` 已不再执行卡任务恢复。请定时触发 sweeper：
+
+```bash
+curl -X POST "http://localhost:3000/api/internal/generation/sweeper-tick" \
+  -H "Authorization: Bearer ${WRAP_WORKER_SECRET}" \
+  -H "Content-Type: application/json" \
+  -d '{"batchSize":50}'
 ```
 
 ## 📚 说明文档

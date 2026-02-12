@@ -3,6 +3,17 @@ import { getSignedUrl } from '@/lib/oss';
 import { getSessionUser } from '@/lib/auth/session';
 
 const ALLOWED_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
+const ALLOWED_EXT_BY_TYPE: Record<string, string[]> = {
+    'image/jpeg': ['jpg', 'jpeg'],
+    'image/png': ['png']
+};
+
+function normalizeExt(input: unknown): string {
+    if (typeof input !== 'string') return '';
+    const value = input.trim().toLowerCase().replace(/^\./, '');
+    if (!/^[a-z0-9]{2,5}$/.test(value)) return '';
+    return value;
+}
 
 /**
  * POST /api/wrap/get-reference-upload-url
@@ -21,7 +32,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Invalid content type' }, { status: 400 });
         }
 
-        const safeExt = typeof ext === 'string' && ext.length <= 5 ? ext : 'jpg';
+        const normalizedExt = normalizeExt(ext);
+        const allowedExt = ALLOWED_EXT_BY_TYPE[contentType] || [];
+        if (normalizedExt && !allowedExt.includes(normalizedExt)) {
+            return NextResponse.json({ success: false, error: 'Invalid file extension for content type' }, { status: 400 });
+        }
+
+        const safeExt = normalizedExt || allowedExt[0] || 'jpg';
         const filename = `ref-${user.id.substring(0, 8)}-${Date.now()}.${safeExt}`;
         const { url, key } = await getSignedUrl(filename, 'wraps/reference', contentType);
 
@@ -34,8 +51,9 @@ export async function POST(request: NextRequest) {
             ossKey: key,
             publicUrl
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Internal server error';
         console.error('[Get-Reference-Upload-Url] Error:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }

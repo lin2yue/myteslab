@@ -32,26 +32,35 @@ const PER_IP_MAX_REQUESTS = Number(process.env.WRAP_GEN_IP_RATE_MAX_REQUESTS ?? 
 const MAX_INFLIGHT_TASKS_PER_USER = Number(process.env.WRAP_GEN_MAX_INFLIGHT_TASKS ?? 2);
 const ENABLE_PROMPT_OPTIMIZE_RETRY = (process.env.WRAP_GEN_ENABLE_PROMPT_OPTIMIZE_RETRY ?? '1').trim() !== '0';
 const ENABLE_SUBMIT_ONLY = (process.env.WRAP_GEN_V2_SUBMIT ?? '0').trim() === '1';
+const ENABLE_WORKER = (process.env.WRAP_GEN_V2_WORKER ?? '1').trim() !== '0';
+const ENABLE_SUBMIT_WORKER_PATH = ENABLE_SUBMIT_ONLY && ENABLE_WORKER;
 const RETRY_AFTER_SECONDS = Number(process.env.WRAP_TASK_RETRY_AFTER_SECONDS ?? 5);
 
 const userRateMap = new Map<string, { count: number; windowStart: number }>();
 const ipRateMap = new Map<string, { count: number; windowStart: number }>();
 
+const allowedReferenceExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
+
+function normalizeHost(input: string): string {
+    const normalized = input.trim().replace(/\/+$/, '');
+    if (!normalized) return '';
+    try {
+        return new URL(normalized.startsWith('http') ? normalized : `https://${normalized}`).hostname.toLowerCase();
+    } catch {
+        return normalized.replace(/^https?:\/\//, '').toLowerCase();
+    }
+}
+
 const allowedReferenceHosts = new Set(
     [
-        process.env.CDN_DOMAIN,
-        process.env.NEXT_PUBLIC_CDN_URL,
-        'https://cdn.tewan.club'
+        process.env.CDN_DOMAIN || '',
+        process.env.NEXT_PUBLIC_CDN_URL || '',
+        process.env.WRAP_REFERENCE_ALLOWED_HOSTS || '',
+        'cdn.tewan.club'
     ]
+        .flatMap(value => value.split(','))
+        .map(value => normalizeHost(value))
         .filter(Boolean)
-        .map(domain => {
-            const normalized = domain!.replace(/\/+$/, '');
-            try {
-                return new URL(normalized).hostname;
-            } catch {
-                return normalized.replace(/^https?:\/\//, '');
-            }
-        })
 );
 
 function extractBase64Payload(input: string): string | null {
@@ -196,12 +205,14 @@ function isAllowedReferenceUrl(input: string): boolean {
     if (!input.startsWith('http')) return false;
     try {
         const url = new URL(input);
-        const hostAllowed = allowedReferenceHosts.has(url.hostname)
-            || allowedReferenceHosts.has(`https://${url.hostname}`)
-            || allowedReferenceHosts.has(`http://${url.hostname}`)
-            || url.hostname.endsWith('.aliyuncs.com');
+        const hostAllowed = allowedReferenceHosts.has(url.hostname.toLowerCase());
         if (!hostAllowed) return false;
         if (!url.pathname.startsWith('/wraps/reference/')) return false;
+        const filename = url.pathname.split('/').pop() || '';
+        const lastDot = filename.lastIndexOf('.');
+        if (lastDot <= 0 || lastDot === filename.length - 1) return false;
+        const ext = filename.slice(lastDot + 1).toLowerCase();
+        if (!allowedReferenceExtensions.has(ext)) return false;
         return true;
     } catch {
         return false;
@@ -1057,7 +1068,7 @@ export async function POST(request: NextRequest) {
 
             // 如果正在处理中，告诉前端继续等待
             if (taskStatus === 'pending' || taskStatus === 'processing') {
-                if (ENABLE_SUBMIT_ONLY && taskStatus === 'pending') {
+                if (ENABLE_SUBMIT_WORKER_PATH && taskStatus === 'pending') {
                     await queueGenerationTask({
                         taskId,
                         userId: user.id,
@@ -1098,7 +1109,7 @@ export async function POST(request: NextRequest) {
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
-        if (ENABLE_SUBMIT_ONLY) {
+        if (ENABLE_SUBMIT_WORKER_PATH) {
             await queueGenerationTask({
                 taskId,
                 userId: user.id,
@@ -1133,7 +1144,7 @@ export async function POST(request: NextRequest) {
             success: true,
             taskId,
             status: 'pending',
-            mode: 'inline_async',
+            mode: ENABLE_SUBMIT_ONLY && !ENABLE_WORKER ? 'inline_async_worker_disabled' : 'inline_async',
             remainingBalance: deductResultRaw?.remainingBalance ?? 0,
             retryAfter: RETRY_AFTER_SECONDS
         });
