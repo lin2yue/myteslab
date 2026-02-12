@@ -370,7 +370,7 @@ export default function AIGeneratorMain({
         isFetchingRef.current = true
         setIsFetchingHistory(true)
         try {
-            const res = await fetch(`/api/wrap/history?category=${activeMode === 'diy' ? 'diy' : 'ai_generated'}`)
+            const res = await fetch(`/api/wrap/history?category=${activeMode === 'diy' ? 'diy' : 'ai_generated'}&limit=50`)
             if (res.status === 401) {
                 setIsLoggedInInternal(false)
                 setHistory([])
@@ -408,11 +408,7 @@ export default function AIGeneratorMain({
                     model_slug: typeof task.model_slug === 'string' ? task.model_slug : null
                 }
             }).filter(task => task.id)
-            setTaskHistory(prev => {
-                const activeIds = new Set(tasksFromServer.map(task => task.id))
-                const previousActive = prev.filter(task => activeIds.has(task.id))
-                return mergeTaskHistory(previousActive, tasksFromServer)
-            })
+            setTaskHistory(prev => mergeTaskHistory(prev, tasksFromServer))
         } catch (err) {
             console.error('Fetch history error:', err)
             // Optional: could set an error state here to show in UI
@@ -461,8 +457,10 @@ export default function AIGeneratorMain({
     }, [pendingTaskKey])
 
     useEffect(() => {
-        if (pendingTaskIds.length === 0) return
+        const taskIds = pendingTaskKey ? pendingTaskKey.split(',').filter(Boolean) : []
+        if (taskIds.length === 0) return
         let active = true
+        let polling = false
 
         const pollSingleTask = async (taskId: string) => {
             try {
@@ -538,10 +536,16 @@ export default function AIGeneratorMain({
         }
 
         const pollAll = async () => {
+            if (!active || polling) return
+            polling = true
             // Poll sequentially to avoid burst requests when multiple tasks are pending.
-            for (const taskId of pendingTaskIds) {
-                if (!active) return
-                await pollSingleTask(taskId)
+            try {
+                for (const taskId of taskIds) {
+                    if (!active) return
+                    await pollSingleTask(taskId)
+                }
+            } finally {
+                polling = false
             }
         }
 
@@ -552,7 +556,7 @@ export default function AIGeneratorMain({
             active = false
             window.clearInterval(timer)
         }
-    }, [pendingTaskKey, fetchHistory, pendingTaskIds])
+    }, [pendingTaskKey, fetchHistory])
 
     // 生成逻辑
     const isBusy = isGenerating

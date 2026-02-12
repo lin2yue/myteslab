@@ -122,7 +122,7 @@ FINAL MASK CHECK (MANDATORY)
 - Panel edges must be crisp and pixel-aligned to the mask boundary.
 `.trim();
 
-const PRIMARY_ELEMENT_PLACEMENT = 'If using a primary element, place it on side doors/hood; keep the rear license plate area low-detail, and keep reverse orientation.';
+const PRIMARY_ELEMENT_PLACEMENT = 'Do not leave rear panels blank. Rear graphics must be reversed (upside-down on the UV map). If using a primary element, place it on side doors/hood and keep the rear license plate area low-detail.';
 
 export function buildMaskHardConstraintSnippet(params?: {
   outputSize?: { width: number; height: number };
