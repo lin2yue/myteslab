@@ -255,6 +255,7 @@ export default function AIGeneratorMain({
     const router = useRouter()
     const [showPublishModal, setShowPublishModal] = useState(false)
     const [taskHistory, setTaskHistory] = useState<GenerationTaskHistory[]>([])
+    const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
     const [isUploadingRefs, setIsUploadingRefs] = useState(false)
     const sessionGuidRef = useRef<string>(Math.random().toString(36).substring(2, 15))
     const retrySeedRef = useRef<number>(0)
@@ -272,6 +273,7 @@ export default function AIGeneratorMain({
     const isFetchingRef = useRef(false)
     const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
     const [showBalanceLabels, setShowBalanceLabels] = useState(false)
+    const activeTaskIdRef = useRef<string | null>(null)
 
     const aiThemeStorageKey = 'ai_viewer_theme'
 
@@ -361,6 +363,10 @@ export default function AIGeneratorMain({
             setBalance(initialCredits)
         }
     }, [balance, initialCredits, setBalance])
+
+    useEffect(() => {
+        activeTaskIdRef.current = activeTaskId
+    }, [activeTaskId])
 
 
     // 获取历史记录
@@ -476,8 +482,12 @@ export default function AIGeneratorMain({
 
                 if (data?.wrap?.id) {
                     setTaskHistory(prev => prev.filter(task => task.id !== taskId))
-                    setCurrentTexture(data.wrap.preview_url || data.wrap.texture_url)
-                    setActiveWrapId(data.wrap.id)
+                    const shouldApplyTexture = activeTaskIdRef.current === taskId
+                    if (shouldApplyTexture) {
+                        setCurrentTexture(data.wrap.preview_url || data.wrap.texture_url)
+                        setActiveWrapId(data.wrap.id)
+                        setActiveTaskId(null)
+                    }
                     fetchHistory()
                     return
                 }
@@ -673,6 +683,7 @@ export default function AIGeneratorMain({
                     updated_at: nowIso,
                     model_slug: modelSlugValue
                 }]))
+                setActiveTaskId(data.taskId)
                 alert.info('任务已提交，正在后台生成')
                 return true
             }
@@ -1159,6 +1170,14 @@ export default function AIGeneratorMain({
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }, [history, taskHistory])
 
+    useEffect(() => {
+        if (!activeTaskId) return
+        const exists = taskHistory.some(task => task.id === activeTaskId)
+        if (!exists) {
+            setActiveTaskId(null)
+        }
+    }, [activeTaskId, taskHistory])
+
     return (
         <div className="flex flex-col h-auto lg:h-[calc(100vh-64px)] bg-transparent overflow-y-auto lg:overflow-hidden">
             {/* Main Content Area */}
@@ -1495,6 +1514,8 @@ export default function AIGeneratorMain({
                                                                 task={entry.task}
                                                                 locale={_locale}
                                                                 nowTs={elapsedNow}
+                                                                isActive={activeTaskId === entry.task.id}
+                                                                onSelect={() => setActiveTaskId(entry.task.id)}
                                                                 onRetry={() => void handleRetryTask(entry.task)}
                                                             />
                                                         )
@@ -1518,6 +1539,7 @@ export default function AIGeneratorMain({
                                                                 setCurrentTexture(displayUrl)
                                                                 setSelectedModel(item.model_slug)
                                                                 setActiveWrapId(item.id)
+                                                                setActiveTaskId(null)
                                                             }}
                                                             onImageClick={(e) => {
                                                                 e.stopPropagation()
@@ -1678,11 +1700,15 @@ function TaskHistoryItemCard({
     task,
     locale,
     nowTs,
+    isActive,
+    onSelect,
     onRetry
 }: {
     task: GenerationTaskHistory;
     locale: string;
     nowTs: number;
+    isActive: boolean;
+    onSelect: () => void;
     onRetry: () => void;
 }) {
     const isPending = task.status === 'pending' || task.status === 'processing'
@@ -1704,7 +1730,13 @@ function TaskHistoryItemCard({
         : `已生成 ${elapsedSeconds}s · 预计 ${ESTIMATED_GENERATE_SECONDS}s`
 
     return (
-        <div className="h-[98px] p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70 overflow-hidden flex flex-col justify-between">
+        <div
+            onClick={onSelect}
+            className={`h-[98px] p-3 rounded-lg border overflow-hidden flex flex-col justify-between cursor-pointer transition-all ${isActive
+                ? 'border-zinc-900 bg-zinc-50 dark:border-white dark:bg-zinc-800/80'
+                : 'border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70 hover:border-black/20 dark:hover:border-white/20'
+                }`}
+        >
             <div className="flex items-start justify-between gap-2">
                 <p className="text-xs text-gray-700 dark:text-zinc-200 line-clamp-1 italic flex-1">&quot;{task.prompt}&quot;</p>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusClassName}`}>
@@ -1741,7 +1773,10 @@ function TaskHistoryItemCard({
                     </div>
                     {isRefunded && <span className="text-[10px] text-emerald-600 whitespace-nowrap">积分已退还</span>}
                     <button
-                        onClick={onRetry}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onRetry()
+                        }}
                         className="h-6 px-2 rounded-md text-[10px] font-semibold bg-black text-white dark:bg-white dark:text-black flex-shrink-0"
                     >
                         重试
