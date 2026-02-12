@@ -5,10 +5,10 @@ import { getSessionUser } from '@/lib/auth/session';
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
     const user = await getSessionUser();
     if (!user) {
-        redirect('/zh/login?next=/zh/admin');
+        redirect('/login?next=/admin');
     }
     if (user.role !== 'admin' && user.role !== 'super_admin') {
-        redirect('/zh');
+        redirect('/');
     }
     return <AdminShell>{children}</AdminShell>;
 }

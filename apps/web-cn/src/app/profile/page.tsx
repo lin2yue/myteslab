@@ -18,12 +18,7 @@ export const metadata: Metadata = {
     },
 };
 
-export default async function ProfilePage({
-    params
-}: {
-    params: Promise<{ locale: string }>
-}) {
-    const { locale } = await params;
+export default async function ProfilePage() {
     const user = await getSessionUser();
 
     if (!user) {

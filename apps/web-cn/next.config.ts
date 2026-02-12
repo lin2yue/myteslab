@@ -52,16 +52,17 @@ const nextConfig: NextConfig = {
         destination: 'https://tewan.club/:path*',
         permanent: true,
       },
-      // /zh/* -> /* redirect for SEO (301 permanent redirect)
-      {
-        source: '/zh/:path*',
-        destination: '/:path*',
-        permanent: true,
-      },
       // /zh -> / redirect
       {
         source: '/zh',
         destination: '/',
+        permanent: true,
+      },
+      // /zh/* -> /* redirect for SEO (301 permanent redirect)
+      // use :path+ to avoid empty capture causing invalid Location header
+      {
+        source: '/zh/:path+',
+        destination: '/:path*',
         permanent: true,
       },
     ];

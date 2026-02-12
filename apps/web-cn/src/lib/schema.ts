@@ -1,5 +1,13 @@
 import { Wrap } from './types'
 
+function localePrefix(locale: string) {
+    const normalized = (locale || '').toLowerCase()
+    if (!normalized || normalized === 'zh' || normalized === 'zh-cn') {
+        return ''
+    }
+    return `/${normalized}`
+}
+
 /**
  * 生成组织 Schema (Organization)
  */
@@ -23,18 +31,19 @@ export function generateOrganizationSchema() {
  * 生成网站 Schema (WebSite)
  */
 export function generateWebSiteSchema(locale: string) {
+    const prefix = localePrefix(locale)
     return {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: '特玩',
-        url: `https://tewan.club/${locale}`,
+        url: `https://tewan.club${prefix}`,
         description: '为您的特斯拉可视化下一个造型：终极定制车身贴图设计工作室。',
         inLanguage: 'zh-CN',
         potentialAction: {
             '@type': 'SearchAction',
             target: {
                 '@type': 'EntryPoint',
-                urlTemplate: `https://tewan.club/${locale}?search={search_term_string}`,
+                urlTemplate: `https://tewan.club${prefix}?search={search_term_string}`,
             },
             'query-input': 'required name=search_term_string',
         },
@@ -45,6 +54,7 @@ export function generateWebSiteSchema(locale: string) {
  * 生成产品 Schema (Product)
  */
 export function generateProductSchema(wrap: Wrap, locale: string) {
+    const prefix = localePrefix(locale)
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
     const description = locale === 'en'
         ? wrap.description_en || wrap.description || `Premium Tesla wrap design - ${name}`
@@ -66,7 +76,7 @@ export function generateProductSchema(wrap: Wrap, locale: string) {
             price: '0',
             priceCurrency: 'CNY',
             availability: 'https://schema.org/InStock',
-            url: `https://tewan.club/${locale}/wraps/${wrap.slug}`,
+            url: `https://tewan.club${prefix}/wraps/${wrap.slug}`,
         },
         aggregateRating: wrap.download_count > 0 ? {
             '@type': 'AggregateRating',

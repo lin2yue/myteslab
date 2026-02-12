@@ -1,8 +1,7 @@
 import { useTranslations } from '@/lib/i18n';
 import { getTranslations } from '@/lib/i18n';
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
-    const { locale } = await params;
+export async function generateMetadata() {
     const t = await getTranslations('Legal.tos');
     const description = '特玩 服务条款 - 了解我们的规则、所有权以及特斯拉贴图设计的许可协议。';
 
@@ -10,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         title: `${t('title')} - 特玩`,
         description,
         alternates: {
-            canonical: `/${locale}/terms`,
+            canonical: '/terms',
         },
     };
 }

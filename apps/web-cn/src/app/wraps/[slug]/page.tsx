@@ -16,9 +16,10 @@ import { getModelDisplayName } from '@/lib/model-display'
 export async function generateMetadata({
     params,
 }: {
-    params: Promise<{ slug: string, locale: string }>
+    params: Promise<{ slug: string }>
 }): Promise<Metadata> {
-    const { slug, locale } = await params
+    const { slug } = await params
+    const locale = 'zh' as string
     let wrap = await getWrap(slug)
     if (process.env.NODE_ENV === 'development') {
         console.log('[WrapDetail] slug:', slug, 'publicWrap:', !!wrap)
@@ -82,12 +83,12 @@ export async function generateMetadata({
         title,
         description,
         alternates: {
-            canonical: `/${locale}/wraps/${slug}`,
+            canonical: `/wraps/${slug}`,
         },
         openGraph: {
             title,
             description,
-            url: `https://tewan.club/${locale}/wraps/${slug}`,
+            url: `https://tewan.club/wraps/${slug}`,
             siteName: '特玩',
             images: [
                 {
@@ -116,9 +117,10 @@ export async function generateMetadata({
 export default async function WrapDetailPage({
     params,
 }: {
-    params: Promise<{ slug: string, locale: string }>
+    params: Promise<{ slug: string }>
 }) {
-    const { slug, locale } = await params
+    const { slug } = await params
+    const locale = 'zh' as string
     let wrap = await getWrap(slug)
     const t = await getTranslations('Common')
 
@@ -127,7 +129,7 @@ export default async function WrapDetailPage({
     }
 
     if (wrap.slug && wrap.slug !== slug) {
-        permanentRedirect(`/${locale}/wraps/${wrap.slug}`)
+        permanentRedirect(`/wraps/${wrap.slug}`)
     }
 
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
@@ -360,7 +362,7 @@ export default async function WrapDetailPage({
                             priceCurrency: 'USD',
                             priceValidUntil: '2030-12-31',
                             availability: 'https://schema.org/InStock',
-                            url: `https://tewan.club/${locale}/wraps/${slug}`,
+                            url: `https://tewan.club/wraps/${slug}`,
                             seller: {
                                 '@type': 'Organization',
                                 name: '特玩',
@@ -400,19 +402,19 @@ export default async function WrapDetailPage({
                                 '@type': 'ListItem',
                                 position: 1,
                                 name: locale === 'en' ? 'Home' : '首页',
-                                item: `https://tewan.club/${locale}`,
+                                item: 'https://tewan.club',
                             },
                             ...(wrap.model_slug ? [{
                                 '@type': 'ListItem',
                                 position: 2,
                                 name: modelName,
-                                item: `https://tewan.club/${locale}/models/${wrap.model_slug}`,
+                                item: `https://tewan.club/models/${wrap.model_slug}`,
                             }] : []),
                             {
                                 '@type': 'ListItem',
                                 position: wrap.model_slug ? 3 : 2,
                                 name: name,
-                                item: `https://tewan.club/${locale}/wraps/${slug}`,
+                                item: `https://tewan.club/wraps/${slug}`,
                             },
                         ],
                     }),

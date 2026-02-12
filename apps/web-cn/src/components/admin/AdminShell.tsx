@@ -1,6 +1,5 @@
 'use client';
 
-import { useLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, History, Wallet, RefreshCcw, ShieldCheck, Users } from 'lucide-react';
@@ -12,15 +11,14 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
-    const locale = useLocale();
     const pathname = usePathname();
 
     const navItems = [
-        { name: 'Users', href: `/${locale}/admin/users`, icon: Users },
-        { name: 'AI Tasks', href: `/${locale}/admin/tasks`, icon: History },
-        { name: 'Works', href: `/${locale}/admin/wraps`, icon: LayoutDashboard },
-        { name: 'Credit Ledger', href: `/${locale}/admin/credits`, icon: Wallet },
-        { name: 'Batch Refresh', href: `/${locale}/admin/batch-refresh`, icon: RefreshCcw },
+        { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'AI Tasks', href: '/admin/tasks', icon: History },
+        { name: 'Works', href: '/admin/wraps', icon: LayoutDashboard },
+        { name: 'Credit Ledger', href: '/admin/credits', icon: Wallet },
+        { name: 'Batch Refresh', href: '/admin/batch-refresh', icon: RefreshCcw },
     ];
 
     return (
@@ -58,7 +56,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
                 <div className="p-4 border-t border-gray-100 dark:border-zinc-800">
                     <Link
-                        href={`/${locale}`}
+                        href="/"
                         className="flex items-center gap-2 px-4 py-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
                     >
                         <LayoutDashboard className="w-4 h-4" />

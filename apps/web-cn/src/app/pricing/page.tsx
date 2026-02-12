@@ -3,23 +3,21 @@ import { getTranslations } from '@/lib/i18n';
 import { PRICING_TIERS, type PricingTier } from '@/lib/constants/credits';
 import PricingTierCard from '@/components/pricing/PricingTierCard';
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
-    const { locale } = await params;
+export async function generateMetadata() {
     const t = await getTranslations('Pricing');
 
     return {
         title: t('page_title'),
         description: t('page_description'),
         alternates: {
-            canonical: `/${locale}/pricing`,
+            canonical: '/pricing',
         },
     };
 }
 
 
 
-export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
-    const { locale } = await params;
+export default async function PricingPage() {
     const t = await getTranslations('Pricing');
 
     return (

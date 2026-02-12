@@ -18,7 +18,7 @@ export async function deleteGeneratedWrap(wrapId: string) {
         [wrapId, user.id]
     )
 
-    revalidatePath('/[locale]/profile', 'page')
+    revalidatePath('/profile', 'page')
 }
 
 export async function updateWrapVisibility(wrapId: string, isPublic: boolean) {
@@ -34,5 +34,5 @@ export async function updateWrapVisibility(wrapId: string, isPublic: boolean) {
         [wrapId, user.id, isPublic]
     )
 
-    revalidatePath('/[locale]/profile', 'page')
+    revalidatePath('/profile', 'page')
 }

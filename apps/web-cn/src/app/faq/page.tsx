@@ -6,12 +6,8 @@ export const metadata = {
     description: 'Frequently asked questions about Tesla wrap designs, AI designer, 3D preview, and Toybox installation.',
 }
 
-export default async function FAQPage({
-    params
-}: {
-    params: Promise<{ locale: string }>
-}) {
-    const { locale } = await params
+export default async function FAQPage() {
+    const locale = 'zh' as string
     const t = await getTranslations('FAQ')
 
     const faqs = [

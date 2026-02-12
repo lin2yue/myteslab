@@ -1,8 +1,7 @@
 import { useTranslations } from '@/lib/i18n';
 import { getTranslations } from '@/lib/i18n';
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
-    const { locale } = await params;
+export async function generateMetadata() {
     const t = await getTranslations('Legal.privacy');
     const description = '特玩 隐私政策 - 我们重视您的隐私，并说明我们如何处理您的数据。';
 
@@ -10,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         title: `${t('title')} - 特玩`,
         description,
         alternates: {
-            canonical: `/${locale}/privacy`,
+            canonical: '/privacy',
         },
     };
 }

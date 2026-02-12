@@ -10,9 +10,10 @@ export const revalidate = 60 // Enable ISR
 export async function generateMetadata({
     params
 }: {
-    params: Promise<{ locale: string, slug: string }>
+    params: Promise<{ slug: string }>
 }): Promise<Metadata> {
-    const { locale, slug } = await params
+    const { slug } = await params
+    const locale = 'zh' as string
     const models = await getModels()
     const tModels = await getTranslations('Models')
     const model = models.find(m => m.slug === slug)
@@ -42,12 +43,12 @@ export async function generateMetadata({
         title,
         description,
         alternates: {
-            canonical: `/${locale}/models/${slug}`,
+            canonical: `/models/${slug}`,
         },
         openGraph: {
             title,
             description,
-            url: `https://tewan.club/${locale}/models/${slug}`,
+            url: `https://tewan.club/models/${slug}`,
             siteName: '特玩',
             images: [
                 {
@@ -67,10 +68,11 @@ export default async function ModelPage({
     params,
     searchParams
 }: {
-    params: Promise<{ locale: string, slug: string }>
+    params: Promise<{ slug: string }>
     searchParams: Promise<{ sort?: string }>
 }) {
-    const { locale, slug } = await params
+    const { slug } = await params
+    const locale = 'zh' as string
     const { sort } = await searchParams
     const sortBy = (sort as 'latest' | 'popular') || 'latest'
 

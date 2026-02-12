@@ -28,6 +28,7 @@ function cn(...inputs: ClassValue[]) {
 
 interface WrapRecord {
     id: string;
+    slug?: string;
     name: string;
     model_slug: string;
     category: string;
@@ -292,7 +293,7 @@ export default function AdminWrapsPage() {
                                         {wrap.is_active ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Publish</>}
                                     </button>
                                     <a
-                                        href={`/zh/wraps/${wrap.id}`}
+                                        href={`/wraps/${wrap.slug || wrap.id}`}
                                         target="_blank"
                                         className="p-2 bg-gray-100 dark:bg-zinc-800 text-gray-500 hover:text-blue-600 rounded-xl transition-colors"
                                     >

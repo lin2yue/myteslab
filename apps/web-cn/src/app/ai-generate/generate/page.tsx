@@ -5,12 +5,7 @@ import { Metadata } from 'next';
 import { getSessionUser } from '@/lib/auth/session';
 import { dbQuery } from '@/lib/db';
 
-export async function generateMetadata({
-    params
-}: {
-    params: Promise<{ locale: string }>
-}): Promise<Metadata> {
-    const { locale } = await params;
+export async function generateMetadata(): Promise<Metadata> {
 
     const title = 'AI 特斯拉贴膜生成器 | 定制设计模板与工作室 | 特玩';
 
@@ -23,12 +18,12 @@ export async function generateMetadata({
         description,
         keywords,
         alternates: {
-            canonical: `/${locale}/ai-generate/generate`,
+            canonical: '/ai-generate/generate',
         },
         openGraph: {
             title,
             description,
-            url: `https://tewan.club/${locale}/ai-generate/generate`,
+            url: 'https://tewan.club/ai-generate/generate',
             siteName: '特玩',
             images: [
                 {
@@ -62,12 +57,8 @@ export async function generateMetadata({
 }
 
 
-export default async function GeneratePage({
-    params
-}: {
-    params: Promise<{ locale: string }>
-}) {
-    const { locale } = await params;
+export default async function GeneratePage() {
+    const locale = 'zh';
     const user = await getSessionUser();
 
     // Fetch initial credits if user exists

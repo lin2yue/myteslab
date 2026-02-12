@@ -1,8 +1,7 @@
 import { useTranslations } from '@/lib/i18n';
 import { getTranslations } from '@/lib/i18n';
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
-    const { locale } = await params;
+export async function generateMetadata() {
     const t = await getTranslations('Legal.refund');
     const description = '特玩 退款政策 - 关于积分购买和退款条件的说明。';
 
@@ -10,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         title: `${t('title')} - 特玩`,
         description,
         alternates: {
-            canonical: `/${locale}/refund`,
+            canonical: '/refund',
         },
     };
 }
