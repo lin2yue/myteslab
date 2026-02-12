@@ -18,7 +18,6 @@ import { db, dbQuery } from '@/lib/db';
 import { getModelBySlug } from '@/config/models';
 import { getSessionUser } from '@/lib/auth/session';
 import crypto from 'crypto';
-import sharp from 'sharp';
 
 // Allow longer execution time for AI generation (Vercel Pro: 300s, Hobby: 60s max)
 export const maxDuration = 300;
@@ -31,7 +30,6 @@ const PER_USER_MAX_REQUESTS = Number(process.env.WRAP_GEN_RATE_MAX_REQUESTS ?? 6
 const PER_IP_WINDOW_MS = Number(process.env.WRAP_GEN_IP_RATE_WINDOW_MS ?? 60 * 1000);
 const PER_IP_MAX_REQUESTS = Number(process.env.WRAP_GEN_IP_RATE_MAX_REQUESTS ?? 20);
 const MAX_INFLIGHT_TASKS_PER_USER = Number(process.env.WRAP_GEN_MAX_INFLIGHT_TASKS ?? 2);
-const MASK_THRESHOLD = Number(process.env.WRAP_MASK_THRESHOLD ?? 180);
 const ENABLE_PROMPT_OPTIMIZE_RETRY = (process.env.WRAP_GEN_ENABLE_PROMPT_OPTIMIZE_RETRY ?? '1').trim() !== '0';
 
 const userRateMap = new Map<string, { count: number; windowStart: number }>();
@@ -197,73 +195,6 @@ function isAllowedReferenceUrl(input: string): boolean {
     } catch {
         return false;
     }
-}
-
-async function enforceMaskOnGeneratedImage(params: {
-    generatedBuffer: Buffer;
-    maskBuffer: Buffer;
-    width: number;
-    height: number;
-}) {
-    const { generatedBuffer, maskBuffer, width, height } = params;
-    const normalizedImageBuffer = await sharp(generatedBuffer)
-        .resize(width, height, { fit: 'fill' })
-        .removeAlpha()
-        .raw()
-        .toBuffer();
-
-    const normalizedMaskBuffer = await sharp(maskBuffer)
-        .resize(width, height, { fit: 'fill' })
-        .greyscale()
-        .threshold(MASK_THRESHOLD)
-        .raw()
-        .toBuffer();
-
-    let outsidePixelCount = 0;
-    let outsideNonBlackPixelCount = 0;
-    for (let i = 0; i < normalizedMaskBuffer.length; i += 1) {
-        const maskVal = normalizedMaskBuffer[i];
-        const pixelOffset = i * 3;
-        const r = normalizedImageBuffer[pixelOffset];
-        const g = normalizedImageBuffer[pixelOffset + 1];
-        const b = normalizedImageBuffer[pixelOffset + 2];
-        if (maskVal < 128) {
-            outsidePixelCount += 1;
-            if (r > 16 || g > 16 || b > 16) {
-                outsideNonBlackPixelCount += 1;
-            }
-        }
-    }
-
-    const outsideNonBlackRatio = outsidePixelCount > 0
-        ? outsideNonBlackPixelCount / outsidePixelCount
-        : 0;
-
-    const imageWithMaskAlpha = await sharp(normalizedImageBuffer, {
-        raw: { width, height, channels: 3 }
-    })
-        .joinChannel(normalizedMaskBuffer, {
-            raw: { width, height, channels: 1 }
-        })
-        .png()
-        .toBuffer();
-
-    const maskedPng = await sharp({
-        create: {
-            width,
-            height,
-            channels: 3,
-            background: { r: 0, g: 0, b: 0 }
-        }
-    })
-        .composite([{ input: imageWithMaskAlpha }])
-        .png({ compressionLevel: 9 })
-        .toBuffer();
-
-    return {
-        buffer: maskedPng,
-        outsideNonBlackRatio
-    };
 }
 
 async function deductCreditsForGeneration(params: {
@@ -573,7 +504,6 @@ async function processGenerationTask(params: {
 
         // 2. 获取 Mask
         let maskImageBase64: string | null = null;
-        let maskBufferForPostProcess: Buffer | null = null;
         const maskDimensions = getMaskDimensions(modelSlug);
 
         // --- DEBUG: Log resolution info ---
@@ -592,7 +522,6 @@ async function processGenerationTask(params: {
                 const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
                 console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
                 maskImageBase64 = maskBuffer.toString('base64');
-                maskBufferForPostProcess = maskBuffer;
                 await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
 
             } else {
@@ -747,25 +676,7 @@ async function processGenerationTask(params: {
             const filename = `wrap-${taskId.substring(0, 8)}-${Date.now()}.png`;
 
             const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
-            const rawGeneratedBuffer = Buffer.from(base64Data, 'base64');
-
-            if (!maskBufferForPostProcess) {
-                throw new Error('Mask is missing at post-processing stage');
-            }
-
-            const maskedResult = await enforceMaskOnGeneratedImage({
-                generatedBuffer: rawGeneratedBuffer,
-                maskBuffer: maskBufferForPostProcess,
-                width: maskDimensions.width,
-                height: maskDimensions.height
-            });
-            const buffer = maskedResult.buffer;
-            if (maskedResult.outsideNonBlackRatio > 0.02) {
-                console.warn(
-                    `[AI-GEN] [Task:${taskId}] Model output leaked outside mask before clamp: ${(maskedResult.outsideNonBlackRatio * 100).toFixed(2)}% pixels`
-                );
-                await logStep('mask_leak_detected', 'processing', `outside_non_black_ratio=${maskedResult.outsideNonBlackRatio.toFixed(4)}`);
-            }
+            const buffer = Buffer.from(base64Data, 'base64');
 
             await logStep('oss_upload_start');
 
