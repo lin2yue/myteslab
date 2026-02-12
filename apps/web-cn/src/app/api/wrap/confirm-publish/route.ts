@@ -30,14 +30,25 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Confirm-Publish] Finalizing for wrapId: ${wrapId}, previewUrl: ${previewUrl}`);
 
-        // 执行更新 (归一化使用标准 RLS，不再区分管理员)
-        const { rows } = await dbQuery(
-            `UPDATE wraps
-             SET preview_url = $3, is_public = true, updated_at = NOW()
-             WHERE id = $1 AND user_id = $2
-             RETURNING *`,
-            [wrapId, user.id, previewUrl]
-        );
+        // 更新权限:
+        // - 普通用户: 仅更新自己的 wrap
+        // - 管理员: 可跨用户更新，用于后台批量修复预览图
+        const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+        const { rows } = isAdmin
+            ? await dbQuery(
+                `UPDATE wraps
+                 SET preview_url = $2, is_public = true, updated_at = NOW()
+                 WHERE id = $1
+                 RETURNING *`,
+                [wrapId, previewUrl]
+            )
+            : await dbQuery(
+                `UPDATE wraps
+                 SET preview_url = $3, is_public = true, updated_at = NOW()
+                 WHERE id = $1 AND user_id = $2
+                 RETURNING *`,
+                [wrapId, user.id, previewUrl]
+            );
 
         if (!rows || rows.length === 0) {
             return NextResponse.json({

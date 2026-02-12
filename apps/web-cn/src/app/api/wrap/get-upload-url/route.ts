@@ -19,11 +19,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Missing wrapId' }, { status: 400 });
         }
 
-        // 验证用户是否拥有该作品 (RLS would normally handle this, but explicit check is safer)
-        const { rows } = await dbQuery(
-            `SELECT id FROM wraps WHERE id = $1 AND user_id = $2 LIMIT 1`,
-            [wrapId, user.id]
-        );
+        // 作品权限检查:
+        // - 普通用户: 仅可操作自己的 wrap
+        // - 管理员: 可跨用户操作，用于后台批量修复预览图
+        const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+        const { rows } = isAdmin
+            ? await dbQuery(
+                `SELECT id FROM wraps WHERE id = $1 LIMIT 1`,
+                [wrapId]
+            )
+            : await dbQuery(
+                `SELECT id FROM wraps WHERE id = $1 AND user_id = $2 LIMIT 1`,
+                [wrapId, user.id]
+            );
         if (!rows[0]) {
             return NextResponse.json({ success: false, error: 'Wrap not found or access denied' }, { status: 404 });
         }

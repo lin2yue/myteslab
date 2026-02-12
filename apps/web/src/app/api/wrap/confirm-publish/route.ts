@@ -31,16 +31,27 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Confirm-Publish] Finalizing for wrapId: ${wrapId}, previewUrl: ${previewUrl}`);
 
-        // 执行更新 (归一化使用标准 RLS，不再区分管理员)
-        const { data: updateData, error: updateError } = await supabase
+        // 角色检查：管理员可用于后台批量刷新他人预览图
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+        const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
+        const updateQuery = supabase
             .from('wraps')
             .update({
                 preview_url: previewUrl,
                 is_public: true
             })
-            .eq('id', wrapId)
-            .eq('user_id', user.id)
-            .select();
+            .eq('id', wrapId);
+
+        if (!isAdmin) {
+            updateQuery.eq('user_id', user.id);
+        }
+
+        const { data: updateData, error: updateError } = await updateQuery.select();
 
         if (updateError) {
             console.error('Failed to update wrap metadata:', updateError);

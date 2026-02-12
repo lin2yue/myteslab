@@ -20,13 +20,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Missing wrapId' }, { status: 400 });
         }
 
-        // 验证用户是否拥有该作品 (RLS would normally handle this, but explicit check is safer)
-        const { data: wrap, error: wrapError } = await supabase
+        // 角色检查：管理员可用于后台批量刷新他人预览图
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+        const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
+        const wrapQuery = supabase
             .from('wraps')
             .select('id')
-            .eq('id', wrapId)
-            .eq('user_id', user.id)
-            .single();
+            .eq('id', wrapId);
+
+        if (!isAdmin) {
+            wrapQuery.eq('user_id', user.id);
+        }
+
+        const { data: wrap, error: wrapError } = await wrapQuery.single();
 
         if (wrapError || !wrap) {
             return NextResponse.json({ success: false, error: 'Wrap not found or access denied' }, { status: 404 });
