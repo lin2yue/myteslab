@@ -2,7 +2,6 @@ import Image from 'next/image'
 import { useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import type { Wrap } from '@/lib/types'
-import { getOptimizedImageUrl } from '@/lib/images'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
 interface WrapCardProps {
@@ -51,6 +50,21 @@ export function WrapCard({ wrap }: WrapCardProps) {
 
                     {/* 悬浮遮罩 - 增强质感 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    {/* Hover 提示：保持整卡可点击，不单独拦截事件 */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+                        <span
+                            aria-hidden="true"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/55 px-3 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur-sm opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3.25L4 7.5 12 11.75 20 7.5 12 3.25Z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7.5V16.5L12 20.75V11.75" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7.5V16.5L12 20.75" />
+                            </svg>
+                            {locale === 'en' ? '3D Preview' : '3D预览'}
+                        </span>
+                    </div>
                 </div>
 
                 {/* 内容区域 */}
