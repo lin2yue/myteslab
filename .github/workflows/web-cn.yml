@@ -57,11 +57,13 @@ jobs:
             echo "CONTAINER_NAME=web-cn" >> $GITHUB_OUTPUT
             echo "HOST_PORT=3000" >> $GITHUB_OUTPUT
             echo "APP_URL=https://tewan.club" >> $GITHUB_OUTPUT
+            echo "WRAP_GEN_V2_SUBMIT=${{ secrets.WRAP_GEN_V2_SUBMIT_PROD }}" >> $GITHUB_OUTPUT
           else
             echo "IMAGE_TAG=pre" >> $GITHUB_OUTPUT
             echo "CONTAINER_NAME=web-cn-pre" >> $GITHUB_OUTPUT
             echo "HOST_PORT=3001" >> $GITHUB_OUTPUT
             echo "APP_URL=https://pre.tewan.club" >> $GITHUB_OUTPUT
+            echo "WRAP_GEN_V2_SUBMIT=${{ secrets.WRAP_GEN_V2_SUBMIT_PRE }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Deploy to ECS via SSH
@@ -119,6 +121,12 @@ jobs:
               -e GEMINI_RETRY_MAX_MS="${{ secrets.GEMINI_RETRY_MAX_MS }}" \
               -e GEMINI_PROMPT_VERSION="${{ secrets.GEMINI_PROMPT_VERSION }}" \
               -e GEMINI_IMAGE_USE_SYSTEM_INSTRUCTION="1" \
+              -e WRAP_GEN_V2_SUBMIT="${{ steps.set_env.outputs.WRAP_GEN_V2_SUBMIT }}" \
+              -e WRAP_TASK_RETRY_AFTER_SECONDS="${{ secrets.WRAP_TASK_RETRY_AFTER_SECONDS }}" \
+              -e WRAP_WORKER_SECRET="${{ secrets.WRAP_WORKER_SECRET }}" \
+              -e WRAP_WORKER_BATCH_SIZE="${{ secrets.WRAP_WORKER_BATCH_SIZE }}" \
+              -e WRAP_WORKER_MAX_BATCH_SIZE="${{ secrets.WRAP_WORKER_MAX_BATCH_SIZE }}" \
+              -e WRAP_WORKER_LEASE_SECONDS="${{ secrets.WRAP_WORKER_LEASE_SECONDS }}" \
               -e WECHAT_MP_APP_ID="${{ secrets.WECHAT_MP_APP_ID }}" \
               -e WECHAT_MP_APP_SECRET="${{ secrets.WECHAT_MP_APP_SECRET }}" \
               -e WECHAT_MP_TOKEN="${{ secrets.WECHAT_MP_TOKEN }}" \

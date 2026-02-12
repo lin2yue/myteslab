@@ -31,6 +31,8 @@ const PER_IP_WINDOW_MS = Number(process.env.WRAP_GEN_IP_RATE_WINDOW_MS ?? 60 * 1
 const PER_IP_MAX_REQUESTS = Number(process.env.WRAP_GEN_IP_RATE_MAX_REQUESTS ?? 20);
 const MAX_INFLIGHT_TASKS_PER_USER = Number(process.env.WRAP_GEN_MAX_INFLIGHT_TASKS ?? 2);
 const ENABLE_PROMPT_OPTIMIZE_RETRY = (process.env.WRAP_GEN_ENABLE_PROMPT_OPTIMIZE_RETRY ?? '1').trim() !== '0';
+const ENABLE_SUBMIT_ONLY = (process.env.WRAP_GEN_V2_SUBMIT ?? '0').trim() === '1';
+const RETRY_AFTER_SECONDS = Number(process.env.WRAP_TASK_RETRY_AFTER_SECONDS ?? 5);
 
 const userRateMap = new Map<string, { count: number; windowStart: number }>();
 const ipRateMap = new Map<string, { count: number; windowStart: number }>();
@@ -87,6 +89,15 @@ function takeRateQuota(
     state.count += 1;
     map.set(key, state);
     return true;
+}
+
+function jsonAccepted(body: unknown) {
+    return NextResponse.json(body, {
+        status: 202,
+        headers: {
+            'Retry-After': String(RETRY_AFTER_SECONDS),
+        }
+    });
 }
 
 function buildLocalWrapMetadata(prompt: string, modelName: string) {
@@ -299,6 +310,44 @@ async function deductCreditsForGeneration(params: {
     }
 }
 
+async function queueGenerationTask(params: {
+    taskId: string;
+    userId: string;
+    modelSlug: string;
+    modelName: string;
+    prompt: string;
+    referenceImages?: string[];
+    origin: string;
+}) {
+    const { taskId, userId, modelSlug, modelName, prompt, referenceImages, origin } = params;
+    const queuedStep = {
+        step: 'queued_for_worker',
+        ts: new Date().toISOString(),
+        modelSlug,
+        modelName,
+        prompt,
+        referenceImages: Array.isArray(referenceImages)
+            ? referenceImages.filter(ref => typeof ref === 'string').map(ref => ref.trim()).filter(Boolean)
+            : [],
+        origin
+    };
+
+    await dbQuery(
+        `UPDATE generation_tasks
+         SET status = 'pending',
+             next_retry_at = NOW(),
+             error_message = NULL,
+             finished_at = NULL,
+             lease_owner = NULL,
+             lease_expires_at = NULL,
+             steps = COALESCE(steps, '[]'::jsonb) || $3::jsonb,
+             updated_at = NOW()
+         WHERE id = $1
+           AND user_id = $2`,
+        [taskId, userId, JSON.stringify([queuedStep])]
+    );
+}
+
 async function settleTaskCredits(taskId: string, reason: string) {
     const client = await db().connect();
     try {
@@ -380,7 +429,7 @@ async function settleTaskCredits(taskId: string, reason: string) {
     }
 }
 
-async function refundTaskCredits(taskId: string, reason: string) {
+export async function refundTaskCredits(taskId: string, reason: string) {
     const client = await db().connect();
     try {
         await client.query('BEGIN');
@@ -449,6 +498,10 @@ async function refundTaskCredits(taskId: string, reason: string) {
              SET status = 'failed_refunded',
                  steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
                  error_message = COALESCE(error_message, $3),
+                 finished_at = NOW(),
+                 lease_owner = NULL,
+                 lease_expires_at = NULL,
+                 next_retry_at = NULL,
                  updated_at = NOW()
              WHERE id = $1`,
             [
@@ -468,7 +521,7 @@ async function refundTaskCredits(taskId: string, reason: string) {
     }
 }
 
-async function processGenerationTask(params: {
+export async function processGenerationTask(params: {
     taskId: string;
     userId: string;
     modelSlug: string;
@@ -490,6 +543,10 @@ async function processGenerationTask(params: {
             `UPDATE generation_tasks
              SET status = 'failed',
                  error_message = $2,
+                 finished_at = NOW(),
+                 lease_owner = NULL,
+                 lease_expires_at = NULL,
+                 next_retry_at = NULL,
                  updated_at = NOW()
              WHERE id = $1`,
             [taskId, reason]
@@ -501,7 +558,10 @@ async function processGenerationTask(params: {
         await logStep('ai_call_start', 'processing');
         await dbQuery(
             `UPDATE generation_tasks
-             SET status = 'processing', updated_at = NOW()
+             SET status = 'processing',
+                 started_at = COALESCE(started_at, NOW()),
+                 attempts = CASE WHEN status = 'pending' THEN attempts + 1 ELSE attempts END,
+                 updated_at = NOW()
              WHERE id = $1 AND user_id = $2`,
             [taskId, userId]
         );
@@ -761,6 +821,10 @@ async function processGenerationTask(params: {
                 `UPDATE generation_tasks
                  SET status = 'completed',
                      error_message = COALESCE(error_message, $2),
+                     finished_at = NOW(),
+                     lease_owner = NULL,
+                     lease_expires_at = NULL,
+                     next_retry_at = NULL,
                      steps = COALESCE(steps, '[]'::jsonb) || $3::jsonb,
                      updated_at = NOW()
                  WHERE id = $1`,
@@ -777,7 +841,13 @@ async function processGenerationTask(params: {
         if (wrapId) {
             await dbQuery(
                 `UPDATE generation_tasks
-                 SET status = 'completed', wrap_id = $2, updated_at = NOW()
+                 SET status = 'completed',
+                     wrap_id = $2,
+                     finished_at = NOW(),
+                     lease_owner = NULL,
+                     lease_expires_at = NULL,
+                     next_retry_at = NULL,
+                     updated_at = NOW()
                  WHERE id = $1 AND user_id = $3`,
                 [taskId, wrapId, userId]
             );
@@ -939,6 +1009,10 @@ export async function POST(request: NextRequest) {
                         `UPDATE generation_tasks
                          SET status = 'failed',
                              error_message = COALESCE(error_message, $2),
+                             finished_at = NOW(),
+                             lease_owner = NULL,
+                             lease_expires_at = NULL,
+                             next_retry_at = NULL,
                              updated_at = NOW()
                          WHERE id = $1 AND user_id = $3`,
                         [taskId, 'Stale generation task detected (interrupted before completion)', user.id]
@@ -980,12 +1054,24 @@ export async function POST(request: NextRequest) {
 
             // 如果正在处理中，告诉前端继续等待
             if (taskStatus === 'pending' || taskStatus === 'processing') {
-                return NextResponse.json({
+                if (ENABLE_SUBMIT_ONLY && taskStatus === 'pending') {
+                    await queueGenerationTask({
+                        taskId,
+                        userId: user.id,
+                        modelSlug: currentModelSlug,
+                        modelName,
+                        prompt: normalizedPrompt,
+                        referenceImages,
+                        origin: request.nextUrl.origin
+                    });
+                }
+                return jsonAccepted({
                     success: true,
                     taskId,
                     status: 'pending',
-                    remainingBalance: deductResultRaw?.remainingBalance ?? 0
-                }, { status: 202 });
+                    remainingBalance: deductResultRaw?.remainingBalance ?? 0,
+                    retryAfter: RETRY_AFTER_SECONDS
+                });
             }
 
             // 如果之前失败了，且在同一个幂等时窗内，返回之前的错误
@@ -1009,7 +1095,27 @@ export async function POST(request: NextRequest) {
 
         console.log(`[AI-GEN] ✅ Task active: ${taskId}`);
 
-        // 异步处理，立即返回 pending
+        if (ENABLE_SUBMIT_ONLY) {
+            await queueGenerationTask({
+                taskId,
+                userId: user.id,
+                modelSlug: currentModelSlug,
+                modelName,
+                prompt: normalizedPrompt,
+                referenceImages,
+                origin: request.nextUrl.origin
+            });
+            return jsonAccepted({
+                success: true,
+                taskId,
+                status: 'pending',
+                mode: 'queued',
+                remainingBalance: deductResultRaw?.remainingBalance ?? 0,
+                retryAfter: RETRY_AFTER_SECONDS
+            });
+        }
+
+        // 兼容路径：未开启 submit-only 时，保持当前进程内异步处理
         void processGenerationTask({
             taskId,
             userId: user.id,
@@ -1020,12 +1126,14 @@ export async function POST(request: NextRequest) {
             origin: request.nextUrl.origin
         });
 
-        return NextResponse.json({
+        return jsonAccepted({
             success: true,
             taskId,
             status: 'pending',
-            remainingBalance: deductResultRaw?.remainingBalance ?? 0
-        }, { status: 202 });
+            mode: 'inline_async',
+            remainingBalance: deductResultRaw?.remainingBalance ?? 0,
+            retryAfter: RETRY_AFTER_SECONDS
+        });
 
     } catch (error: any) {
         console.error('❌ [AI-GEN] Global API Error:', error);
@@ -1036,6 +1144,10 @@ export async function POST(request: NextRequest) {
                     `UPDATE generation_tasks
                      SET status = 'failed',
                          error_message = $2,
+                         finished_at = NOW(),
+                         lease_owner = NULL,
+                         lease_expires_at = NULL,
+                         next_retry_at = NULL,
                          updated_at = NOW()
                      WHERE id = $1`,
                     [taskId, `Global API Error: ${error instanceof Error ? error.message : String(error)}`]

@@ -36,11 +36,27 @@
 - `GEMINI_RETRY_MAX_MS`（可选，默认 5000）
 - `GEMINI_PROMPT_VERSION`（可选，默认 v2）
 - `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET`
+- `WRAP_GEN_V2_SUBMIT`（可选，默认 0。`1` 表示仅提交任务不在接口内执行）
+- `WRAP_TASK_RETRY_AFTER_SECONDS`（可选，默认 5）
+- `WRAP_WORKER_SECRET`（启用 submit-only 时必填，内部 worker 调用鉴权）
+- `WRAP_WORKER_BATCH_SIZE`（可选，默认 2）
+- `WRAP_WORKER_MAX_BATCH_SIZE`（可选，默认 5）
+- `WRAP_WORKER_LEASE_SECONDS`（可选，默认 240）
 
 ### 本地运行
 ```bash
 npm install
 npm run dev
+```
+
+### Worker Tick（submit-only 模式）
+当 `WRAP_GEN_V2_SUBMIT=1` 时，需要定时触发内部 worker 接口消费任务：
+
+```bash
+curl -X POST "http://localhost:3000/api/internal/generation/worker-tick" \
+  -H "Authorization: Bearer ${WRAP_WORKER_SECRET}" \
+  -H "Content-Type: application/json" \
+  -d '{"batchSize":2}'
 ```
 
 ## 📚 说明文档

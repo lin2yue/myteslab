@@ -84,9 +84,19 @@ CREATE TABLE IF NOT EXISTS generation_tasks (
   status generation_status DEFAULT 'pending',
   credits_spent INTEGER DEFAULT 10,
   error_message TEXT,
+  error_code TEXT,
   wrap_id UUID REFERENCES wraps(id) ON DELETE SET NULL,
   idempotency_key TEXT UNIQUE,
   steps JSONB DEFAULT '[]'::jsonb,
+  version INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  lease_owner TEXT,
+  lease_expires_at TIMESTAMP WITH TIME ZONE,
+  next_retry_at TIMESTAMP WITH TIME ZONE,
+  started_at TIMESTAMP WITH TIME ZONE,
+  finished_at TIMESTAMP WITH TIME ZONE,
+  CONSTRAINT generation_tasks_version_non_negative CHECK (version >= 0),
+  CONSTRAINT generation_tasks_attempts_non_negative CHECK (attempts >= 0),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -161,5 +171,17 @@ CREATE INDEX IF NOT EXISTS idx_wraps_is_active ON wraps(is_active);
 CREATE INDEX IF NOT EXISTS idx_wraps_name_search ON wraps USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_wraps_name_plain ON wraps(name);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
+CREATE INDEX IF NOT EXISTS idx_credit_ledger_task_created_at ON credit_ledger(task_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_idempotency ON generation_tasks(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_generation_tasks_user_status_updated_at ON generation_tasks(user_id, status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_generation_tasks_status_lease_retry ON generation_tasks(status, lease_expires_at, next_retry_at);
+CREATE INDEX IF NOT EXISTS idx_wraps_generation_task_user_id ON wraps(generation_task_id, user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_ledger_task_generation_charge_once
+  ON credit_ledger(task_id)
+  WHERE task_id IS NOT NULL
+    AND type IN ('generation', 'generation_charge');
+CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_ledger_task_refund_once
+  ON credit_ledger(task_id)
+  WHERE task_id IS NOT NULL
+    AND type = 'refund';
 CREATE INDEX IF NOT EXISTS idx_user_audio_downloads_user_id ON user_audio_downloads(user_id);
