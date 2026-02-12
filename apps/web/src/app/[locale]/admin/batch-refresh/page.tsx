@@ -61,6 +61,14 @@ export default function BatchRefreshPage() {
         return url
     }
 
+    const toViewerAssetUrl = (url: string | undefined) => {
+        if (!url) return undefined
+        const normalized = getCdnUrl(url)
+        if (!normalized.startsWith('http')) return normalized
+        if (normalized.includes('cdn.tewan.club')) return normalized
+        return `/api/proxy?url=${encodeURIComponent(normalized)}`
+    }
+
     // Load data
     useEffect(() => {
         async function fetchData() {
@@ -145,7 +153,7 @@ export default function BatchRefreshPage() {
             if (!viewerRef.current) throw new Error('Viewer not ready')
 
             const isReady = await viewerRef.current.waitForReady(15000) // 15s timeout
-            if (!isReady) console.warn('Viewer readiness timed out, taking screenshot anyway')
+            if (!isReady) throw new Error('Viewer readiness timed out')
 
             // Extra buffer to ensure model is fully rendered on screen
             await new Promise(resolve => setTimeout(resolve, 500))
@@ -315,9 +323,9 @@ export default function BatchRefreshPage() {
                         {activeWrap ? (
                             <ModelViewer
                                 ref={viewerRef}
-                                modelUrl={`/api/proxy?url=${encodeURIComponent(getModelUrl(activeWrap.model_slug))}`}
-                                wheelUrl={getModelWheelUrl(activeWrap.model_slug) ? `/api/proxy?url=${encodeURIComponent(getModelWheelUrl(activeWrap.model_slug))}` : undefined}
-                                textureUrl={`/api/proxy?url=${encodeURIComponent(activeWrap.texture_url)}`}
+                                modelUrl={toViewerAssetUrl(getModelUrl(activeWrap.model_slug)) || getModelUrl(activeWrap.model_slug)}
+                                wheelUrl={toViewerAssetUrl(getModelWheelUrl(activeWrap.model_slug))}
+                                textureUrl={toViewerAssetUrl(activeWrap.texture_url) || activeWrap.texture_url}
                                 modelSlug={activeWrap.model_slug}
                                 backgroundColor="#1F1F1F"
                                 autoRotate={false}

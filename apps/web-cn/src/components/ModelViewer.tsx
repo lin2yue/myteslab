@@ -54,6 +54,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     // Refs for tracking readiness state without triggering re-renders
     const modelLoadedRef = useRef(false)
     const textureAppliedRef = useRef(false)
+    const viewerInitializedRef = useRef(false)
 
     useImperativeHandle(ref, () => ({
         waitForReady: async (timeout = 10000) => {
@@ -61,7 +62,8 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             while (Date.now() - start < timeout) {
                 // If there's no textureUrl, we only care about model loading
                 const textureReady = !textureUrl || textureAppliedRef.current
-                if (modelLoadedRef.current && textureReady && !textureLoading) {
+                // Wait until post-load initialization (framing / grounding / wheel injection) is settled.
+                if (viewerInitializedRef.current && modelLoadedRef.current && textureReady && !textureLoading) {
                     return true
                 }
                 await new Promise(resolve => setTimeout(resolve, 200))
@@ -564,6 +566,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         setError(null)
         modelLoadedRef.current = false
         textureAppliedRef.current = false
+        viewerInitializedRef.current = false
 
         const viewer = document.createElement('model-viewer') as any
         if (id) viewer.id = id
@@ -692,11 +695,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     if (typeof (viewer as any).requestRender === 'function') {
                         (viewer as any).requestRender();
                     }
-
-                    setLoading(false);
                 } catch (err) {
                     console.error('[ModelViewer] Post-load initialization failed:', err);
+                } finally {
+                    // Mark initialization settled regardless of non-critical post-load errors.
                     setLoading(false);
+                    viewerInitializedRef.current = true
                 }
             };
 

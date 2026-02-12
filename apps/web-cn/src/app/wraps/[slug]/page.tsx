@@ -151,21 +151,26 @@ export default async function WrapDetailPage({
         ? imageUrl
         : `https://tewan.club${imageUrl}`
 
-    // 获取模型 URL (通过代理解决 CORS)
+    const toViewerAssetUrl = (input?: string) => {
+        if (!input) return undefined
+        const normalized = ensureCdnUrl(input)
+        if (!normalized.startsWith('http')) return normalized
+        // CDN already has CORS configured, avoid proxy hop for large GLB/texture assets.
+        if (normalized.includes('cdn.tewan.club')) return normalized
+        return `/api/proxy?url=${encodeURIComponent(normalized)}`
+    }
+
+    // 获取模型 URL
     const modelUrl = wrap.model_3d_url || 'https://cdn.tewan.club/models/wraps/cybertruck/model.glb'
-    const proxiedModelUrl = modelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(modelUrl)}` : modelUrl
+    const proxiedModelUrl = toViewerAssetUrl(modelUrl) || modelUrl
 
     // 获取贴图 URL
     const textureUrlBase = ensureCdnUrl(wrap.texture_url)
-    const textureUrl = textureUrlBase
-        ? (textureUrlBase.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(textureUrlBase)}` : textureUrlBase)
-        : undefined
+    const textureUrl = toViewerAssetUrl(textureUrlBase)
 
     // 获取轮毂 URL
     const rawWheelUrl = model?.wheel_url
-    const wheelUrl = rawWheelUrl
-        ? (rawWheelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawWheelUrl)}` : rawWheelUrl)
-        : undefined
+    const wheelUrl = toViewerAssetUrl(rawWheelUrl)
 
     return (
         <div className="flex flex-col min-h-screen">

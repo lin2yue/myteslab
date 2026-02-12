@@ -53,7 +53,11 @@ export default function PublishModal({
         setIsProcessing(true)
         try {
             // Wait for theDedicated snapshot renderer to be fully ready
-            await hiddenViewerRef.current.waitForReady(5000)
+            const ready = await hiddenViewerRef.current.waitForReady(15000)
+            if (!ready) {
+                console.error('[PublishModal] Hidden viewer did not become ready in time, aborting publish snapshot.')
+                return
+            }
 
             // Capture from the standard 1024x768 instance
             const imageBase64 = await hiddenViewerRef.current.takeHighResScreenshot({ useStandardView: true })

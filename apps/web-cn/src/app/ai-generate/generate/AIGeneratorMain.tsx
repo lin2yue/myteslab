@@ -476,7 +476,11 @@ export default function AIGeneratorMain({
         }
 
         const pollAll = async () => {
-            await Promise.allSettled(pendingTaskIds.map(pollSingleTask))
+            // Poll sequentially to avoid burst requests when multiple tasks are pending.
+            for (const taskId of pendingTaskIds) {
+                if (!active) return
+                await pollSingleTask(taskId)
+            }
         }
 
         void pollAll()
@@ -723,6 +727,10 @@ export default function AIGeneratorMain({
             return
         }
         if (!viewerRef.current) return;
+        if (!currentTexture) {
+            alert.warning('当前作品贴图还未就绪，请稍后再发布')
+            return
+        }
 
         // 已经发布了就不再操作
         const currentWrap = activeWrapId ? history.find(h => h.id === activeWrapId) : null;
@@ -1069,7 +1077,7 @@ export default function AIGeneratorMain({
                         </button>
                         <button
                             onClick={handlePublish}
-                            disabled={isPublishing || isSaving || (activeMode === 'ai' && !activeWrapId) || (activeMode === 'diy' && !currentTexture) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
+                            disabled={isPublishing || isSaving || (activeMode === 'ai' && (!activeWrapId || !currentTexture)) || (activeMode === 'diy' && !currentTexture) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
                             className={`flex items-center gap-1.5 flex-shrink-0 ${isPublishing || isSaving ? 'h-10 px-4 rounded-lg bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'h-10 px-4 rounded-lg bg-gray-100 text-gray-400' : 'btn-primary h-10 px-4')}`}
                         >
                             {(isPublishing || isSaving) ? (

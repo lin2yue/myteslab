@@ -35,16 +35,6 @@ export async function POST(request: NextRequest) {
         }
 
         const now = Date.now();
-        const lastRequest = userThrottleMap.get(user.id);
-        if (lastRequest && now - lastRequest < THROTTLE_WINDOW_MS) {
-            return jsonWithRetry({
-                success: false,
-                error: 'Too many requests',
-                retryAfter: RETRY_AFTER_SECONDS
-            }, 429);
-        }
-        userThrottleMap.set(user.id, now);
-
         const cacheKey = `${user.id}:${taskId}`;
         const cached = cacheMap.get(cacheKey);
         if (cached && cached.expiresAt > now) {
@@ -55,6 +45,17 @@ export async function POST(request: NextRequest) {
                 }
             });
         }
+
+        const throttleKey = cacheKey;
+        const lastRequest = userThrottleMap.get(throttleKey);
+        if (lastRequest && now - lastRequest < THROTTLE_WINDOW_MS) {
+            return jsonWithRetry({
+                success: false,
+                error: 'Too many requests',
+                retryAfter: RETRY_AFTER_SECONDS
+            }, 429);
+        }
+        userThrottleMap.set(throttleKey, now);
 
         const { data: task } = await supabase
             .from('generation_tasks')
