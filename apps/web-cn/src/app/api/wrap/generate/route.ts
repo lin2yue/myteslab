@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
@@ -182,7 +182,7 @@ function shouldRetryWithOptimizedPrompt(result: Pick<GenerateWrapResult, 'errorC
 function isAllowedReferenceUrl(input: string): boolean {
     if (!input) return false;
     if (input.startsWith('data:')) return true;
-    if (!input.startsWith('http')) return true;
+    if (!input.startsWith('http')) return false;
     try {
         const url = new URL(input);
         const hostAllowed = allowedReferenceHosts.has(url.hostname)
@@ -505,6 +505,7 @@ async function processGenerationTask(params: {
         // 2. 获取 Mask
         let maskImageBase64: string | null = null;
         const maskDimensions = getMaskDimensions(modelSlug);
+        const maskUrl = getMaskUrl(modelSlug, origin);
 
         // --- DEBUG: Log resolution info ---
         console.log(`[AI-GEN] [Task:${taskId}] ModelSlug: "${modelSlug}", Dimensions: ${maskDimensions.width}x${maskDimensions.height} (${maskDimensions.aspectRatio})`);
@@ -514,7 +515,6 @@ async function processGenerationTask(params: {
         // -----------------------------------
 
         try {
-            const maskUrl = getMaskUrl(modelSlug, origin);
             console.log(`[AI-GEN] [Task:${taskId}] Fetching mask from: ${maskUrl}`);
             const maskResponse = await fetch(maskUrl);
 
@@ -539,46 +539,35 @@ async function processGenerationTask(params: {
             return;
         }
 
-        // 3. 参考图上传
-        const savedReferenceUrls: string[] = [];
+        // 3. 参考图准备（默认直接使用前端上传后的 URL，不再后端重复上传）
+        const referenceImageUrls: string[] = [];
+        const referenceImagesBase64: string[] = [];
         if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
             console.log(`[AI-GEN] Processing ${referenceImages.length} reference images...`);
-            for (let i = 0; i < referenceImages.length; i++) {
-                try {
-                    const base64Data = referenceImages[i];
-                    if (!base64Data) continue;
+            for (const inputRef of referenceImages) {
+                if (typeof inputRef !== 'string') continue;
+                const ref = inputRef.trim();
+                if (!ref) continue;
 
-                    const payload = extractBase64Payload(base64Data);
-                    if (!payload) continue;
-                    if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
-                        throw new Error('Reference image too large');
-                    }
-                    const buffer = Buffer.from(payload, 'base64');
-
-                    const refFilename = `${taskId}-ref-${i}.png`;
-                    const refUrl = await uploadToOSS(buffer, refFilename, 'wraps/reference');
-                    savedReferenceUrls.push(refUrl);
-                    console.log(`[AI-GEN] Reference image ${i} uploaded: ${refUrl}`);
-                } catch (e) {
-                    if (e instanceof Error && e.message === 'Reference image too large') {
-                        throw e;
-                    }
-                    console.error(`[AI-GEN] Failed to upload reference image ${i}:`, e);
+                if (ref.startsWith('http')) {
+                    referenceImageUrls.push(ref);
+                    continue;
                 }
+
+                const payload = extractBase64Payload(ref);
+                if (!payload) continue;
+                if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
+                    throw new Error('Reference image too large');
+                }
+                referenceImagesBase64.push(payload);
             }
         }
 
-        // 4. 准备参考图 base64
-        const referenceImagesBase64: string[] = [];
-        if (referenceImages && Array.isArray(referenceImages)) {
-            for (const refImage of referenceImages) {
-                if (typeof refImage !== 'string') continue;
-                const base64 = refImage.startsWith('http')
-                    ? await imageUrlToBase64(refImage)
-                    : extractBase64Payload(refImage);
-                if (base64) referenceImagesBase64.push(base64);
-            }
-        }
+        const savedReferenceUrls = Array.from(new Set(referenceImageUrls));
+        const dedupedReferenceImageUrls = savedReferenceUrls;
+        console.log(
+            `[AI-GEN] [Task:${taskId}] Reference payload prepared. URLs=${dedupedReferenceImageUrls.length}, inline=${referenceImagesBase64.length}`
+        );
 
         console.log(`[AI-GEN] Starting Gemini image generation...`);
         const metadata = buildLocalWrapMetadata(prompt, modelName);
@@ -589,7 +578,9 @@ async function processGenerationTask(params: {
             modelSlug,
             modelName,
             prompt: finalPromptUsed,
+            maskImageUrl: maskUrl,
             maskImageBase64: maskImageBase64 || undefined,
+            referenceImageUrls: dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
             referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
         });
 
@@ -620,7 +611,9 @@ async function processGenerationTask(params: {
                     modelSlug,
                     modelName,
                     prompt: finalPromptUsed,
+                    maskImageUrl: maskUrl,
                     maskImageBase64: maskImageBase64 || undefined,
+                    referenceImageUrls: dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
                     referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
                 });
 

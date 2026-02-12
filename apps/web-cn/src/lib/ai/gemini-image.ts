@@ -7,6 +7,7 @@ import {
 } from './prompts';
 import { getMaskDimensions } from './mask-config';
 import dns from 'dns';
+import sharp from 'sharp';
 
 // 强制优先使用 IPv4, 防止容器 IPv6 路由缺失导致的秒级超时 (ETIMEDOUT)
 if (typeof dns.setDefaultResultOrder === 'function') {
@@ -75,12 +76,17 @@ async function fetchWithRetry(url: string, options: RequestInit & { timeoutMs: n
 // Gemini API configuration
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
 const DEFAULT_IMAGE_FALLBACK_MODELS = ['gemini-2.5-flash-image'];
+const REFERENCE_IMAGE_MAX_SIDE = readEnvInt('GEMINI_REFERENCE_MAX_SIDE', 1024);
+const REFERENCE_IMAGE_JPEG_QUALITY = Math.max(40, Math.min(95, readEnvInt('GEMINI_REFERENCE_JPEG_QUALITY', 78)));
+const REFERENCE_IMAGE_TARGET_BYTES = readEnvInt('GEMINI_REFERENCE_TARGET_BYTES', 900 * 1024);
 
 interface GenerateWrapParams {
     modelSlug: string;
     modelName: string;
     prompt: string;
+    maskImageUrl?: string;
     maskImageBase64?: string;
+    referenceImageUrls?: string[];
     referenceImagesBase64?: string[];
 }
 
@@ -151,6 +157,39 @@ const FINISH_POLICY_REASONS = new Set([
     'IMAGE_PROHIBITED_CONTENT'
 ]);
 const FINISH_RETRYABLE_REASONS = new Set(['OTHER', 'IMAGE_OTHER', 'NO_IMAGE']);
+const URL_FETCH_ERROR_KEYWORDS = [
+    'unable to fetch',
+    'failed to fetch',
+    'could not fetch',
+    'could not retrieve',
+    'not accessible',
+    'permission denied',
+    'signed url',
+    'url',
+    'uri',
+    'file_data',
+    'file uri',
+    'expired',
+    '404',
+    '403'
+];
+
+function inferMimeTypeFromUrl(url: string): string {
+    const lower = url.toLowerCase();
+    if (lower.includes('.png')) return 'image/png';
+    if (lower.includes('.webp')) return 'image/webp';
+    if (lower.includes('.gif')) return 'image/gif';
+    if (lower.includes('.jpeg') || lower.includes('.jpg')) return 'image/jpeg';
+    return 'image/jpeg';
+}
+
+function likelyUrlFetchFailure(errorOrMessage: string | null | undefined, finishMessages: string[] = []): boolean {
+    const merged = [errorOrMessage || '', ...finishMessages]
+        .join(' ')
+        .toLowerCase();
+    if (!merged) return false;
+    return URL_FETCH_ERROR_KEYWORDS.some(keyword => merged.includes(keyword));
+}
 
 function buildPromptBlockedMessage(blockReason: string): string {
     if (blockReason === 'PROHIBITED_CONTENT' || blockReason === 'BLOCKLIST') {
@@ -408,7 +447,7 @@ export async function generateWrapTexture(
     params: GenerateWrapParams
 ): Promise<GenerateWrapResult> {
     const VERSION = "V1.1.1";
-    const { modelSlug, modelName, prompt, maskImageBase64, referenceImagesBase64 } = params;
+    const { modelSlug, modelName, prompt, maskImageUrl, maskImageBase64, referenceImageUrls, referenceImagesBase64 } = params;
 
     const maskDimensions = getMaskDimensions(modelSlug);
     let textPrompt = '';
@@ -447,12 +486,46 @@ export async function generateWrapTexture(
             : DEFAULT_IMAGE_FALLBACK_MODELS.filter(m => m !== primaryModel);
         const modelCandidates = [primaryModel, ...fallbackModels];
         const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
-        const buildParts = (promptValue: string) => {
+        const normalizedReferenceImageUrls = Array.from(
+            new Set(
+                (referenceImageUrls || [])
+                    .map((url) => (typeof url === 'string' ? url.trim() : ''))
+                    .filter(Boolean)
+            )
+        );
+        const hasUriInputs = Boolean(maskImageUrl) || normalizedReferenceImageUrls.length > 0;
+        const hasInlineInputs = Boolean(maskImageBase64) || (referenceImagesBase64?.length || 0) > 0;
+        let inlineReferencesFromUrlsCache: string[] | null = null;
+
+        const getInlineReferencesFromUrls = async (): Promise<string[]> => {
+            if (inlineReferencesFromUrlsCache) return inlineReferencesFromUrlsCache;
+            const converted: string[] = [];
+            for (const refUrl of normalizedReferenceImageUrls) {
+                const base64 = await imageUrlToBase64(refUrl);
+                if (base64) {
+                    converted.push(base64);
+                } else {
+                    console.warn(`[AI-GEN] [${VERSION}] Failed to inline reference URL, skip fallback: ${refUrl}`);
+                }
+            }
+            inlineReferencesFromUrlsCache = converted;
+            return converted;
+        };
+
+        const buildParts = async (promptValue: string, mode: 'uri' | 'inline') => {
             const built: any[] = [];
 
-            // Keep request layout explicit:
-            // mask first, then prompt text, then references, then final mask reminder.
-            if (maskImageBase64) {
+            // Request layout: text + mask + references
+            built.push({ text: promptValue });
+
+            if (mode === 'uri' && maskImageUrl) {
+                built.push({
+                    fileData: {
+                        mimeType: 'image/png',
+                        fileUri: maskImageUrl
+                    }
+                });
+            } else if (maskImageBase64) {
                 const cleanMaskBase64 = maskImageBase64.includes('base64,')
                     ? maskImageBase64.split('base64,')[1]
                     : maskImageBase64;
@@ -465,10 +538,27 @@ export async function generateWrapTexture(
                 });
             }
 
-            built.push({ text: promptValue });
+            if (mode === 'uri') {
+                for (const refUrl of normalizedReferenceImageUrls) {
+                    built.push({
+                        fileData: {
+                            mimeType: inferMimeTypeFromUrl(refUrl),
+                            fileUri: refUrl
+                        }
+                    });
+                }
+            }
 
+            const inlineRefs: string[] = [];
             if (referenceImagesBase64 && referenceImagesBase64.length > 0) {
-                referenceImagesBase64.forEach((base64: string) => {
+                inlineRefs.push(...referenceImagesBase64);
+            }
+            if (mode === 'inline' && normalizedReferenceImageUrls.length > 0) {
+                inlineRefs.push(...await getInlineReferencesFromUrls());
+            }
+
+            if (inlineRefs.length > 0) {
+                inlineRefs.forEach((base64) => {
                     built.push({
                         inlineData: {
                             mimeType: 'image/jpeg',
@@ -481,9 +571,9 @@ export async function generateWrapTexture(
             built.push({ text: finalMaskCheckReminder });
             return built;
         };
-        const buildRequestPayload = (promptValue: string) => {
+        const buildRequestPayload = async (promptValue: string, mode: 'uri' | 'inline') => {
             const payload: any = {
-                contents: [{ role: 'user', parts: buildParts(promptValue) }],
+                contents: [{ role: 'user', parts: await buildParts(promptValue, mode) }],
                 generationConfig: {
                     // Follow Gemini API docs: modality enum values are uppercase in REST payload.
                     responseModalities: ['IMAGE'],
@@ -561,74 +651,104 @@ export async function generateWrapTexture(
                     const promptToUse = promptVariants[promptIndex];
                     const isRetryAttempt = modelIndex > 0 || promptIndex > 0;
                     console.log(`[AI-GEN] [${VERSION}] Requesting Gemini Image: ${currentGeminiApiUrl}${isRetryAttempt ? ' (fallback attempt)' : ''}`);
+                    let mode: 'uri' | 'inline' = hasUriInputs ? 'uri' : 'inline';
+                    let triedInlineFallback = false;
 
-                    const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                        },
-                        body: JSON.stringify(buildRequestPayload(promptToUse)),
-                        timeoutMs: imageTimeoutMs,
-                        maxRetries: imageMaxRetries,
-                        retryBaseMs,
-                        retryMaxMs,
-                        logPrefix: '[AI-GEN]'
-                    } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
+                    while (true) {
+                        const payload = await buildRequestPayload(promptToUse, mode);
+                        const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                            },
+                            body: JSON.stringify(payload),
+                            timeoutMs: imageTimeoutMs,
+                            maxRetries: imageMaxRetries,
+                            retryBaseMs,
+                            retryMaxMs,
+                            logPrefix: '[AI-GEN]'
+                        } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        const parsedError = parseGeminiHttpError(response.status, errorText);
-                        lastFailure = parsedError.error;
-                        lastErrorCode = parsedError.errorCode;
-                        lastFinishReasons = parsedError.finishReasons || [];
-                        lastFinishMessages = parsedError.finishMessages || [];
-                        lastPromptBlockReason = parsedError.promptBlockReason || null;
-                        lastResponseId = parsedError.responseId || null;
-                        lastModelVersion = parsedError.modelVersion || null;
-                        console.warn(`[AI-GEN] [${VERSION}] Gemini HTTP error model=${model} status=${response.status} code=${parsedError.errorCode}`);
-                        if (!parsedError.retryable) {
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            const parsedError = parseGeminiHttpError(response.status, errorText);
+                            lastFailure = parsedError.error;
+                            lastErrorCode = parsedError.errorCode;
+                            lastFinishReasons = parsedError.finishReasons || [];
+                            lastFinishMessages = parsedError.finishMessages || [];
+                            lastPromptBlockReason = parsedError.promptBlockReason || null;
+                            lastResponseId = parsedError.responseId || null;
+                            lastModelVersion = parsedError.modelVersion || null;
+                            console.warn(`[AI-GEN] [${VERSION}] Gemini HTTP error model=${model} status=${response.status} code=${parsedError.errorCode}`);
+
+                            const shouldFallbackInline = mode === 'uri'
+                                && !triedInlineFallback
+                                && hasInlineInputs
+                                && likelyUrlFetchFailure(parsedError.error, parsedError.finishMessages || []);
+                            if (shouldFallbackInline) {
+                                triedInlineFallback = true;
+                                mode = 'inline';
+                                console.warn(`[AI-GEN] [${VERSION}] file_uri fetch failed, retrying with inline fallback.`);
+                                continue;
+                            }
+
+                            if (!parsedError.retryable) {
+                                return {
+                                    success: false,
+                                    error: parsedError.error,
+                                    errorCode: parsedError.errorCode,
+                                    promptBlockReason: parsedError.promptBlockReason || null,
+                                    finishReasons: parsedError.finishReasons || [],
+                                    finishMessages: parsedError.finishMessages || [],
+                                    responseId: parsedError.responseId || null,
+                                    modelVersion: parsedError.modelVersion || null,
+                                    finalPrompt: promptToUse
+                                };
+                            }
+                            break;
+                        }
+
+                        const content = await response.json();
+                        const parsed = parseGeminiImageResponse(content, promptToUse);
+                        if (parsed.ok && parsed.result) {
+                            console.log(`[AI-GEN] [${VERSION}] Gemini image success with model ${model}`);
+                            return parsed.result;
+                        }
+
+                        lastFailure = parsed.error || 'No image found in response';
+                        lastErrorCode = parsed.errorCode || 'no_image_payload';
+                        lastFinishReasons = parsed.finishReasons || [];
+                        lastFinishMessages = parsed.finishMessages || [];
+                        lastPromptBlockReason = parsed.promptBlockReason || null;
+                        lastResponseId = parsed.responseId || null;
+                        lastModelVersion = parsed.modelVersion || null;
+
+                        const shouldFallbackInline = mode === 'uri'
+                            && !triedInlineFallback
+                            && hasInlineInputs
+                            && likelyUrlFetchFailure(parsed.error, parsed.finishMessages || []);
+                        if (shouldFallbackInline) {
+                            triedInlineFallback = true;
+                            mode = 'inline';
+                            console.warn(`[AI-GEN] [${VERSION}] file_uri response indicates fetch failure, retrying with inline fallback.`);
+                            continue;
+                        }
+
+                        if (!parsed.retryable) {
                             return {
                                 success: false,
-                                error: parsedError.error,
-                                errorCode: parsedError.errorCode,
-                                promptBlockReason: parsedError.promptBlockReason || null,
-                                finishReasons: parsedError.finishReasons || [],
-                                finishMessages: parsedError.finishMessages || [],
-                                responseId: parsedError.responseId || null,
-                                modelVersion: parsedError.modelVersion || null,
+                                error: lastFailure,
+                                errorCode: parsed.errorCode || 'no_image_payload',
+                                promptBlockReason: parsed.promptBlockReason || null,
+                                finishReasons: parsed.finishReasons || [],
+                                finishMessages: parsed.finishMessages || [],
+                                responseId: parsed.responseId || null,
+                                modelVersion: parsed.modelVersion || null,
                                 finalPrompt: promptToUse
                             };
                         }
-                        continue;
-                    }
-
-                    const content = await response.json();
-                    const parsed = parseGeminiImageResponse(content, promptToUse);
-                    if (parsed.ok && parsed.result) {
-                        console.log(`[AI-GEN] [${VERSION}] Gemini image success with model ${model}`);
-                        return parsed.result;
-                    }
-
-                    lastFailure = parsed.error || 'No image found in response';
-                    lastErrorCode = parsed.errorCode || 'no_image_payload';
-                    lastFinishReasons = parsed.finishReasons || [];
-                    lastFinishMessages = parsed.finishMessages || [];
-                    lastPromptBlockReason = parsed.promptBlockReason || null;
-                    lastResponseId = parsed.responseId || null;
-                    lastModelVersion = parsed.modelVersion || null;
-                    if (!parsed.retryable) {
-                        return {
-                            success: false,
-                            error: lastFailure,
-                            errorCode: parsed.errorCode || 'no_image_payload',
-                            promptBlockReason: parsed.promptBlockReason || null,
-                            finishReasons: parsed.finishReasons || [],
-                            finishMessages: parsed.finishMessages || [],
-                            responseId: parsed.responseId || null,
-                            modelVersion: parsed.modelVersion || null,
-                            finalPrompt: promptToUse
-                        };
+                        break;
                     }
                 }
             }
@@ -673,7 +793,7 @@ export async function generateWrapTexture(
                                 'Content-Type': 'application/json',
                                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                             },
-                            body: JSON.stringify(buildRequestPayload(rescuePrompt)),
+                            body: JSON.stringify(await buildRequestPayload(rescuePrompt, hasUriInputs ? 'uri' : 'inline')),
                             timeoutMs: imageTimeoutMs,
                             maxRetries: imageMaxRetries,
                             retryBaseMs,
@@ -755,8 +875,39 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
             return null;
         }
         const arrayBuffer = await response.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
-        return base64;
+        const rawBuffer = Buffer.from(arrayBuffer);
+
+        try {
+            const encodeJpeg = async (quality: number) => {
+                return sharp(rawBuffer)
+                    .rotate()
+                    .resize(REFERENCE_IMAGE_MAX_SIDE, REFERENCE_IMAGE_MAX_SIDE, {
+                        fit: 'inside',
+                        withoutEnlargement: true
+                    })
+                    .jpeg({
+                        quality,
+                        mozjpeg: true,
+                        progressive: true
+                    })
+                    .toBuffer();
+            };
+
+            let optimizedBuffer = await encodeJpeg(REFERENCE_IMAGE_JPEG_QUALITY);
+
+            if (optimizedBuffer.length > REFERENCE_IMAGE_TARGET_BYTES) {
+                const lowerQuality = Math.max(40, Math.floor(REFERENCE_IMAGE_JPEG_QUALITY * 0.72));
+                const secondPass = await encodeJpeg(lowerQuality);
+                if (secondPass.length < optimizedBuffer.length) {
+                    optimizedBuffer = secondPass;
+                }
+            }
+
+            return optimizedBuffer.toString('base64');
+        } catch (compressionError) {
+            console.warn('[AI-GEN] Reference image compression failed, fallback to raw buffer:', compressionError);
+            return rawBuffer.toString('base64');
+        }
     } catch (error) {
         console.error('Error converting image to base64:', error);
         return null;
