@@ -39,7 +39,7 @@ export async function GET(request: Request) {
             `SELECT id, prompt, status, error_message, steps, created_at, updated_at
              FROM generation_tasks
              WHERE user_id = $1
-               AND status IN ('pending', 'processing', 'failed', 'failed_refunded')
+               AND status IN ('pending', 'processing', 'completed', 'failed', 'failed_refunded')
              ORDER BY created_at DESC
              LIMIT $2`,
             [user.id, limit]

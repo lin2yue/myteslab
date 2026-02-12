@@ -29,12 +29,13 @@ interface GenerationHistory {
     preview_url: string
     texture_url: string
     model_slug: string
+    generation_task_id?: string | null
     is_active: boolean
     is_public: boolean
     created_at: string
 }
 
-type TaskStatus = 'pending' | 'processing' | 'failed' | 'failed_refunded'
+type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'failed_refunded'
 
 interface TaskStep {
     step: string
@@ -162,6 +163,25 @@ function mergeTaskHistory(
         .slice(0, 50)
 }
 
+function upsertHistoryWrap(
+    previous: GenerationHistory[],
+    incoming: GenerationHistory
+): GenerationHistory[] {
+    const byId = new Map<string, GenerationHistory>()
+    previous.forEach(item => byId.set(item.id, item))
+    const prev = byId.get(incoming.id)
+    byId.set(incoming.id, {
+        ...prev,
+        ...incoming,
+        prompt: incoming.prompt || prev?.prompt || '',
+        model_slug: incoming.model_slug || prev?.model_slug || 'cybertruck',
+        created_at: incoming.created_at || prev?.created_at || new Date().toISOString()
+    })
+    return Array.from(byId.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 50)
+}
+
 function normalizeTaskSteps(raw: unknown): TaskStep[] {
     if (!Array.isArray(raw)) return []
     return raw
@@ -274,6 +294,8 @@ export default function AIGeneratorMain({
     const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
     const [showBalanceLabels, setShowBalanceLabels] = useState(false)
     const activeTaskIdRef = useRef<string | null>(null)
+    const selectedModelRef = useRef<string>(initialModelSlug)
+    const taskHistoryRef = useRef<GenerationTaskHistory[]>([])
 
     const aiThemeStorageKey = 'ai_viewer_theme'
 
@@ -368,6 +390,14 @@ export default function AIGeneratorMain({
         activeTaskIdRef.current = activeTaskId
     }, [activeTaskId])
 
+    useEffect(() => {
+        selectedModelRef.current = selectedModel
+    }, [selectedModel])
+
+    useEffect(() => {
+        taskHistoryRef.current = taskHistory
+    }, [taskHistory])
+
 
     // 获取历史记录
     const [isFetchingHistory, setIsFetchingHistory] = useState(false)
@@ -386,7 +416,24 @@ export default function AIGeneratorMain({
             if (!res.ok || !data?.success) {
                 throw new Error(data?.error || 'Failed to fetch history')
             }
-            setHistory(data.wraps || [])
+            const wrapsRaw = Array.isArray(data.wraps)
+                ? (data.wraps as Array<Record<string, unknown>>)
+                : []
+            const wrapsFromServer: GenerationHistory[] = wrapsRaw.map((wrap) => ({
+                id: String(wrap.id || ''),
+                prompt: typeof wrap.prompt === 'string' ? wrap.prompt : '',
+                preview_url: typeof wrap.preview_url === 'string' ? wrap.preview_url : '',
+                texture_url: typeof wrap.texture_url === 'string' ? wrap.texture_url : '',
+                model_slug: typeof wrap.model_slug === 'string' ? wrap.model_slug : initialModelSlug,
+                generation_task_id: typeof wrap.generation_task_id === 'string' ? wrap.generation_task_id : null,
+                is_active: Boolean(wrap.is_active),
+                is_public: Boolean(wrap.is_public),
+                created_at: typeof wrap.created_at === 'string' ? wrap.created_at : new Date().toISOString()
+            })).filter(wrap => wrap.id)
+            setHistory(prev => wrapsFromServer.reduce(
+                (acc, wrap) => upsertHistoryWrap(acc, wrap),
+                prev
+            ))
             const tasksRaw = Array.isArray(data.tasks)
                 ? (data.tasks as Array<Record<string, unknown>>)
                 : []
@@ -394,6 +441,7 @@ export default function AIGeneratorMain({
                 const statusRaw = typeof task.status === 'string' ? task.status : 'pending'
                 const status: TaskStatus = (
                     statusRaw === 'processing'
+                    || statusRaw === 'completed'
                     || statusRaw === 'failed'
                     || statusRaw === 'failed_refunded'
                 )
@@ -423,7 +471,7 @@ export default function AIGeneratorMain({
             isFetchingRef.current = false
             setIsFetchingHistory(false)
         }
-    }, [activeMode])
+    }, [activeMode, initialModelSlug])
 
     const checkAuth = useCallback(async () => {
         try {
@@ -443,6 +491,14 @@ export default function AIGeneratorMain({
         checkAuth()
         fetchHistory()
     }, [checkAuth, fetchHistory])
+
+    useEffect(() => {
+        if (!isLoggedInInternal) return
+        const timer = window.setInterval(() => {
+            void fetchHistory()
+        }, 15000)
+        return () => window.clearInterval(timer)
+    }, [isLoggedInInternal, fetchHistory])
 
     const pendingTaskIds = useMemo(
         () => taskHistory
@@ -481,14 +537,48 @@ export default function AIGeneratorMain({
                 if (!active) return
 
                 if (data?.wrap?.id) {
-                    setTaskHistory(prev => prev.filter(task => task.id !== taskId))
-                    const shouldApplyTexture = activeTaskIdRef.current === taskId
+                    const matchedTask = taskHistoryRef.current.find(task => task.id === taskId)
+                    const resolvedModelSlug = (typeof data.wrap.model_slug === 'string' && data.wrap.model_slug)
+                        ? data.wrap.model_slug
+                        : (matchedTask?.model_slug || selectedModelRef.current || initialModelSlug)
+                    const resolvedPrompt = matchedTask?.prompt || ''
+                    const resolvedTextureUrl = String(data.wrap.texture_url || data.wrap.preview_url || '')
+                    const resolvedPreviewUrl = String(data.wrap.preview_url || data.wrap.texture_url || '')
+                    const resolvedCreatedAt = typeof data.wrap.created_at === 'string'
+                        ? data.wrap.created_at
+                        : new Date().toISOString()
+
+                    setTaskHistory(prev => prev.map(task => (
+                        task.id === taskId
+                            ? {
+                                ...task,
+                                status: 'completed',
+                                error_message: null,
+                                is_retrying: false,
+                                retry_started_at: null,
+                                updated_at: new Date().toISOString()
+                            }
+                            : task
+                    )))
+                    setHistory(prev => upsertHistoryWrap(prev, {
+                        id: String(data.wrap.id),
+                        prompt: resolvedPrompt,
+                        preview_url: resolvedPreviewUrl,
+                        texture_url: resolvedTextureUrl,
+                        model_slug: resolvedModelSlug,
+                        generation_task_id: taskId,
+                        is_active: false,
+                        is_public: false,
+                        created_at: resolvedCreatedAt
+                    }))
+
+                    const shouldApplyTexture = activeTaskIdRef.current === taskId && selectedModelRef.current === resolvedModelSlug
                     if (shouldApplyTexture) {
-                        setCurrentTexture(data.wrap.preview_url || data.wrap.texture_url)
+                        setCurrentTexture(resolvedPreviewUrl || resolvedTextureUrl)
+                        setSelectedModel(resolvedModelSlug)
                         setActiveWrapId(data.wrap.id)
                         setActiveTaskId(null)
                     }
-                    fetchHistory()
                     return
                 }
 
@@ -683,6 +773,9 @@ export default function AIGeneratorMain({
                     updated_at: nowIso,
                     model_slug: modelSlugValue
                 }]))
+                setSelectedModel(modelSlugValue)
+                setCurrentTexture(null)
+                setActiveWrapId(null)
                 setActiveTaskId(data.taskId)
                 alert.info('任务已提交，正在后台生成')
                 return true
@@ -1297,6 +1390,7 @@ export default function AIGeneratorMain({
                                 setActiveMode('ai');
                                 setCurrentTexture(null);
                                 setActiveWrapId(null);
+                                setActiveTaskId(null);
                             }}
                             className={`flex-1 h-12 font-bold transition-all text-base tracking-tight relative ${activeMode === 'ai'
                                 ? 'text-gray-900 dark:text-white'
@@ -1311,6 +1405,7 @@ export default function AIGeneratorMain({
                                 setActiveMode('diy');
                                 setCurrentTexture(null);
                                 setActiveWrapId(null);
+                                setActiveTaskId(null);
                             }}
                             className={`flex-1 h-12 font-bold transition-all text-base tracking-tight relative ${activeMode === 'diy'
                                 ? 'text-gray-900 dark:text-white'
@@ -1339,6 +1434,7 @@ export default function AIGeneratorMain({
                                                 setSelectedModel(value)
                                                 setCurrentTexture(null)
                                                 setActiveWrapId(null)
+                                                setActiveTaskId(null)
                                             }}
                                         />
                                     </div>
@@ -1515,7 +1611,37 @@ export default function AIGeneratorMain({
                                                                 locale={_locale}
                                                                 nowTs={elapsedNow}
                                                                 isActive={activeTaskId === entry.task.id}
-                                                                onSelect={() => setActiveTaskId(entry.task.id)}
+                                                                onSelect={() => {
+                                                                    const task = entry.task
+                                                                    setActiveTaskId(task.id)
+                                                                    if (task.model_slug) {
+                                                                        setSelectedModel(task.model_slug)
+                                                                    }
+
+                                                                    const isPendingTask = task.status === 'pending' || task.status === 'processing'
+                                                                    if (isPendingTask) {
+                                                                        setCurrentTexture(null)
+                                                                        setActiveWrapId(null)
+                                                                        return
+                                                                    }
+
+                                                                    const matchedWrap = history.find(wrap =>
+                                                                        wrap.generation_task_id === task.id || wrap.id === task.id
+                                                                    )
+                                                                    if (!matchedWrap) {
+                                                                        setCurrentTexture(null)
+                                                                        setActiveWrapId(null)
+                                                                        return
+                                                                    }
+
+                                                                    const itemCdnUrl = getCdnUrl(matchedWrap.texture_url)
+                                                                    let displayUrl = itemCdnUrl
+                                                                    if (itemCdnUrl && itemCdnUrl.startsWith('http') && !itemCdnUrl.includes(window.location.origin)) {
+                                                                        displayUrl = `/api/proxy?url=${encodeURIComponent(itemCdnUrl)}`
+                                                                    }
+                                                                    setCurrentTexture(displayUrl)
+                                                                    setActiveWrapId(matchedWrap.id)
+                                                                }}
                                                                 onRetry={() => void handleRetryTask(entry.task)}
                                                             />
                                                         )
@@ -1568,7 +1694,10 @@ export default function AIGeneratorMain({
                                             value: m.slug,
                                             label: _locale === 'en' ? (m.name_en || m.name) : m.name
                                         }))}
-                                        onChange={(value) => setSelectedModel(value)}
+                                        onChange={(value) => {
+                                            setSelectedModel(value)
+                                            setActiveTaskId(null)
+                                        }}
                                         buttonClassName="h-12"
                                     />
                                 </div>
@@ -1712,6 +1841,7 @@ function TaskHistoryItemCard({
     onRetry: () => void;
 }) {
     const isPending = task.status === 'pending' || task.status === 'processing'
+    const isCompleted = task.status === 'completed'
     const isFailed = task.status === 'failed' || task.status === 'failed_refunded'
     const isRefunded = task.status === 'failed_refunded'
     const retryStateFromSteps = resolveRetryState(task.status, task.steps || [])
@@ -1721,10 +1851,12 @@ function TaskHistoryItemCard({
     const elapsedMs = Math.max(0, nowTs - new Date(progressStartAt).getTime())
     const elapsedSeconds = Math.max(0, Math.floor(elapsedMs / 1000))
     const progress = Math.min(100, (elapsedMs / (ESTIMATED_GENERATE_SECONDS * 1000)) * 100)
-    const statusText = isRetrying ? '失败重试中' : (isPending ? '生成中' : (isFailed ? '失败' : task.status))
+    const statusText = isRetrying ? '失败重试中' : (isPending ? '生成中' : (isCompleted ? '已完成' : (isFailed ? '失败' : task.status)))
     const statusClassName = isRetrying
         ? 'bg-amber-200 text-amber-900'
-        : (isPending ? 'bg-amber-100 text-amber-700' : (isFailed ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-700'))
+        : (isPending
+            ? 'bg-amber-100 text-amber-700'
+            : (isCompleted ? 'bg-emerald-100 text-emerald-700' : (isFailed ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-700')))
     const elapsedLabel = isRetrying
         ? `重试中 ${elapsedSeconds}s · 预计 ${ESTIMATED_GENERATE_SECONDS}s`
         : `已生成 ${elapsedSeconds}s · 预计 ${ESTIMATED_GENERATE_SECONDS}s`
@@ -1785,7 +1917,7 @@ function TaskHistoryItemCard({
             )}
 
             <div className="text-[10px] text-gray-400">
-                {formatDateTime(task.created_at, locale)}
+                {formatDateTime(isPending ? task.created_at : (task.updated_at || task.created_at), locale)}
             </div>
         </div>
     )
