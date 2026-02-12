@@ -1249,7 +1249,16 @@ export default function AIGeneratorMain({
     }
 
     const historyItems = useMemo<HistoryListItem[]>(() => {
-        const taskItems: HistoryListItem[] = taskHistory.map(task => ({
+        const taskItems: HistoryListItem[] = taskHistory
+            .filter((task) => {
+                if (task.status !== 'completed') return true
+                // If a completed task already has a persisted wrap record,
+                // show only the wrap item to avoid duplicate rows.
+                return !history.some((wrap) =>
+                    wrap.generation_task_id === task.id || wrap.id === task.id
+                )
+            })
+            .map(task => ({
             type: 'task',
             createdAt: task.created_at,
             task
