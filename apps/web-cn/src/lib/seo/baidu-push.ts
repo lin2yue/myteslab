@@ -13,13 +13,36 @@ interface BaiduPushResponse {
 }
 
 /**
+ * 兼容 BAIDU_PUSH_SITE 的两种配置:
+ * - tewan.club
+ * - https://tewan.club
+ */
+function normalizeSiteHost(site: string): string {
+    const trimmed = site.trim();
+    if (!trimmed) return 'tewan.club';
+
+    try {
+        const withProtocol = /^https?:\/\//i.test(trimmed)
+            ? trimmed
+            : `https://${trimmed}`;
+        return new URL(withProtocol).hostname.toLowerCase();
+    } catch {
+        return trimmed
+            .replace(/^https?:\/\//i, '')
+            .replace(/\/.*$/, '')
+            .toLowerCase();
+    }
+}
+
+/**
  * 向百度主动推送 URL
  * @param urls 要推送的 URL 列表(最多 2000 个)
  * @returns 推送结果
  */
 export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPushResponse | null> {
-    const token = process.env.BAIDU_PUSH_TOKEN;
-    const site = process.env.BAIDU_PUSH_SITE || 'tewan.club';
+    const token = (process.env.BAIDU_PUSH_TOKEN || '').trim();
+    const site = (process.env.BAIDU_PUSH_SITE || 'tewan.club').trim() || 'tewan.club';
+    const siteHost = normalizeSiteHost(site);
 
     // 开发环境或未配置 token 时跳过
     if (!token) {
@@ -40,7 +63,8 @@ export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPus
         const validUrls = urlList.filter(url => {
             try {
                 const urlObj = new URL(url);
-                return urlObj.hostname.includes(site);
+                const hostname = urlObj.hostname.toLowerCase();
+                return hostname === siteHost || hostname.endsWith(`.${siteHost}`);
             } catch {
                 console.warn(`[Baidu Push] Invalid URL: ${url}`);
                 return false;
@@ -53,10 +77,11 @@ export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPus
         }
 
         // 调用百度 API
-        const apiUrl = `http://data.zz.baidu.com/urls?site=${site}&token=${token}`;
+        // 百度 API 的 site 参数应传纯 host（不带协议）
+        const apiUrl = `http://data.zz.baidu.com/urls?site=${encodeURIComponent(siteHost)}&token=${token}`;
         const body = validUrls.join('\n');
 
-        console.log(`[Baidu Push] Pushing ${validUrls.length} URL(s) to Baidu...`);
+        console.log(`[Baidu Push] Pushing ${validUrls.length} URL(s) to Baidu (site=${siteHost})...`);
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -66,7 +91,23 @@ export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPus
             body,
         });
 
-        const result: BaiduPushResponse = await response.json();
+        const rawText = await response.text();
+        let result: BaiduPushResponse;
+        try {
+            result = JSON.parse(rawText) as BaiduPushResponse;
+        } catch {
+            result = {
+                remain: 0,
+                success: 0,
+                error: response.status || -1,
+                message: `Non-JSON response from Baidu: ${rawText.slice(0, 200)}`
+            };
+        }
+
+        if (!response.ok && !result.error) {
+            result.error = response.status || -1;
+            result.message = result.message || `HTTP ${response.status}`;
+        }
 
         if (result.error) {
             console.error(`[Baidu Push] Error ${result.error}: ${result.message}`);
@@ -87,7 +128,7 @@ export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPus
  * @param wrapSlug wrap 的 slug
  */
 export async function pushWrapToBaidu(wrapSlug: string): Promise<void> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tewan.club';
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://tewan.club').replace(/\/+$/, '');
     const url = `${baseUrl}/wraps/${wrapSlug}`;
 
     // 异步推送,不阻塞主流程
@@ -103,9 +144,10 @@ export async function pushWrapToBaidu(wrapSlug: string): Promise<void> {
  */
 export async function batchPushUrlsToBaidu(urls: string[], batchSize: number = 100): Promise<BaiduPushResponse[]> {
     const results: BaiduPushResponse[] = [];
+    const normalizedBatchSize = Math.max(1, Math.min(2000, Math.floor(batchSize) || 100));
 
-    for (let i = 0; i < urls.length; i += batchSize) {
-        const batch = urls.slice(i, i + batchSize);
+    for (let i = 0; i < urls.length; i += normalizedBatchSize) {
+        const batch = urls.slice(i, i + normalizedBatchSize);
         const result = await pushUrlsToBaidu(batch);
 
         if (result) {
@@ -113,7 +155,7 @@ export async function batchPushUrlsToBaidu(urls: string[], batchSize: number = 1
         }
 
         // 避免请求过快,间隔 1 秒
-        if (i + batchSize < urls.length) {
+        if (i + normalizedBatchSize < urls.length) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
