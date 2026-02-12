@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         if (task.wrap_id) {
             const { data: wrap, error } = await supabase
                 .from('wraps')
-                .select('id, preview_url, texture_url, generation_task_id')
+                .select('id, preview_url, texture_url, generation_task_id, model_slug')
                 .eq('id', task.wrap_id)
                 .eq('user_id', user.id)
                 .single();
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
         const { data: wrap, error } = await supabase
             .from('wraps')
-            .select('id, preview_url, texture_url, generation_task_id')
+            .select('id, preview_url, texture_url, generation_task_id, model_slug')
             .eq('generation_task_id', taskId)
             .eq('user_id', user.id)
             .single();

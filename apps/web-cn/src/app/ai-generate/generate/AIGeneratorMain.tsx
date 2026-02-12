@@ -20,6 +20,7 @@ import { useCredits } from '@/components/credits/CreditsProvider'
 import Select from '@/components/ui/Select'
 import { createModelNameResolver } from '@/lib/model-display'
 import { sortModelsByPreferredOrder } from '@/lib/model-order'
+import { getMaskDimensions } from '@/lib/ai/mask-config'
 import { getEffectiveTheme, THEME_CHANGE_EVENT } from '@/utils/theme'
 
 interface GenerationHistory {
@@ -60,6 +61,53 @@ type HistoryListItem =
 
 const ESTIMATED_GENERATE_SECONDS = 30
 const BALANCE_LABEL_MIN_WIDTH = 260
+
+function stripOssProcess(url: string): string {
+    if (!url) return url
+
+    try {
+        const parsed = new URL(url)
+        parsed.searchParams.delete('x-oss-process')
+        return parsed.toString()
+    } catch {
+        try {
+            const parsed = new URL(url, 'https://local.invalid')
+            parsed.searchParams.delete('x-oss-process')
+            return `${parsed.pathname}${parsed.search}${parsed.hash}`
+        } catch {
+            return url
+        }
+    }
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = () => reject(new Error('Failed to read image data'))
+        reader.readAsDataURL(blob)
+    })
+}
+
+function resizeDataUrl(dataUrl: string, width: number, height: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const img = document.createElement('img')
+        img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            if (!ctx) {
+                reject(new Error('Failed to create canvas context'))
+                return
+            }
+            ctx.drawImage(img, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = () => reject(new Error('Failed to load image for resize'))
+        img.src = dataUrl
+    })
+}
 
 function toBase64Url(input: string): string {
     return btoa(unescape(encodeURIComponent(input)))
@@ -189,8 +237,27 @@ export default function AIGeneratorMain({
         return effectiveUrl;
     }, [cdnUrl])
 
+    const getInitialModel = () => {
+        if (typeof window === 'undefined') return sortedModels[0]?.slug || 'cybertruck'
+
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('regenFromWrap') === '1') {
+            const targetModel = params.get('targetModel')
+            if (targetModel && sortedModels.some(m => m.slug === targetModel)) {
+                return targetModel
+            }
+        }
+
+        const savedModel = localStorage.getItem('ai_generator_last_model')
+        if (savedModel && sortedModels.some(m => m.slug === savedModel)) {
+            return savedModel
+        }
+
+        return sortedModels[0]?.slug || 'cybertruck'
+    }
+
     const { balance, setBalance, refresh: refreshCredits } = useCredits()
-    const [selectedModel, setSelectedModel] = useState(sortedModels[0]?.slug || 'cybertruck')
+    const [selectedModel, setSelectedModel] = useState(getInitialModel)
     const [prompt, setPrompt] = useState('')
     const [activeMode, setActiveMode] = useState<'ai' | 'diy'>('ai')
     const [isGenerating, setIsGenerating] = useState(false)
@@ -209,6 +276,7 @@ export default function AIGeneratorMain({
     const sessionGuidRef = useRef<string>(Math.random().toString(36).substring(2, 15))
     const retrySeedRef = useRef<number>(0)
     const submitSeqRef = useRef<number>(0)
+    const autoRegenTriggeredRef = useRef(false)
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
     const [elapsedNow, setElapsedNow] = useState<number>(Date.now())
 
@@ -234,6 +302,13 @@ export default function AIGeneratorMain({
     // Hydration-safe restore: only read localStorage after mount.
     useEffect(() => {
         if (typeof window === 'undefined') return
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('regenFromWrap') === '1') {
+            const targetModel = params.get('targetModel')
+            if (targetModel && sortedModels.some(m => m.slug === targetModel)) {
+                return
+            }
+        }
         const savedModel = localStorage.getItem('ai_generator_last_model')
         setSelectedModel((prev) => {
             if (savedModel && sortedModels.some(m => m.slug === savedModel)) {
@@ -347,10 +422,14 @@ export default function AIGeneratorMain({
                     retry_started_at: retryState.retryStartedAt,
                     created_at: String(task.created_at || new Date().toISOString()),
                     updated_at: String(task.updated_at || task.created_at || new Date().toISOString()),
-                    model_slug: null
+                    model_slug: typeof task.model_slug === 'string' ? task.model_slug : null
                 }
             }).filter(task => task.id)
-            setTaskHistory(tasksFromServer)
+            setTaskHistory(prev => {
+                const activeIds = new Set(tasksFromServer.map(task => task.id))
+                const previousActive = prev.filter(task => activeIds.has(task.id))
+                return mergeTaskHistory(previousActive, tasksFromServer)
+            })
         } catch (err) {
             console.error('Fetch history error:', err)
             // Optional: could set an error state here to show in UI
@@ -495,10 +574,15 @@ export default function AIGeneratorMain({
     // 生成逻辑
     const isBusy = isGenerating
 
-    const submitGeneration = async (options?: { promptValue?: string; modelSlug?: string; clearRefs?: boolean }) => {
+    const submitGeneration = async (options?: {
+        promptValue?: string
+        modelSlug?: string
+        clearRefs?: boolean
+        referenceImagesOverride?: string[]
+    }) => {
         const promptValue = (options?.promptValue ?? prompt).trim()
         const modelSlugValue = options?.modelSlug ?? selectedModel
-        const usedReferenceImages = options?.clearRefs ? [] : referenceImages
+        const usedReferenceImages = options?.referenceImagesOverride ?? (options?.clearRefs ? [] : referenceImages)
 
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
@@ -506,16 +590,16 @@ export default function AIGeneratorMain({
                 localStorage.setItem('auth_redirect_next', currentUrl)
             }
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
-            return
+            return false
         }
-        if (!promptValue || isBusy) return
+        if (!promptValue || isBusy) return false
 
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
         const currentBalance = balance ?? 0
         if (currentBalance < requiredCredits) {
             alert.warning(`积分不足，需要 ${requiredCredits} 积分，当前余额 ${currentBalance}`)
             setShowPricing(true)
-            return
+            return false
         }
 
         setIsGenerating(true)
@@ -603,7 +687,7 @@ export default function AIGeneratorMain({
                     model_slug: modelSlugValue
                 }]))
                 alert.info('任务已提交，正在后台生成')
-                return
+                return true
             }
 
             if (data?.image?.dataUrl) {
@@ -616,12 +700,14 @@ export default function AIGeneratorMain({
             setBalance(data.remainingBalance)
             refreshCredits()
             setTimeout(fetchHistory, 600)
+            return true
         } catch (err) {
             if (bumpIdempotency) {
                 retrySeedRef.current += 1
             }
             const message = err instanceof Error ? err.message : String(err)
             alert.error(`生成失败: ${message}`)
+            return false
         } finally {
             setIsGenerating(false)
         }
@@ -927,6 +1013,99 @@ export default function AIGeneratorMain({
 
         return null;
     };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (autoRegenTriggeredRef.current) return
+
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('regenFromWrap') !== '1') return
+
+        const sourceTexture = params.get('sourceTexture')
+        const targetModel = params.get('targetModel')
+        const sourcePrompt = params.get('sourcePrompt')?.trim()
+
+        if (!sourceTexture || !targetModel) return
+        if (!sortedModels.some(m => m.slug === targetModel)) return
+
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            localStorage.setItem('auth_redirect_next', currentUrl)
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
+
+        autoRegenTriggeredRef.current = true
+
+        void (async () => {
+            try {
+                setActiveMode('ai')
+                setSelectedModel(targetModel)
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('ai_generator_last_model', targetModel)
+                }
+
+                const targetName = getModelName(targetModel)
+                const finalPrompt = sourcePrompt && sourcePrompt.length > 0
+                    ? sourcePrompt
+                    : (_locale === 'en'
+                        ? `Keep the key visual style from the reference and adapt it for Tesla ${targetName}.`
+                        : `保持参考图主视觉风格，并适配到特斯拉 ${targetName} 车型。`)
+
+                setPrompt(finalPrompt)
+
+                // Cross-model relay should use raw texture in mask orientation.
+                // Remove OSS runtime transform params (rotate/resize/format) before fetching.
+                const rawSourceTexture = getCdnUrl(stripOssProcess(sourceTexture))
+                const fetchUrl = rawSourceTexture.startsWith('http')
+                    ? `/api/proxy?url=${encodeURIComponent(rawSourceTexture)}`
+                    : rawSourceTexture
+
+                let sourceRes = await fetch(fetchUrl)
+                if (!sourceRes.ok) {
+                    // Fallback for legacy records: retry with original texture URL.
+                    const fallbackSourceTexture = getCdnUrl(sourceTexture)
+                    const fallbackFetchUrl = fallbackSourceTexture.startsWith('http')
+                        ? `/api/proxy?url=${encodeURIComponent(fallbackSourceTexture)}`
+                        : fallbackSourceTexture
+
+                    if (fallbackFetchUrl !== fetchUrl) {
+                        sourceRes = await fetch(fallbackFetchUrl)
+                    }
+                }
+
+                if (!sourceRes.ok) {
+                    throw new Error(_locale === 'en' ? 'Failed to load source texture' : '读取原车型贴图失败')
+                }
+
+                const sourceBlob = await sourceRes.blob()
+                const sourceDataUrl = await blobToDataUrl(sourceBlob)
+                const targetDims = getMaskDimensions(targetModel)
+                const resizedDataUrl = await resizeDataUrl(sourceDataUrl, targetDims.width, targetDims.height)
+
+                const uploadedRefUrl = await uploadReferenceImage(resizedDataUrl)
+                if (!uploadedRefUrl) {
+                    throw new Error(_locale === 'en' ? 'Reference upload failed' : '参考图上传失败')
+                }
+
+                setReferenceImages([uploadedRefUrl])
+
+                const started = await submitGeneration({
+                    promptValue: finalPrompt,
+                    modelSlug: targetModel,
+                    referenceImagesOverride: [uploadedRefUrl]
+                })
+
+                if (started) {
+                    alert.info(_locale === 'en' ? 'Cross-model generation started.' : '已开始生成目标车型任务')
+                }
+            } catch (error) {
+                console.error('[AI-GEN] Cross-model auto generation failed:', error)
+                const fallback = _locale === 'en' ? 'Failed to start cross-model generation' : '生成其他车型任务启动失败'
+                alert.error(error instanceof Error ? `${fallback}: ${error.message}` : fallback)
+            }
+        })()
+    }, [isLoggedInInternal, sortedModels, router, getModelName, _locale, alert, submitGeneration])
 
     const handlePaste = async (e: React.ClipboardEvent) => {
         const items = e.clipboardData?.items

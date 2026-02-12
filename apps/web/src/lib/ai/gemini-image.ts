@@ -5,6 +5,14 @@
 
 import { buildWrapPrompt, WRAP_GENERATION_SYSTEM_PROMPT } from './prompts';
 import { getMaskDimensions } from './mask-config';
+import sharp from 'sharp';
+
+function readEnvInt(name: string, fallback: number): number {
+    const raw = (process.env[name] || '').trim();
+    if (!raw) return fallback;
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+}
 
 /**
  * Build editing prompt for Image Editing mode
@@ -84,6 +92,9 @@ FAILURE = Any content in black roof area`;
 
 // Gemini API configuration
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
+const REFERENCE_IMAGE_MAX_SIDE = readEnvInt('GEMINI_REFERENCE_MAX_SIDE', 1024);
+const REFERENCE_IMAGE_JPEG_QUALITY = Math.max(40, Math.min(95, readEnvInt('GEMINI_REFERENCE_JPEG_QUALITY', 78)));
+const REFERENCE_IMAGE_TARGET_BYTES = readEnvInt('GEMINI_REFERENCE_TARGET_BYTES', 900 * 1024);
 
 interface GenerateWrapParams {
     modelSlug: string;
@@ -122,7 +133,7 @@ export async function generateWrapTexture(
 
         textPrompt = maskImageBase64
             ? buildEditingPrompt(prompt, modelName)
-            : buildWrapPrompt(modelName, prompt);
+            : buildWrapPrompt(prompt, modelName);
 
         const parts: any[] = [
             { text: textPrompt }
@@ -242,8 +253,39 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
             return null;
         }
         const arrayBuffer = await response.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
-        return base64;
+        const rawBuffer = Buffer.from(arrayBuffer);
+
+        try {
+            const encodeJpeg = async (quality: number) => {
+                return sharp(rawBuffer)
+                    .rotate()
+                    .resize(REFERENCE_IMAGE_MAX_SIDE, REFERENCE_IMAGE_MAX_SIDE, {
+                        fit: 'inside',
+                        withoutEnlargement: true
+                    })
+                    .jpeg({
+                        quality,
+                        mozjpeg: true,
+                        progressive: true
+                    })
+                    .toBuffer();
+            };
+
+            let optimizedBuffer = await encodeJpeg(REFERENCE_IMAGE_JPEG_QUALITY);
+
+            if (optimizedBuffer.length > REFERENCE_IMAGE_TARGET_BYTES) {
+                const lowerQuality = Math.max(40, Math.floor(REFERENCE_IMAGE_JPEG_QUALITY * 0.72));
+                const secondPass = await encodeJpeg(lowerQuality);
+                if (secondPass.length < optimizedBuffer.length) {
+                    optimizedBuffer = secondPass;
+                }
+            }
+
+            return optimizedBuffer.toString('base64');
+        } catch (compressionError) {
+            console.warn('[AI-GEN] Reference image compression failed, fallback to raw buffer:', compressionError);
+            return rawBuffer.toString('base64');
+        }
     } catch (error) {
         console.error('Error converting image to base64:', error);
         return null;

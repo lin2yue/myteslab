@@ -2,8 +2,6 @@ import { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
-import ThemedModelViewer from '@/components/ThemedModelViewer'
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { ensureCdnUrl, getOptimizedImageUrl } from '@/lib/images'
@@ -12,7 +10,10 @@ import { CategoryBadge } from '@/components/CategoryBadge'
 import { RelatedWraps } from '@/components/RelatedWraps'
 import Card from '@/components/ui/Card'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
 import { getModelDisplayName } from '@/lib/model-display'
+import WrapDetailViewerPanel from '@/components/wrap/WrapDetailViewerPanel'
+import WrapDetailActionPanel from '@/components/wrap/WrapDetailActionPanel'
 
 export async function generateMetadata({
     params,
@@ -157,6 +158,17 @@ export default async function WrapDetailPage({
 
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
     const description = locale === 'en' ? wrap.description_en || wrap.description : wrap.description
+    let currentUserId: string | null = null
+
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        currentUserId = user?.id || null
+    } catch (error) {
+        console.error('[WrapDetail] Failed to resolve current user:', error)
+    }
+
+    const isOwner = !!currentUserId && !!wrap.user_id && currentUserId === wrap.user_id
 
     // 获取模型名称以增强标题和结构化数据 SEO
     const models = await getModels()
@@ -228,18 +240,13 @@ export default async function WrapDetailPage({
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-8 items-start">
                     {/* 左侧: 3D 预览 */}
-                    <Card className="overflow-hidden">
-                        <div className="relative w-full aspect-[4/3] lg:aspect-video bg-black/5 dark:bg-white/10">
-                            <ThemedModelViewer
-                                modelUrl={proxiedModelUrl}
-                                wheelUrl={wheelUrl}
-                                textureUrl={textureUrl}
-                                modelSlug={wrap.model_slug}
-                                className="w-full h-full"
-                                autoRotate
-                            />
-                        </div>
-                    </Card>
+                    <WrapDetailViewerPanel
+                        modelUrl={proxiedModelUrl}
+                        wheelUrl={wheelUrl}
+                        textureUrl={textureUrl}
+                        modelSlug={wrap.model_slug}
+                        snapshotPrefix={wrap.slug || wrap.id}
+                    />
 
                     {/* 右侧: 详情信息栏 */}
                     <Card className="p-6 flex flex-col gap-6">
@@ -323,6 +330,22 @@ export default async function WrapDetailPage({
                                 />
                             </div>
 
+                            <WrapDetailActionPanel
+                                locale={locale}
+                                wrapId={wrap.id}
+                                wrapSlugOrId={wrap.slug || wrap.id}
+                                sourceModelSlug={wrap.model_slug || ''}
+                                sourceTextureUrl={wrap.texture_url}
+                                sourcePrompt={wrap.prompt}
+                                initialIsPublic={wrap.is_public}
+                                isOwner={isOwner}
+                                models={models.map(modelItem => ({
+                                    slug: modelItem.slug,
+                                    name: modelItem.name,
+                                    name_en: modelItem.name_en
+                                }))}
+                            />
+
                             {/* 描述 */}
                             {description && (
                                 <div className="pt-4 border-t border-black/5 dark:border-white/10">
@@ -344,7 +367,7 @@ export default async function WrapDetailPage({
                                 </div>
                                 <div className="bg-black/5 dark:bg-white/10 rounded-xl p-3 border border-black/10 dark:border-white/10">
                                     <p className="text-xs font-medium text-gray-600 italic leading-relaxed font-mono">
-                                        "{wrap.prompt}"
+                                        &quot;{wrap.prompt}&quot;
                                     </p>
                                 </div>
                             </div>

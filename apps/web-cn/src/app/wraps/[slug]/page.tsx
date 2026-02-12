@@ -3,7 +3,6 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from '@/lib/i18n'
 import { getSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
-import ThemedModelViewer from '@/components/ThemedModelViewer'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl, ensureCdnUrl } from '@/lib/images'
@@ -12,15 +11,16 @@ import { CategoryBadge } from '@/components/CategoryBadge'
 import { RelatedWraps } from '@/components/RelatedWraps'
 import Card from '@/components/ui/Card'
 import { getModelDisplayName } from '@/lib/model-display'
+import WrapDetailViewerPanel from '@/components/wrap/WrapDetailViewerPanel'
+import WrapDetailActionPanel from '@/components/wrap/WrapDetailActionPanel'
 
 export async function generateMetadata({
     params,
 }: {
-    params: Promise<{ slug: string }>
+    params: Promise<{ slug: string, locale: string }>
 }): Promise<Metadata> {
-    const { slug } = await params
-    const locale = 'zh' as string
-    let wrap = await getWrap(slug)
+    const { slug, locale } = await params
+    const wrap = await getWrap(slug)
     if (process.env.NODE_ENV === 'development') {
         console.log('[WrapDetail] slug:', slug, 'publicWrap:', !!wrap)
     }
@@ -83,12 +83,12 @@ export async function generateMetadata({
         title,
         description,
         alternates: {
-            canonical: `/wraps/${slug}`,
+            canonical: `/${locale}/wraps/${slug}`,
         },
         openGraph: {
             title,
             description,
-            url: `https://tewan.club/wraps/${slug}`,
+            url: `https://tewan.club/${locale}/wraps/${slug}`,
             siteName: '特玩',
             images: [
                 {
@@ -117,11 +117,12 @@ export async function generateMetadata({
 export default async function WrapDetailPage({
     params,
 }: {
-    params: Promise<{ slug: string }>
+    params: Promise<{ slug: string, locale: string }>
 }) {
-    const { slug } = await params
-    const locale = 'zh' as string
-    let wrap = await getWrap(slug)
+    const { slug, locale } = await params
+    const wrap = await getWrap(slug)
+    const sessionUser = await getSessionUser()
+    const isLoggedIn = !!sessionUser
     const t = await getTranslations('Common')
 
     if (!wrap) {
@@ -129,11 +130,12 @@ export default async function WrapDetailPage({
     }
 
     if (wrap.slug && wrap.slug !== slug) {
-        permanentRedirect(`/wraps/${wrap.slug}`)
+        permanentRedirect(`/${locale}/wraps/${wrap.slug}`)
     }
 
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
     const description = locale === 'en' ? wrap.description_en || wrap.description : wrap.description
+    const isOwner = !!sessionUser && !!wrap.user_id && sessionUser.id === wrap.user_id
 
     // 获取模型名称以增强标题和结构化数据 SEO
     const models = await getModels()
@@ -151,26 +153,21 @@ export default async function WrapDetailPage({
         ? imageUrl
         : `https://tewan.club${imageUrl}`
 
-    const toViewerAssetUrl = (input?: string) => {
-        if (!input) return undefined
-        const normalized = ensureCdnUrl(input)
-        if (!normalized.startsWith('http')) return normalized
-        // CDN already has CORS configured, avoid proxy hop for large GLB/texture assets.
-        if (normalized.includes('cdn.tewan.club')) return normalized
-        return `/api/proxy?url=${encodeURIComponent(normalized)}`
-    }
-
-    // 获取模型 URL
+    // 获取模型 URL (通过代理解决 CORS)
     const modelUrl = wrap.model_3d_url || 'https://cdn.tewan.club/models/wraps/cybertruck/model.glb'
-    const proxiedModelUrl = toViewerAssetUrl(modelUrl) || modelUrl
+    const proxiedModelUrl = modelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(modelUrl)}` : modelUrl
 
     // 获取贴图 URL
     const textureUrlBase = ensureCdnUrl(wrap.texture_url)
-    const textureUrl = toViewerAssetUrl(textureUrlBase)
+    const textureUrl = textureUrlBase
+        ? (textureUrlBase.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(textureUrlBase)}` : textureUrlBase)
+        : undefined
 
     // 获取轮毂 URL
     const rawWheelUrl = model?.wheel_url
-    const wheelUrl = toViewerAssetUrl(rawWheelUrl)
+    const wheelUrl = rawWheelUrl
+        ? (rawWheelUrl.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawWheelUrl)}` : rawWheelUrl)
+        : undefined
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -206,18 +203,13 @@ export default async function WrapDetailPage({
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-8 items-start">
                     {/* 左侧: 3D 预览 */}
-                    <Card className="overflow-hidden">
-                        <div className="relative w-full aspect-[4/3] lg:aspect-video bg-black/5 dark:bg-white/10">
-                            <ThemedModelViewer
-                                modelUrl={proxiedModelUrl}
-                                wheelUrl={wheelUrl}
-                                textureUrl={textureUrl}
-                                modelSlug={wrap.model_slug}
-                                className="w-full h-full"
-                                autoRotate
-                            />
-                        </div>
-                    </Card>
+                    <WrapDetailViewerPanel
+                        modelUrl={proxiedModelUrl}
+                        wheelUrl={wheelUrl}
+                        textureUrl={textureUrl}
+                        modelSlug={wrap.model_slug}
+                        snapshotPrefix={wrap.slug || wrap.id}
+                    />
 
                     {/* 右侧: 详情信息栏 */}
                     <Card className="p-6 flex flex-col gap-6">
@@ -298,9 +290,25 @@ export default async function WrapDetailPage({
                                     wrapName={name}
                                     wrapSlug={wrap.slug || wrap.id}
                                     locale={locale}
-                                    isLoggedIn={!!(await getSessionUser())}
+                                    isLoggedIn={isLoggedIn}
                                 />
                             </div>
+
+                            <WrapDetailActionPanel
+                                locale={locale}
+                                wrapId={wrap.id}
+                                wrapSlugOrId={wrap.slug || wrap.id}
+                                sourceModelSlug={wrap.model_slug || ''}
+                                sourceTextureUrl={wrap.texture_url}
+                                sourcePrompt={wrap.prompt}
+                                initialIsPublic={wrap.is_public}
+                                isOwner={isOwner}
+                                models={models.map(modelItem => ({
+                                    slug: modelItem.slug,
+                                    name: modelItem.name,
+                                    name_en: modelItem.name_en
+                                }))}
+                            />
 
                             {/* 描述 */}
                             {description && (
@@ -323,7 +331,7 @@ export default async function WrapDetailPage({
                                 </div>
                                 <div className="bg-black/5 dark:bg-white/10 rounded-xl p-3 border border-black/10 dark:border-white/10">
                                     <p className="text-xs font-medium text-gray-600 dark:text-zinc-400 italic leading-relaxed font-mono">
-                                        "{wrap.prompt}"
+                                        &quot;{wrap.prompt}&quot;
                                     </p>
                                 </div>
                             </div>
@@ -367,7 +375,7 @@ export default async function WrapDetailPage({
                             priceCurrency: 'USD',
                             priceValidUntil: '2030-12-31',
                             availability: 'https://schema.org/InStock',
-                            url: `https://tewan.club/wraps/${slug}`,
+                            url: `https://tewan.club/${locale}/wraps/${slug}`,
                             seller: {
                                 '@type': 'Organization',
                                 name: '特玩',
@@ -407,19 +415,19 @@ export default async function WrapDetailPage({
                                 '@type': 'ListItem',
                                 position: 1,
                                 name: locale === 'en' ? 'Home' : '首页',
-                                item: 'https://tewan.club',
+                                item: `https://tewan.club/${locale}`,
                             },
                             ...(wrap.model_slug ? [{
                                 '@type': 'ListItem',
                                 position: 2,
                                 name: modelName,
-                                item: `https://tewan.club/models/${wrap.model_slug}`,
+                                item: `https://tewan.club/${locale}/models/${wrap.model_slug}`,
                             }] : []),
                             {
                                 '@type': 'ListItem',
                                 position: wrap.model_slug ? 3 : 2,
                                 name: name,
-                                item: `https://tewan.club/wraps/${slug}`,
+                                item: `https://tewan.club/${locale}/wraps/${slug}`,
                             },
                         ],
                     }),

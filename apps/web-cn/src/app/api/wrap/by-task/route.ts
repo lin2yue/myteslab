@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
         if (task.wrap_id) {
             const { rows: wrapRows } = await dbQuery(
-                `SELECT id, preview_url, texture_url, generation_task_id
+                `SELECT id, preview_url, texture_url, generation_task_id, model_slug
                  FROM wraps
                  WHERE id = $1 AND user_id = $2
                  LIMIT 1`,
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         }
 
         const { rows: wrapRows } = await dbQuery(
-            `SELECT id, preview_url, texture_url, generation_task_id
+            `SELECT id, preview_url, texture_url, generation_task_id, model_slug
              FROM wraps
              WHERE generation_task_id = $1 AND user_id = $2
              LIMIT 1`,
@@ -171,7 +171,8 @@ export async function POST(request: NextRequest) {
                             id: taskId,
                             preview_url: savedUrl,
                             texture_url: savedUrl,
-                            generation_task_id: taskId
+                            generation_task_id: taskId,
+                            model_slug: null
                         }
                     };
                     cacheMap.set(cacheKey, { payload, status: 200, expiresAt: now + CACHE_TTL_MS });

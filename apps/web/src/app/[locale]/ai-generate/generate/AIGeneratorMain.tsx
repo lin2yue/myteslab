@@ -20,6 +20,7 @@ import { ServiceType, getServiceCost } from '@/lib/constants/credits'
 import { useCredits } from '@/components/credits/CreditsProvider'
 import Select from '@/components/ui/Select'
 import { createModelNameResolver } from '@/lib/model-display'
+import { getMaskDimensions } from '@/lib/ai/mask-config'
 import { getEffectiveTheme, THEME_CHANGE_EVENT } from '@/utils/theme'
 
 interface GenerationHistory {
@@ -31,6 +32,53 @@ interface GenerationHistory {
     is_active: boolean
     is_public: boolean
     created_at: string
+}
+
+function stripOssProcess(url: string): string {
+    if (!url) return url
+
+    try {
+        const parsed = new URL(url)
+        parsed.searchParams.delete('x-oss-process')
+        return parsed.toString()
+    } catch {
+        try {
+            const parsed = new URL(url, 'https://local.invalid')
+            parsed.searchParams.delete('x-oss-process')
+            return `${parsed.pathname}${parsed.search}${parsed.hash}`
+        } catch {
+            return url
+        }
+    }
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = () => reject(new Error('Failed to read image data'))
+        reader.readAsDataURL(blob)
+    })
+}
+
+function resizeDataUrl(dataUrl: string, width: number, height: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const img = document.createElement('img')
+        img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            if (!ctx) {
+                reject(new Error('Failed to create canvas context'))
+                return
+            }
+            ctx.drawImage(img, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = () => reject(new Error('Failed to load image for resize'))
+        img.src = dataUrl
+    })
 }
 
 export default function AIGeneratorMain({
@@ -83,6 +131,14 @@ export default function AIGeneratorMain({
     const getInitialModel = () => {
         if (typeof window === 'undefined') return models[0]?.slug || 'cybertruck'
 
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('regenFromWrap') === '1') {
+            const targetModel = params.get('targetModel')
+            if (targetModel && models.some(m => m.slug === targetModel)) {
+                return targetModel
+            }
+        }
+
         const savedModel = localStorage.getItem('ai_generator_last_model')
         // 验证保存的模型是否仍然存在于当前模型列表中
         if (savedModel && models.some(m => m.slug === savedModel)) {
@@ -111,6 +167,7 @@ export default function AIGeneratorMain({
     const pollAttemptsRef = useRef(0)
     const pollStartRef = useRef<number | null>(null)
     const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const autoRegenTriggeredRef = useRef(false)
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
 
     // 3D 控制状态
@@ -321,39 +378,46 @@ export default function AIGeneratorMain({
     }, [pendingTaskId, fetchHistory])
 
     // 生成逻辑
-    const handleGenerate = async () => {
+    const submitGeneration = async (options?: {
+        promptValue?: string
+        modelSlug?: string
+        referenceImagesOverride?: string[]
+    }) => {
+        const promptValue = (options?.promptValue ?? prompt).trim()
+        const modelSlugValue = options?.modelSlug ?? selectedModel
+        const usedReferenceImages = options?.referenceImagesOverride ?? referenceImages
+
         if (!isLoggedInInternal) {
             const currentUrl = window.location.pathname + window.location.search
             if (typeof window !== 'undefined') {
                 localStorage.setItem('auth_redirect_next', currentUrl)
             }
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
-            return
+            return false
         }
-        if (!prompt.trim() || isGenerating) return
+        if (!promptValue || isGenerating) return false
 
         const requiredCredits = getServiceCost(ServiceType.AI_GENERATION)
         const currentBalance = balance ?? 0
         if (currentBalance < requiredCredits) {
             alert.warning(`积分不足，需要 ${requiredCredits} 积分，当前余额 ${currentBalance}`)
             setShowPricing(true)
-            return
+            return false
         }
 
         setIsGenerating(true)
         try {
-            // Check payload size estimate
             const payload = JSON.stringify({
-                modelSlug: selectedModel,
-                prompt: prompt.trim(),
-                referenceImages: referenceImages
-            });
+                modelSlug: modelSlugValue,
+                prompt: promptValue,
+                referenceImages: usedReferenceImages
+            })
 
-            if (payload.length > 4 * 1024 * 1024) { // 4MB safety limit
-                throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`);
+            if (payload.length > 4 * 1024 * 1024) {
+                throw new Error(`参考图片总数据量过大 (${(payload.length / 1024 / 1024).toFixed(2)} MB)，请减少图片数量或更换更小的图片`)
             }
 
-            console.log(`[AI-GEN] Requesting with payload size: ${(payload.length / 1024).toFixed(2)} KB`);
+            console.log(`[AI-GEN] Requesting with payload size: ${(payload.length / 1024).toFixed(2)} KB`)
 
             const res = await fetch('/api/wrap/generate', {
                 method: 'POST',
@@ -363,21 +427,21 @@ export default function AIGeneratorMain({
 
             if (!res.ok) {
                 if (res.status === 413) {
-                    throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`);
+                    throw new Error(`上传的图片过大 (Payload: ${(payload.length / 1024 / 1024).toFixed(2)} MB)，服务器拒绝接收`)
                 }
                 if (res.status === 504) {
-                    throw new Error('服务器超时，任务可能在后台继续执行，请稍后刷新历史记录查看结果');
+                    throw new Error('服务器超时，任务可能在后台继续执行，请稍后刷新历史记录查看结果')
                 }
 
-                let errorMessage = `请求失败 (${res.status})`;
+                let errorMessage = `请求失败 (${res.status})`
                 try {
-                    const errorData = await res.json();
-                    errorMessage = errorData.error || errorMessage;
-                } catch (e) {
-                    const text = await res.text();
-                    if (text) errorMessage = `${errorMessage}: ${text.substring(0, 50)}`;
+                    const errorData = await res.json()
+                    errorMessage = errorData.error || errorMessage
+                } catch (_e) {
+                    const text = await res.text()
+                    if (text) errorMessage = `${errorMessage}: ${text.substring(0, 50)}`
                 }
-                throw new Error(errorMessage);
+                throw new Error(errorMessage)
             }
 
             const data = await res.json()
@@ -386,25 +450,26 @@ export default function AIGeneratorMain({
             if (data.status === 'pending') {
                 setPendingTaskId(data.taskId)
                 alert.info('任务已提交，正在后台生成，完成后会自动刷新')
-                return
+                return true
             }
 
-            setCurrentTexture(data.image.dataUrl) // 服务器已经返回了纠正后的贴图
-            setActiveWrapId(data.wrapId) // 使用作品 ID 而非任务 ID
-
-            // 更新余额
+            setCurrentTexture(data.image.dataUrl)
+            setActiveWrapId(data.wrapId)
             setBalance(data.remainingBalance)
             refreshCredits()
-
-            // 刷新历史
             setTimeout(fetchHistory, 1000)
-
+            return true
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
             alert.error(`生成失败: ${message}`)
+            return false
         } finally {
             setIsGenerating(false)
         }
+    }
+
+    const handleGenerate = async () => {
+        await submitGeneration()
     }
 
     const handleDownload = async () => {
@@ -684,6 +749,99 @@ export default function AIGeneratorMain({
 
         return null;
     };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (autoRegenTriggeredRef.current) return
+
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('regenFromWrap') !== '1') return
+
+        const sourceTexture = params.get('sourceTexture')
+        const targetModel = params.get('targetModel')
+        const sourcePrompt = params.get('sourcePrompt')?.trim()
+
+        if (!sourceTexture || !targetModel) return
+        if (!models.some(m => m.slug === targetModel)) return
+
+        if (!isLoggedInInternal) {
+            const currentUrl = window.location.pathname + window.location.search
+            localStorage.setItem('auth_redirect_next', currentUrl)
+            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            return
+        }
+
+        autoRegenTriggeredRef.current = true
+
+        void (async () => {
+            try {
+                setActiveMode('ai')
+                setSelectedModel(targetModel)
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('ai_generator_last_model', targetModel)
+                }
+
+                const targetName = getModelName(targetModel)
+                const finalPrompt = sourcePrompt && sourcePrompt.length > 0
+                    ? sourcePrompt
+                    : (_locale === 'en'
+                        ? `Keep the key visual style from the reference and adapt it for Tesla ${targetName}.`
+                        : `保持参考图主视觉风格，并适配到特斯拉 ${targetName} 车型。`)
+
+                setPrompt(finalPrompt)
+
+                // Cross-model relay should use raw texture in mask orientation.
+                // Remove OSS runtime transform params (rotate/resize/format) before fetching.
+                const rawSourceTexture = getCdnUrl(stripOssProcess(sourceTexture))
+                const fetchUrl = rawSourceTexture.startsWith('http')
+                    ? `/api/proxy?url=${encodeURIComponent(rawSourceTexture)}`
+                    : rawSourceTexture
+
+                let sourceRes = await fetch(fetchUrl)
+                if (!sourceRes.ok) {
+                    // Fallback for legacy records: retry with original texture URL.
+                    const fallbackSourceTexture = getCdnUrl(sourceTexture)
+                    const fallbackFetchUrl = fallbackSourceTexture.startsWith('http')
+                        ? `/api/proxy?url=${encodeURIComponent(fallbackSourceTexture)}`
+                        : fallbackSourceTexture
+
+                    if (fallbackFetchUrl !== fetchUrl) {
+                        sourceRes = await fetch(fallbackFetchUrl)
+                    }
+                }
+
+                if (!sourceRes.ok) {
+                    throw new Error(_locale === 'en' ? 'Failed to load source texture' : '读取原车型贴图失败')
+                }
+
+                const sourceBlob = await sourceRes.blob()
+                const sourceDataUrl = await blobToDataUrl(sourceBlob)
+                const targetDims = getMaskDimensions(targetModel)
+                const resizedDataUrl = await resizeDataUrl(sourceDataUrl, targetDims.width, targetDims.height)
+
+                const uploadedRefUrl = await uploadReferenceImage(resizedDataUrl)
+                if (!uploadedRefUrl) {
+                    throw new Error(_locale === 'en' ? 'Reference upload failed' : '参考图上传失败')
+                }
+
+                setReferenceImages([uploadedRefUrl])
+
+                const started = await submitGeneration({
+                    promptValue: finalPrompt,
+                    modelSlug: targetModel,
+                    referenceImagesOverride: [uploadedRefUrl]
+                })
+
+                if (started) {
+                    alert.info(_locale === 'en' ? 'Cross-model generation started.' : '已开始生成目标车型任务')
+                }
+            } catch (error) {
+                console.error('[AI-GEN] Cross-model auto generation failed:', error)
+                const fallback = _locale === 'en' ? 'Failed to start cross-model generation' : '生成其他车型任务启动失败'
+                alert.error(error instanceof Error ? `${fallback}: ${error.message}` : fallback)
+            }
+        })()
+    }, [isLoggedInInternal, models, router, getModelName, _locale, alert, submitGeneration])
 
     const handlePaste = async (e: React.ClipboardEvent) => {
         const items = e.clipboardData?.items
