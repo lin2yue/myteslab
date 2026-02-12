@@ -18,7 +18,8 @@ export async function logTaskStep(
     taskId: string | undefined,
     step: string,
     status?: string,
-    reason?: string
+    reason?: string,
+    metadata?: Record<string, unknown>
 ) {
     if (!taskId) {
         console.warn(`[TASK-LOG] ⚠️ No taskId provided for step: ${step}`);
@@ -30,8 +31,11 @@ export async function logTaskStep(
         console.log(`[TASK-LOG] [${VERSION}] 📝 Task ${taskId}: ${step}${status ? ` -> ${status}` : ''}`);
 
         // Build step object
-        const stepObj: any = { step, ts: new Date().toISOString() };
+        const stepObj: Record<string, unknown> = { step, ts: new Date().toISOString() };
         if (reason) stepObj.reason = reason;
+        if (metadata && typeof metadata === 'object') {
+            Object.assign(stepObj, metadata);
+        }
 
         await dbQuery(
             `UPDATE generation_tasks

@@ -27,6 +27,8 @@ interface TaskStep {
     step: string;
     ts: string;
     reason?: string;
+    maskUrl?: string;
+    assembledPrompt?: string;
 }
 
 interface GenerationTask {
@@ -37,6 +39,8 @@ interface GenerationTask {
     credits_spent: number;
     error_message: string | null;
     steps: TaskStep[];
+    mask_url?: string | null;
+    assembled_prompt?: string | null;
     created_at: string;
     profiles: {
         display_name: string;
@@ -345,6 +349,30 @@ export default function AdminTasksPage() {
                                                                             "{task.prompt}"
                                                                         </p>
                                                                     </div>
+
+                                                                    {task.mask_url && (
+                                                                        <div>
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Mask URL</span>
+                                                                            <a
+                                                                                href={task.mask_url}
+                                                                                target="_blank"
+                                                                                rel="noreferrer"
+                                                                                className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline break-all"
+                                                                            >
+                                                                                {task.mask_url}
+                                                                                <ExternalLink size={12} />
+                                                                            </a>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {task.assembled_prompt && (
+                                                                        <div>
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Assembled Prompt</span>
+                                                                            <pre className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words bg-gray-50/70 dark:bg-zinc-900 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
+                                                                                {task.assembled_prompt}
+                                                                            </pre>
+                                                                        </div>
+                                                                    )}
 
                                                                     {task.error_message && (
                                                                         <div className="pt-2">

@@ -478,8 +478,12 @@ async function processGenerationTask(params: {
     origin: string;
 }) {
     const { taskId, userId, modelSlug, modelName, prompt, referenceImages, origin } = params;
-    const logStep = (step: string, status?: string, reason?: string) =>
-        logTaskStep(taskId, step, status, reason);
+    const logStep = (
+        step: string,
+        status?: string,
+        reason?: string,
+        metadata?: Record<string, unknown>
+    ) => logTaskStep(taskId, step, status, reason, metadata);
 
     const markTaskFailed = async (reason: string) => {
         await dbQuery(
@@ -506,6 +510,11 @@ async function processGenerationTask(params: {
         let maskImageBase64: string | null = null;
         const maskDimensions = getMaskDimensions(modelSlug);
         const maskUrl = getMaskUrl(modelSlug, origin);
+        await logStep('mask_selected', undefined, undefined, {
+            maskUrl,
+            maskDimensions: `${maskDimensions.width}x${maskDimensions.height}`,
+            modelSlug
+        });
 
         // --- DEBUG: Log resolution info ---
         console.log(`[AI-GEN] [Task:${taskId}] ModelSlug: "${modelSlug}", Dimensions: ${maskDimensions.width}x${maskDimensions.height} (${maskDimensions.aspectRatio})`);
@@ -628,6 +637,14 @@ async function processGenerationTask(params: {
                     : `optimizer_error=${compactDiagnosticText(optimization.error || 'unknown', 160)}`;
                 await logStep('prompt_retry_skipped', 'processing', skipReason);
             }
+        }
+
+        const assembledPrompt = (result.finalPrompt || '').trim();
+        if (assembledPrompt) {
+            await logStep('prompt_assembled', undefined, undefined, {
+                assembledPrompt,
+                promptRetryApplied: Boolean(optimizedPromptUsed)
+            });
         }
 
         if (!result.success) {
