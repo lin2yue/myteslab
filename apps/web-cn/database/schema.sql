@@ -174,6 +174,14 @@ CREATE TABLE IF NOT EXISTS user_audio_downloads (
   downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 11. 用户偏好设置
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  ai_generator_last_model VARCHAR(100),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ============================================
 -- 索引配置
 -- ============================================
@@ -411,6 +419,11 @@ CREATE POLICY "Insert Downloads" ON user_downloads FOR INSERT WITH CHECK (auth.u
 ALTER TABLE user_audio_downloads ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own Audio Downloads" ON user_audio_downloads FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Insert Audio Downloads" ON user_audio_downloads FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own Preferences" ON user_preferences FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Upsert Own Preferences" ON user_preferences FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Update Own Preferences" ON user_preferences FOR UPDATE USING (auth.uid() = user_id);
 
 -- 生成追踪
 ALTER TABLE generation_tasks ENABLE ROW LEVEL SECURITY;

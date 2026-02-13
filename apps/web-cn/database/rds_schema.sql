@@ -158,6 +158,14 @@ CREATE TABLE IF NOT EXISTS user_audio_downloads (
   downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 9. 用户偏好设置
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  ai_generator_last_model VARCHAR(100),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_wraps_category ON wraps(category);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public ON wraps(is_public);

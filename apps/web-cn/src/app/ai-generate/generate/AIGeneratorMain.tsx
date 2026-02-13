@@ -296,27 +296,39 @@ export default function AIGeneratorMain({
     const activeTaskIdRef = useRef<string | null>(null)
     const selectedModelRef = useRef<string>(initialModelSlug)
     const taskHistoryRef = useRef<GenerationTaskHistory[]>([])
+    const modelSyncTimerRef = useRef<number | null>(null)
+    const lastSyncedModelRef = useRef<string | null>(null)
+    const [isModelPreferenceReady, setIsModelPreferenceReady] = useState(false)
 
     const aiThemeStorageKey = 'ai_viewer_theme'
+    const modelPreferenceStorageKey = 'ai_generator_last_model'
+
+    const resolveRegenTargetModel = useCallback(() => {
+        if (typeof window === 'undefined') return null
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('regenFromWrap') !== '1') return null
+        const targetModel = params.get('targetModel')
+        if (!targetModel) return null
+        return sortedModels.some(m => m.slug === targetModel) ? targetModel : null
+    }, [sortedModels])
 
     // 当模型改变时保存到 localStorage
     useEffect(() => {
         if (typeof window !== 'undefined' && selectedModel) {
-            localStorage.setItem('ai_generator_last_model', selectedModel)
+            localStorage.setItem(modelPreferenceStorageKey, selectedModel)
         }
-    }, [selectedModel])
+    }, [selectedModel, modelPreferenceStorageKey])
 
     // Hydration-safe restore: only read localStorage after mount.
     useEffect(() => {
         if (typeof window === 'undefined') return
-        const params = new URLSearchParams(window.location.search)
-        if (params.get('regenFromWrap') === '1') {
-            const targetModel = params.get('targetModel')
-            if (targetModel && sortedModels.some(m => m.slug === targetModel)) {
-                return
-            }
+        const regenTargetModel = resolveRegenTargetModel()
+        if (regenTargetModel) {
+            setSelectedModel(regenTargetModel)
+            localStorage.setItem(modelPreferenceStorageKey, regenTargetModel)
+            return
         }
-        const savedModel = localStorage.getItem('ai_generator_last_model')
+        const savedModel = localStorage.getItem(modelPreferenceStorageKey)
         setSelectedModel((prev) => {
             if (savedModel && sortedModels.some(m => m.slug === savedModel)) {
                 return savedModel
@@ -326,7 +338,108 @@ export default function AIGeneratorMain({
             }
             return sortedModels[0]?.slug || prev
         })
-    }, [sortedModels])
+    }, [sortedModels, resolveRegenTargetModel, modelPreferenceStorageKey])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const regenTargetModel = resolveRegenTargetModel()
+        if (regenTargetModel) {
+            lastSyncedModelRef.current = regenTargetModel
+            setIsModelPreferenceReady(true)
+            return
+        }
+
+        if (!isLoggedInInternal) {
+            setIsModelPreferenceReady(false)
+            lastSyncedModelRef.current = null
+            return
+        }
+
+        let cancelled = false
+        setIsModelPreferenceReady(false)
+
+        void (async () => {
+            try {
+                const res = await fetch('/api/profile/preferences', {
+                    cache: 'no-store'
+                })
+
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        setIsLoggedInInternal(false)
+                    }
+                    return
+                }
+
+                const data = await res.json()
+                const serverModel = typeof data?.preferences?.aiGeneratorLastModel === 'string'
+                    ? data.preferences.aiGeneratorLastModel
+                    : ''
+
+                if (serverModel && sortedModels.some(m => m.slug === serverModel)) {
+                    if (!cancelled) {
+                        setSelectedModel(serverModel)
+                        localStorage.setItem(modelPreferenceStorageKey, serverModel)
+                    }
+                    lastSyncedModelRef.current = serverModel
+                    return
+                }
+
+                lastSyncedModelRef.current = null
+            } catch (error) {
+                console.error('[AI-GEN] Failed to fetch model preference:', error)
+            } finally {
+                if (!cancelled) {
+                    setIsModelPreferenceReady(true)
+                }
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [isLoggedInInternal, sortedModels, resolveRegenTargetModel, modelPreferenceStorageKey])
+
+    useEffect(() => {
+        if (!isLoggedInInternal || !isModelPreferenceReady) return
+        if (!selectedModel || !sortedModels.some(m => m.slug === selectedModel)) return
+        if (lastSyncedModelRef.current === selectedModel) return
+
+        if (modelSyncTimerRef.current !== null) {
+            window.clearTimeout(modelSyncTimerRef.current)
+        }
+
+        modelSyncTimerRef.current = window.setTimeout(() => {
+            void (async () => {
+                try {
+                    const res = await fetch('/api/profile/preferences', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ aiGeneratorLastModel: selectedModel })
+                    })
+                    if (!res.ok) {
+                        if (res.status === 401) {
+                            setIsLoggedInInternal(false)
+                            return
+                        }
+                        throw new Error(`HTTP ${res.status}`)
+                    }
+                    lastSyncedModelRef.current = selectedModel
+                } catch (error) {
+                    console.error('[AI-GEN] Failed to persist model preference:', error)
+                } finally {
+                    modelSyncTimerRef.current = null
+                }
+            })()
+        }, 350)
+
+        return () => {
+            if (modelSyncTimerRef.current !== null) {
+                window.clearTimeout(modelSyncTimerRef.current)
+                modelSyncTimerRef.current = null
+            }
+        }
+    }, [isLoggedInInternal, isModelPreferenceReady, selectedModel, sortedModels])
 
     // Sync 3D day/night with theme by default, unless user manually overrides
     useEffect(() => {
@@ -1133,7 +1246,7 @@ export default function AIGeneratorMain({
                 setActiveMode('ai')
                 setSelectedModel(targetModel)
                 if (typeof window !== 'undefined') {
-                    localStorage.setItem('ai_generator_last_model', targetModel)
+                    localStorage.setItem(modelPreferenceStorageKey, targetModel)
                 }
 
                 const targetName = getModelName(targetModel)
@@ -1196,7 +1309,7 @@ export default function AIGeneratorMain({
                 alert.error(error instanceof Error ? `${fallback}: ${error.message}` : fallback)
             }
         })()
-    }, [isLoggedInInternal, sortedModels, router, getModelName, _locale, alert, submitGeneration])
+    }, [isLoggedInInternal, sortedModels, router, getModelName, _locale, alert, submitGeneration, modelPreferenceStorageKey])
 
     const handlePaste = async (e: React.ClipboardEvent) => {
         const items = e.clipboardData?.items
