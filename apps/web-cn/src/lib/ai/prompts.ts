@@ -122,7 +122,7 @@ FINAL MASK CHECK (MANDATORY)
 - Panel edges must be crisp and pixel-aligned to the mask boundary.
 `.trim();
 
-const PRIMARY_ELEMENT_PLACEMENT = 'Do not leave rear panels blank. Rear graphics must be reversed (upside-down on the UV map). If using a primary element, place it on side doors/hood and keep the rear license plate area low-detail.';
+const PRIMARY_ELEMENT_PLACEMENT = 'Do not leave rear panels blank. Rear patterns must be inverted (upside down on the UV map). If using primary elements, place them on side doors/hood, and keep the rear license plate area low-detail, avoiding faces, eyes, or large focal graphics.';
 
 export function buildMaskHardConstraintSnippet(params?: {
   outputSize?: { width: number; height: number };
@@ -161,7 +161,7 @@ export function buildImageGenerationSystemInstruction(): string {
 function buildMinimalWrapPrompt(userPrompt: string, hasReferences: boolean): string {
   const cleanPrompt = userPrompt.trim() || 'Create a print-ready automotive wrap texture for the selected model.';
   const lines = [
-    'Create artwork on the car 3D model UV map, painting only the white regions.',
+    'Create patterns on the car 3D model UV map, painting only the white regions and maintaining continuity across adjacent UV islands.',
     `User prompt: ${cleanPrompt}`,
     'Orientation: front at the bottom, rear at the top.',
     PRIMARY_ELEMENT_PLACEMENT,
