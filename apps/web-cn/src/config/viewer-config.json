@@ -4,8 +4,8 @@
         "fieldOfView": "30deg",
         "exposure": 1.0,
         "environmentImage": "neutral",
-        "shadowIntensity": 1,
-        "shadowSoftness": 1,
+        "shadowIntensity": 2.2,
+        "shadowSoftness": 0.9,
         "autoRotate": false,
         "interactionPrompt": "none",
         "uvSet": "uv1"
