@@ -9,7 +9,6 @@ import '@/lib/proxy-config';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWrapTexture, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
-import { getGeminiFileUri } from '@/lib/ai/gemini-files';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
@@ -647,92 +646,67 @@ export async function processGenerationTask(params: {
         // --- PREPARE ASSETS (PARALLEL) ---
         await logStep('prepare_assets_start');
 
-        let geminiMaskUri: string | undefined;
         let maskImageBase64: string | null = null;
-        const referenceImageUris: string[] = [];
         const referenceImagesBase64: string[] = [];
         const savedReferenceUrls: string[] = [];
 
-        // 1. Mask Processing Task
-        const maskPromise = (async () => {
+        // 1. Prepare All Assets in Parallel (Base64 approach is way faster for network)
+        const assetPromises: Promise<any>[] = [];
+
+        // Mask Task
+        assetPromises.push((async () => {
             try {
-                geminiMaskUri = await getGeminiFileUri({
-                    cacheKey: `mask:${modelSlug}`,
-                    assetUrl: maskUrl,
-                    mimeType: 'image/png',
-                    displayName: `${modelSlug}_mask`
-                });
-            } catch (maskErr) {
-                console.error(`[AI-GEN] [${requestId}] Failed to prepare Gemini Mask URI:`, maskErr);
-            }
-
-            if (!geminiMaskUri) {
-                try {
-                    const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
-                    if (maskResponse.ok) {
-                        const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
-                        maskImageBase64 = maskBuffer.toString('base64');
-                    }
-                } catch (e) {
-                    console.error(`[AI-GEN] [${requestId}] Mask fallback fetch failed:`, e);
+                const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
+                if (maskResponse.ok) {
+                    const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
+                    maskImageBase64 = maskBuffer.toString('base64');
                 }
+            } catch (e) {
+                console.error(`[AI-GEN] [${requestId}] Mask fetch failed:`, e);
             }
-        })();
+        })());
 
-        // 2. Reference Images Processing Tasks
-        const refPromises = (inputReferenceImages || []).map(async (inputRef, i) => {
-            if (typeof inputRef !== 'string') return null;
+        // Reference Images Tasks
+        (inputReferenceImages || []).forEach((inputRef, i) => {
+            if (typeof inputRef !== 'string') return;
             const ref = inputRef.trim();
-            if (!ref) return null;
+            if (!ref) return;
 
             if (ref.startsWith('http')) {
-                try {
-                    const uri = await getGeminiFileUri({
-                        cacheKey: ref,
-                        assetUrl: ref,
-                        mimeType: 'image/jpeg',
-                        displayName: `reference_${i}`
-                    });
-                    return { type: 'uri', value: uri, originalUrl: ref };
-                } catch (refErr) {
-                    console.error(`[AI-GEN] [${requestId}] Ref Gemini upload failed for ${ref}:`, refErr);
-                    return { type: 'url', originalUrl: ref };
+                assetPromises.push((async () => {
+                    try {
+                        const res = await fetch(ref, { headers: { 'Referer': 'https://myteslab.com' } });
+                        if (res.ok) {
+                            const buffer = Buffer.from(await res.arrayBuffer());
+                            const payload = buffer.toString('base64');
+                            if (estimateBase64Size(payload) <= MAX_REFERENCE_IMAGE_BYTES) {
+                                referenceImagesBase64.push(payload);
+                                savedReferenceUrls.push(ref);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`[AI-GEN] [${requestId}] Ref fetch failed ${ref}:`, e);
+                        savedReferenceUrls.push(ref);
+                    }
+                })());
+            } else {
+                const payload = extractBase64Payload(ref);
+                if (payload) {
+                    if (estimateBase64Size(payload) <= MAX_REFERENCE_IMAGE_BYTES) {
+                        referenceImagesBase64.push(payload);
+                    }
                 }
-            }
-
-            const payload = extractBase64Payload(ref);
-            if (payload) {
-                if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
-                    throw new Error('Reference image too large');
-                }
-                return { type: 'inline', value: payload };
-            }
-            return null;
-        });
-
-        // Wait for all asset prepare tasks to complete
-        const [_, ...refResults] = await Promise.all([maskPromise, ...refPromises]);
-
-        // Aggregate results
-        refResults.forEach(res => {
-            if (!res) return;
-            if (res.type === 'uri') {
-                referenceImageUris.push(res.value!);
-                savedReferenceUrls.push(res.originalUrl!);
-            } else if (res.type === 'url') {
-                savedReferenceUrls.push(res.originalUrl!);
-            } else if (res.type === 'inline') {
-                referenceImagesBase64.push(res.value!);
             }
         });
 
+        await Promise.all(assetPromises);
         const dedupedReferenceImageUrls = Array.from(new Set(savedReferenceUrls));
 
         await logStep('prepare_assets_success', undefined,
-            `mask=${geminiMaskUri ? 'uri' : (maskImageBase64 ? 'inline' : 'failed')}; ` +
-            `uris=${referenceImageUris.length}, inline=${referenceImagesBase64.length}`);
+            `mask=${maskImageBase64 ? 'inline' : 'failed'}; ` +
+            `inline=${referenceImagesBase64.length}`);
 
-        if (!geminiMaskUri && !maskImageBase64) {
+        if (!maskImageBase64) {
             await markTaskFailed('Mask fetch failed');
             await refundTaskCredits(taskId, 'Mask fetch failed');
             return;
@@ -747,13 +721,9 @@ export async function processGenerationTask(params: {
             modelSlug,
             modelName,
             prompt: finalPromptUsed,
-            maskFileUri: geminiMaskUri, // Pass Gemini File URI
-            maskImageBase64: geminiMaskUri ? undefined : maskImageBase64 || undefined, // Fallback to base64 if no URI
-            referenceFileUris: referenceImageUris.length > 0 ? referenceImageUris : undefined, // Pass Gemini File URIs
-            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined, // Still pass base64 directly
-            // Also pass original URLs as fallback or for logging if needed, if Gemini URIs are not used for them
-            maskImageUrl: geminiMaskUri ? undefined : maskUrl,
-            referenceImageUrls: referenceImageUris.length === 0 && dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
+            maskImageBase64: maskImageBase64 || undefined,
+            referenceImageUrls: dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
+            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
         });
 
         if (!result.success && ENABLE_PROMPT_OPTIMIZE_RETRY && shouldRetryWithOptimizedPrompt(result)) {
