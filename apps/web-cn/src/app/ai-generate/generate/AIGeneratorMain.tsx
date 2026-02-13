@@ -792,6 +792,33 @@ export default function AIGeneratorMain({
                             retry_started_at: retryState.retryStartedAt,
                             updated_at: new Date().toISOString()
                         } : t)));
+
+                        // If task completed and we have wrap data, sync to history and apply if active
+                        if (status === 'completed' && data.wrap) {
+                            const newWrap = {
+                                id: String(data.wrap.id),
+                                prompt: updatedTask.prompt || '',
+                                preview_url: data.wrap.preview_url || data.wrap.texture_url || '',
+                                texture_url: data.wrap.texture_url || '',
+                                model_slug: data.wrap.model_slug || selectedModelRef.current,
+                                generation_task_id: updatedTask.id,
+                                is_active: false,
+                                is_public: false,
+                                created_at: new Date().toISOString()
+                            };
+
+                            setHistory(prev => upsertHistoryWrap(prev, newWrap));
+
+                            const shouldApply = activeTaskIdRef.current === updatedTask.id &&
+                                (selectedModelRef.current === newWrap.model_slug || !newWrap.model_slug);
+
+                            if (shouldApply) {
+                                setCurrentTexture(newWrap.preview_url || newWrap.texture_url);
+                                if (newWrap.model_slug) setSelectedModel(newWrap.model_slug);
+                                setActiveWrapId(newWrap.id);
+                                setActiveTaskId(null);
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error('[SSE] Update parse error:', err);

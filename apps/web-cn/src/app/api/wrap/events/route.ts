@@ -55,17 +55,19 @@ export async function GET(request: NextRequest) {
                     if (msg.channel === 'generation_task_updates' && msg.payload === taskId) {
                         try {
                             const { rows } = await client.query(
-                                'SELECT id, status, steps, error_message FROM generation_tasks WHERE id = $1',
+                                'SELECT id, status, steps, error_message, wrap_id FROM generation_tasks WHERE id = $1',
                                 [taskId]
                             );
                             if (rows[0]) {
-                                sendEvent({ type: 'update', task: rows[0] });
-
-                                // If task is final, we could close but better let frontend decide or based on status
-                                if (['completed', 'failed', 'failed_refunded'].includes(rows[0].status)) {
-                                    // Keep open briefly to ensure last message is received? 
-                                    // Or just let it be.
+                                let wrap = null;
+                                if (rows[0].status === 'completed' && rows[0].wrap_id) {
+                                    const { rows: wraps } = await client.query(
+                                        'SELECT id, preview_url, texture_url, model_slug FROM wraps WHERE id = $1',
+                                        [rows[0].wrap_id]
+                                    );
+                                    wrap = wraps[0] || null;
                                 }
+                                sendEvent({ type: 'update', task: rows[0], wrap });
                             }
                         } catch (err) {
                             console.error('[SSE] DB fetch error:', err);

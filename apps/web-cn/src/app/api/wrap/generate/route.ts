@@ -955,6 +955,67 @@ export async function processGenerationTask(params: {
     }
 }
 
+export async function GET(request: NextRequest) {
+    const user = await getSessionUser();
+    if (!user) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const taskId = searchParams.get('taskId');
+
+    if (!taskId) {
+        return NextResponse.json({ success: false, error: 'Missing taskId' }, { status: 400 });
+    }
+
+    try {
+        const { rows: tasks } = await db().query(
+            `SELECT id, status, error_message, steps, wrap_id, created_at, updated_at, model_slug, prompt
+             FROM generation_tasks
+             WHERE id = $1 AND user_id = $2`,
+            [taskId, user.id]
+        );
+
+        if (tasks.length === 0) {
+            return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+        }
+
+        const task = tasks[0];
+        let wrap = null;
+
+        if (task.status === 'completed' && task.wrap_id) {
+            const { rows: wraps } = await db().query(
+                `SELECT id, preview_url, texture_url, model_slug, created_at
+                 FROM wraps
+                 WHERE id = $1 AND user_id = $2`,
+                [task.wrap_id, user.id]
+            );
+            wrap = wraps[0] || null;
+        } else if (task.status === 'completed') {
+            // Fallback: try to find by generation_task_id
+            const { rows: wraps } = await db().query(
+                `SELECT id, preview_url, texture_url, model_slug, created_at
+                 FROM wraps
+                 WHERE generation_task_id = $1 AND user_id = $2`,
+                [taskId, user.id]
+            );
+            wrap = wraps[0] || null;
+        }
+
+        return NextResponse.json({
+            success: true,
+            status: task.status,
+            taskStatus: task.status,
+            error: task.error_message,
+            task,
+            wrap
+        });
+    } catch (error) {
+        console.error('[AI-GEN] GET task status error:', error);
+        return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    }
+}
+
 export async function POST(request: NextRequest) {
     let taskId: string | undefined;
 
