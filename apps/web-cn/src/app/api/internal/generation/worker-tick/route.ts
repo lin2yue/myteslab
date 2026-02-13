@@ -206,12 +206,11 @@ export async function POST(request: NextRequest) {
     let failed = 0;
     let skipped = 0;
 
-    for (const task of claimedTasks) {
+    const results = await Promise.allSettled(claimedTasks.map(async (task) => {
         const payload = extractQueuedPayload(task.steps, task.prompt);
         if (!payload) {
-            skipped += 1;
             await failAndRefundTask(task.id, 'Worker payload missing: queued task metadata not found');
-            continue;
+            return 'skipped';
         }
 
         try {
@@ -224,13 +223,24 @@ export async function POST(request: NextRequest) {
                 referenceImages: payload.referenceImages,
                 origin: payload.origin
             });
-            processed += 1;
+            return 'processed';
         } catch (error) {
-            failed += 1;
             const reason = error instanceof Error ? error.message : String(error);
             await failAndRefundTask(task.id, `Worker processing exception: ${reason}`);
+            return 'failed';
         }
-    }
+    }));
+
+    results.forEach((res) => {
+        if (res.status === 'fulfilled') {
+            const type = res.value;
+            if (type === 'processed') processed += 1;
+            else if (type === 'failed') failed += 1;
+            else if (type === 'skipped') skipped += 1;
+        } else {
+            failed += 1;
+        }
+    });
 
     return NextResponse.json({
         success: true,

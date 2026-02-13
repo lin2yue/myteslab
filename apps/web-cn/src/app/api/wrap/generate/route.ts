@@ -644,99 +644,99 @@ export async function processGenerationTask(params: {
         }
         // -----------------------------------
 
-        // New mask fetching logic
+        // --- PREPARE ASSETS (PARALLEL) ---
+        await logStep('prepare_assets_start');
+
         let geminiMaskUri: string | undefined;
-        try {
-            await logStep('prepare_mask_start');
-            geminiMaskUri = await getGeminiFileUri({
-                cacheKey: `mask:${modelSlug}`,
-                assetUrl: maskUrl,
-                mimeType: 'image/png',
-                displayName: `${modelSlug}_mask`
-            });
-            await logStep('prepare_mask_success', undefined, `uri=${geminiMaskUri}`);
-        } catch (maskErr) {
-            console.error(`[AI-GEN] [${requestId}] Failed to prepare Gemini Mask URI:`, maskErr);
-            await logStep('prepare_mask_failed', 'processing', String(maskErr));
-            // Fallback will be handled by generateWrapTexture if we pass undefined, but Gemini Files is now preferred.
-        }
-
-        // Original mask fetch (now fallback if Gemini Files fails or is not used)
         let maskImageBase64: string | null = null;
-        if (!geminiMaskUri) {
+        const referenceImageUris: string[] = [];
+        const referenceImagesBase64: string[] = [];
+        const savedReferenceUrls: string[] = [];
+
+        // 1. Mask Processing Task
+        const maskPromise = (async () => {
             try {
-                console.log(`[AI-GEN] [Task:${taskId}] Fetching mask from: ${maskUrl}`);
-                const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
-
-                if (maskResponse.ok) {
-                    const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
-                    console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
-                    maskImageBase64 = maskBuffer.toString('base64');
-                    await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
-
-                } else {
-                    console.error(`[AI-GEN] [Task:${taskId}] ❌ Failed to fetch mask. Status: ${maskResponse.status}`);
-                    await logStep('mask_load_failed', 'failed', `HTTP ${maskResponse.status}`);
-                }
-            } catch (error: any) {
-                console.error(`[AI-GEN] [Task:${taskId}] ❌ Mask fetch exception:`, error);
-                await logStep('mask_load_failed', 'failed', error.message || 'Exception during fetch');
+                geminiMaskUri = await getGeminiFileUri({
+                    cacheKey: `mask:${modelSlug}`,
+                    assetUrl: maskUrl,
+                    mimeType: 'image/png',
+                    displayName: `${modelSlug}_mask`
+                });
+            } catch (maskErr) {
+                console.error(`[AI-GEN] [${requestId}] Failed to prepare Gemini Mask URI:`, maskErr);
             }
-        }
 
+            if (!geminiMaskUri) {
+                try {
+                    const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
+                    if (maskResponse.ok) {
+                        const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
+                        maskImageBase64 = maskBuffer.toString('base64');
+                    }
+                } catch (e) {
+                    console.error(`[AI-GEN] [${requestId}] Mask fallback fetch failed:`, e);
+                }
+            }
+        })();
+
+        // 2. Reference Images Processing Tasks
+        const refPromises = (inputReferenceImages || []).map(async (inputRef, i) => {
+            if (typeof inputRef !== 'string') return null;
+            const ref = inputRef.trim();
+            if (!ref) return null;
+
+            if (ref.startsWith('http')) {
+                try {
+                    const uri = await getGeminiFileUri({
+                        cacheKey: ref,
+                        assetUrl: ref,
+                        mimeType: 'image/jpeg',
+                        displayName: `reference_${i}`
+                    });
+                    return { type: 'uri', value: uri, originalUrl: ref };
+                } catch (refErr) {
+                    console.error(`[AI-GEN] [${requestId}] Ref Gemini upload failed for ${ref}:`, refErr);
+                    return { type: 'url', originalUrl: ref };
+                }
+            }
+
+            const payload = extractBase64Payload(ref);
+            if (payload) {
+                if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
+                    throw new Error('Reference image too large');
+                }
+                return { type: 'inline', value: payload };
+            }
+            return null;
+        });
+
+        // Wait for all asset prepare tasks to complete
+        const [_, ...refResults] = await Promise.all([maskPromise, ...refPromises]);
+
+        // Aggregate results
+        refResults.forEach(res => {
+            if (!res) return;
+            if (res.type === 'uri') {
+                referenceImageUris.push(res.value!);
+                savedReferenceUrls.push(res.originalUrl!);
+            } else if (res.type === 'url') {
+                savedReferenceUrls.push(res.originalUrl!);
+            } else if (res.type === 'inline') {
+                referenceImagesBase64.push(res.value!);
+            }
+        });
+
+        const dedupedReferenceImageUrls = Array.from(new Set(savedReferenceUrls));
+
+        await logStep('prepare_assets_success', undefined,
+            `mask=${geminiMaskUri ? 'uri' : (maskImageBase64 ? 'inline' : 'failed')}; ` +
+            `uris=${referenceImageUris.length}, inline=${referenceImagesBase64.length}`);
 
         if (!geminiMaskUri && !maskImageBase64) {
             await markTaskFailed('Mask fetch failed');
             await refundTaskCredits(taskId, 'Mask fetch failed');
             return;
         }
-
-        // 3. 参考图准备（默认直接使用前端上传后的 URL，不再后端重复上传）
-        const referenceImageUris: string[] = [];
-        const referenceImagesBase64: string[] = [];
-        const savedReferenceUrls: string[] = []; // This will now store original URLs for logging/fallback
-
-        if (inputReferenceImages && Array.isArray(inputReferenceImages) && inputReferenceImages.length > 0) {
-            console.log(`[AI-GEN] Processing ${inputReferenceImages.length} reference images...`);
-            await logStep('prepare_refs_start');
-            for (let i = 0; i < inputReferenceImages.length; i++) {
-                const inputRef = inputReferenceImages[i];
-                if (typeof inputRef !== 'string') continue;
-                const ref = inputRef.trim();
-                if (!ref) continue;
-
-                if (ref.startsWith('http')) {
-                    savedReferenceUrls.push(ref); // Store original URL
-                    try {
-                        const uri = await getGeminiFileUri({
-                            cacheKey: ref, // Use URL as cache key for reference images
-                            assetUrl: ref,
-                            mimeType: 'image/jpeg', // Most references are JPEG optimized in our frontend
-                            displayName: `reference_${i}`
-                        });
-                        referenceImageUris.push(uri);
-                    } catch (refErr) {
-                        console.error(`[AI-GEN] [${requestId}] Failed to prepare Gemini Reference URI for ${ref}:`, refErr);
-                        // Continue processing other references, but this one won't use Gemini Files API
-                    }
-                    continue;
-                }
-
-                const payload = extractBase64Payload(ref);
-                if (!payload) continue;
-                if (estimateBase64Size(payload) > MAX_REFERENCE_IMAGE_BYTES) {
-                    throw new Error('Reference image too large');
-                }
-                referenceImagesBase64.push(payload);
-            }
-            await logStep('prepare_refs_complete', undefined, `uris=${referenceImageUris.length}, inline=${referenceImagesBase64.length}`);
-        }
-
-        // const savedReferenceUrls = Array.from(new Set(referenceImageUrls)); // No longer needed, savedReferenceUrls is built above
-        const dedupedReferenceImageUrls = Array.from(new Set(savedReferenceUrls)); // Use the collected original URLs
-        console.log(
-            `[AI-GEN] [Task:${taskId}] Reference payload prepared. GeminiURIs=${referenceImageUris.length}, URLs=${dedupedReferenceImageUrls.length}, inline=${referenceImagesBase64.length}`
-        );
 
         console.log(`[AI-GEN] Starting Gemini image generation...`);
         const metadata = buildLocalWrapMetadata(prompt, modelName);
@@ -1181,6 +1181,7 @@ export async function POST(request: NextRequest) {
                         referenceImages,
                         origin: request.nextUrl.origin
                     });
+                    void triggerWorkerTick({ origin: request.nextUrl.origin });
                 }
                 return jsonAccepted({
                     success: true,
@@ -1222,6 +1223,7 @@ export async function POST(request: NextRequest) {
                 referenceImages,
                 origin: request.nextUrl.origin
             });
+            void triggerWorkerTick({ origin: request.nextUrl.origin });
             return jsonAccepted({
                 success: true,
                 taskId,
@@ -1294,6 +1296,33 @@ export async function POST(request: NextRequest) {
             success: false,
             error: error instanceof Error ? error.message : 'Internal server error'
         }, { status: 500 });
+    }
+}
+
+/**
+ * Trigger the background worker to start processing immediately.
+ * Fire-and-forget internal request.
+ */
+async function triggerWorkerTick(params: { origin: string }) {
+    const { origin } = params;
+    const workerSecret = (process.env.WRAP_WORKER_SECRET || '').trim();
+    if (!workerSecret) return;
+
+    try {
+        const url = `${origin.replace(/\/+$/, '')}/api/internal/generation/worker-tick`;
+        // Fire and forget
+        void fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-wrap-worker-secret': workerSecret
+            },
+            body: JSON.stringify({ batchSize: 2 })
+        }).catch(err => {
+            console.error(`[AI-GEN] Worker kick-start failed (async): ${err.message}`);
+        });
+    } catch (err) {
+        console.error(`[AI-GEN] Worker kick-start initiation failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
