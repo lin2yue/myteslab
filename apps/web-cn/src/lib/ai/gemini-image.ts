@@ -612,14 +612,17 @@ export async function generateWrapTexture(
             const maskParts: any[] = [];
             const referenceParts: any[] = [];
 
-            // 1. Prepare Mask Part (Always use Base64 if available, or URL if mode is URI)
-            if (maskImageBase64) {
+            // 1. Prepare Mask Part (Always prefer URL for speed if it's likely to work, or Base64 for safety)
+            // But actually, for Mask, if we already have it in Base64 (from Backend fetch), 
+            // the added payload is small enough that we can just use inlineData if we want maximum reliability,
+            // OR use fileData for URL if we want zero payload. Let's stick to the URL-first hybrid approach.
+            if (mode === 'uri' && maskImageUrl) {
+                maskParts.push({ fileData: { mimeType: 'image/png', fileUri: maskImageUrl } });
+            } else if (maskImageBase64) {
                 const cleanMaskBase64 = maskImageBase64.includes('base64,')
                     ? maskImageBase64.split('base64,')[1]
                     : maskImageBase64;
                 maskParts.push({ inlineData: { mimeType: 'image/png', data: cleanMaskBase64 } });
-            } else if (mode === 'uri' && maskImageUrl) {
-                maskParts.push({ fileData: { mimeType: 'image/png', fileUri: maskImageUrl } });
             }
 
             // 2. Prepare Reference Parts

@@ -650,10 +650,10 @@ export async function processGenerationTask(params: {
         const referenceImagesBase64: string[] = [];
         const savedReferenceUrls: string[] = [];
 
-        // 1. Prepare All Assets in Parallel (Base64 approach is way faster for network)
+        // 1. Hybrid Asset Prep: Prepare both URLs and Base64 (Fallback ammo) in parallel
         const assetPromises: Promise<any>[] = [];
 
-        // Mask Task
+        // Mask Hybrid Task
         assetPromises.push((async () => {
             try {
                 const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
@@ -662,11 +662,11 @@ export async function processGenerationTask(params: {
                     maskImageBase64 = maskBuffer.toString('base64');
                 }
             } catch (e) {
-                console.error(`[AI-GEN] [${requestId}] Mask fetch failed:`, e);
+                console.error(`[AI-GEN] [${requestId}] Mask hybrid fetch failed:`, e);
             }
         })());
 
-        // Reference Images Tasks
+        // Reference Hybrid Tasks
         (inputReferenceImages || []).forEach((inputRef, i) => {
             if (typeof inputRef !== 'string') return;
             const ref = inputRef.trim();
@@ -685,7 +685,8 @@ export async function processGenerationTask(params: {
                             }
                         }
                     } catch (e) {
-                        console.error(`[AI-GEN] [${requestId}] Ref fetch failed ${ref}:`, e);
+                        console.error(`[AI-GEN] [${requestId}] Ref hybrid fetch failed ${ref}:`, e);
+                        // Still save the URL as Gemini might be able to pull it directly
                         savedReferenceUrls.push(ref);
                     }
                 })());
@@ -703,16 +704,16 @@ export async function processGenerationTask(params: {
         const dedupedReferenceImageUrls = Array.from(new Set(savedReferenceUrls));
 
         await logStep('prepare_assets_success', undefined,
-            `mask=${maskImageBase64 ? 'inline' : 'failed'}; ` +
-            `inline=${referenceImagesBase64.length}`);
+            `mask=${maskUrl ? 'url' : 'none'}, base64=${maskImageBase64 ? 'ok' : 'failed'}; ` +
+            `urls=${dedupedReferenceImageUrls.length}, inline=${referenceImagesBase64.length}`);
 
-        if (!maskImageBase64) {
-            await markTaskFailed('Mask fetch failed');
-            await refundTaskCredits(taskId, 'Mask fetch failed');
+        if (!maskUrl && !maskImageBase64) {
+            await markTaskFailed('Mask missing');
+            await refundTaskCredits(taskId, 'Mask missing');
             return;
         }
 
-        console.log(`[AI-GEN] Starting Gemini image generation...`);
+        console.log(`[AI-GEN] Starting Gemini image generation (Hybrid mode)...`);
         const metadata = buildLocalWrapMetadata(prompt, modelName);
         let finalPromptUsed = prompt;
         let optimizedPromptUsed: string | null = null;
@@ -721,6 +722,7 @@ export async function processGenerationTask(params: {
             modelSlug,
             modelName,
             prompt: finalPromptUsed,
+            maskImageUrl: maskUrl,
             maskImageBase64: maskImageBase64 || undefined,
             referenceImageUrls: dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
             referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
