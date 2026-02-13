@@ -84,8 +84,10 @@ interface GenerateWrapParams {
     prompt: string;
     maskImageUrl?: string;
     maskImageBase64?: string;
+    maskFileUri?: string;
     referenceImageUrls?: string[];
     referenceImagesBase64?: string[];
+    referenceFileUris?: string[];
 }
 
 type RequestPartsLayoutMode = 'mask_first' | 'legacy';
@@ -525,8 +527,12 @@ function parseGeminiImageResponse(payload: any, finalPrompt: string): ParsedGemi
 export async function generateWrapTexture(
     params: GenerateWrapParams
 ): Promise<GenerateWrapResult> {
-    const VERSION = "V1.1.1";
-    const { modelSlug, modelName, prompt, maskImageUrl, maskImageBase64, referenceImageUrls, referenceImagesBase64 } = params;
+    const VERSION = "V1.2.0";
+    const {
+        modelSlug, modelName, prompt,
+        maskImageUrl, maskImageBase64, maskFileUri,
+        referenceImageUrls, referenceImagesBase64, referenceFileUris
+    } = params;
 
     const maskDimensions = getMaskDimensions(modelSlug);
     let textPrompt = '';
@@ -555,6 +561,7 @@ export async function generateWrapTexture(
         const hasReferenceInputs = Boolean(
             (referenceImageUrls || []).some((url) => typeof url === 'string' && url.trim())
             || (referenceImagesBase64 || []).some((image) => typeof image === 'string' && image.trim())
+            || (referenceFileUris || []).length > 0
         );
         textPrompt = buildWrapPrompt({
             userPrompt: prompt,
@@ -589,20 +596,16 @@ export async function generateWrapTexture(
                     .filter(Boolean)
             )
         );
-        const hasUriInputs = Boolean(maskImageUrl) || normalizedReferenceImageUrls.length > 0;
+        const hasUriInputs = Boolean(maskImageUrl) || normalizedReferenceImageUrls.length > 0 || Boolean(maskFileUri) || (referenceFileUris?.length || 0) > 0;
         const hasInlineInputs = Boolean(maskImageBase64) || (referenceImagesBase64?.length || 0) > 0;
         let inlineReferencesFromUrlsCache: string[] | null = null;
 
         const getInlineReferencesFromUrls = async (): Promise<string[]> => {
             if (inlineReferencesFromUrlsCache) return inlineReferencesFromUrlsCache;
             const converted: string[] = [];
-            for (const refUrl of normalizedReferenceImageUrls) {
-                const base64 = await imageUrlToBase64(refUrl);
-                if (base64) {
-                    converted.push(base64);
-                } else {
-                    console.warn(`[AI-GEN] [${VERSION}] Failed to inline reference URL, skip fallback: ${refUrl}`);
-                }
+            for (const url of normalizedReferenceImageUrls) {
+                const base64 = await imageUrlToBase64(url);
+                if (base64) converted.push(base64);
             }
             inlineReferencesFromUrlsCache = converted;
             return converted;
@@ -612,35 +615,29 @@ export async function generateWrapTexture(
             const maskParts: any[] = [];
             const referenceParts: any[] = [];
 
-            if (mode === 'uri' && maskImageUrl) {
-                maskParts.push({
-                    fileData: {
-                        mimeType: 'image/png',
-                        fileUri: maskImageUrl
-                    }
-                });
+            // 1. Prepare Mask Part (Priority: FileURI > URI > Base64)
+            if (maskFileUri) {
+                maskParts.push({ fileData: { mimeType: 'image/png', fileUri: maskFileUri } });
+            } else if (mode === 'uri' && maskImageUrl) {
+                maskParts.push({ fileData: { mimeType: 'image/png', fileUri: maskImageUrl } });
             } else if (maskImageBase64) {
                 const cleanMaskBase64 = maskImageBase64.includes('base64,')
                     ? maskImageBase64.split('base64,')[1]
                     : maskImageBase64;
+                maskParts.push({ inlineData: { mimeType: 'image/png', data: cleanMaskBase64 } });
+            }
 
-                maskParts.push({
-                    inlineData: {
-                        mimeType: 'image/png',
-                        data: cleanMaskBase64
-                    }
+            // 2. Prepare Reference Parts
+            if (referenceFileUris && referenceFileUris.length > 0) {
+                referenceFileUris.forEach((uri) => {
+                    referenceParts.push({ fileData: { mimeType: 'image/jpeg', fileUri: uri } });
                 });
             }
 
-            if (mode === 'uri') {
-                for (const refUrl of normalizedReferenceImageUrls) {
-                    referenceParts.push({
-                        fileData: {
-                            mimeType: inferMimeTypeFromUrl(refUrl),
-                            fileUri: refUrl
-                        }
-                    });
-                }
+            if (mode === 'uri' && normalizedReferenceImageUrls.length > 0) {
+                normalizedReferenceImageUrls.forEach((url) => {
+                    referenceParts.push({ fileData: { mimeType: inferMimeTypeFromUrl(url), fileUri: url } });
+                });
             }
 
             const inlineRefs: string[] = [];

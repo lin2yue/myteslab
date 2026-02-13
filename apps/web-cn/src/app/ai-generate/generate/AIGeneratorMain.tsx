@@ -54,6 +54,7 @@ interface GenerationTaskHistory {
     created_at: string
     updated_at: string
     model_slug?: string | null
+    reference_images?: string[] | null
 }
 
 type HistoryListItem =
@@ -929,10 +930,16 @@ export default function AIGeneratorMain({
         const nextModel = task.model_slug || selectedModel
         setPrompt(task.prompt)
         setSelectedModel(nextModel)
+
+        // Restore reference images for the UI and submission
+        const refs = task.reference_images || []
+        setReferenceImages(refs)
+
         await submitGeneration({
             promptValue: task.prompt,
             modelSlug: nextModel,
-            clearRefs: true
+            clearRefs: false, // Ensure we don't clear the references we just restored
+            referenceImagesOverride: refs
         })
     }
 
@@ -1376,10 +1383,10 @@ export default function AIGeneratorMain({
                 )
             })
             .map(task => ({
-            type: 'task',
-            createdAt: task.created_at,
-            task
-        }))
+                type: 'task',
+                createdAt: task.created_at,
+                task
+            }))
         const wrapItems: HistoryListItem[] = history.map(wrap => ({
             type: 'wrap',
             createdAt: wrap.created_at,

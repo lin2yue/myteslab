@@ -9,6 +9,7 @@ import '@/lib/proxy-config';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWrapTexture, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
+import { getGeminiFileUri } from '@/lib/ai/gemini-files';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
@@ -224,11 +225,34 @@ async function deductCreditsForGeneration(params: {
     prompt: string;
     amount: number;
     idempotencyKey?: string | null;
+    modelSlug: string;
+    referenceImages?: string[];
 }) {
-    const { userId, prompt, amount, idempotencyKey } = params;
+    const { userId, prompt, amount, idempotencyKey, modelSlug, referenceImages } = params;
     const client = await db().connect();
     try {
         await client.query('BEGIN');
+
+        // Schema Safety Check (Runs once per request but very fast)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS gemini_files_cache (
+                id SERIAL PRIMARY KEY,
+                cache_key TEXT UNIQUE NOT NULL,
+                file_uri TEXT NOT NULL,
+                mime_type TEXT,
+                uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                metadata JSONB
+            );
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generation_tasks' AND column_name='model_slug') THEN
+                    ALTER TABLE generation_tasks ADD COLUMN model_slug TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generation_tasks' AND column_name='reference_images') THEN
+                    ALTER TABLE generation_tasks ADD COLUMN reference_images TEXT[];
+                END IF;
+            END $$;
+        `);
 
         if (idempotencyKey) {
             const { rows: existing } = await client.query(
@@ -303,10 +327,12 @@ async function deductCreditsForGeneration(params: {
         }
 
         const { rows: taskRows } = await client.query(
-            `INSERT INTO generation_tasks (user_id, prompt, status, credits_spent, idempotency_key, created_at, updated_at)
-             VALUES ($1, $2, 'pending', $3, $4, NOW(), NOW())
+            `INSERT INTO generation_tasks (
+                user_id, prompt, status, credits_spent, idempotency_key, 
+                model_slug, reference_images, created_at, updated_at
+             ) VALUES ($1, $2, 'pending', $3, $4, $5, $6, NOW(), NOW())
              RETURNING id`,
-            [userId, prompt, amount, idempotencyKey || null]
+            [userId, prompt, amount, idempotencyKey || null, modelSlug, referenceImages || null]
         );
 
         const taskId = taskRows[0].id as string;
@@ -541,30 +567,55 @@ export async function processGenerationTask(params: {
     referenceImages?: string[];
     origin: string;
 }) {
-    const { taskId, userId, modelSlug, modelName, prompt, referenceImages, origin } = params;
-    const logStep = (
-        step: string,
-        status?: string,
-        reason?: string,
-        metadata?: Record<string, unknown>
-    ) => logTaskStep(taskId, step, status, reason, metadata);
+    const { taskId, userId, modelSlug, modelName, prompt, referenceImages: inputReferenceImages, origin } = params;
+    const requestId = `task-${taskId.substring(0, 8)}`;
+    console.log(`[AI-GEN] [${requestId}] Starting background worker for task ${taskId}`);
 
-    const markTaskFailed = async (reason: string) => {
-        await dbQuery(
-            `UPDATE generation_tasks
-             SET status = 'failed',
-                 error_message = $2,
-                 finished_at = NOW(),
-                 lease_owner = NULL,
-                 lease_expires_at = NULL,
-                 next_retry_at = NULL,
-                 updated_at = NOW()
-             WHERE id = $1`,
-            [taskId, reason]
-        );
+    const logStep = async (step: string, status?: string, reason?: string, metadata?: Record<string, unknown>) => {
+        try {
+            await logTaskStep(taskId, step, status, reason, metadata);
+        } catch (e) {
+            console.error(`[AI-GEN] [${requestId}] Failed to log step ${step}:`, e);
+        }
+    };
+
+    const markTaskFailed = async (error: string) => {
+        try {
+            await dbQuery(
+                `UPDATE generation_tasks
+                 SET status = 'failed',
+                     error_message = $2,
+                     finished_at = NOW(),
+                     lease_owner = NULL,
+                     lease_expires_at = NULL,
+                     next_retry_at = NULL,
+                     updated_at = NOW()
+                 WHERE id = $1`,
+                [taskId, error]
+            );
+        } catch (e) {
+            console.error(`[AI-GEN] [${requestId}] Failed to mark task failed:`, e);
+        }
     };
 
     try {
+        // 0. Ensure schema exists
+        await dbQuery(`
+            CREATE TABLE IF NOT EXISTS gemini_files_cache (
+                id SERIAL PRIMARY KEY,
+                cache_key TEXT UNIQUE NOT NULL,
+                file_uri TEXT NOT NULL,
+                mime_type TEXT,
+                uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                metadata JSONB
+            );
+            CREATE INDEX IF NOT EXISTS idx_gemini_files_cache_key ON gemini_files_cache(cache_key);
+            CREATE INDEX IF NOT EXISTS idx_gemini_files_cache_expires ON gemini_files_cache(expires_at);
+        `);
+
+        await logStep('worker_started', 'processing');
+
         // 1. 先标记处理中
         await logStep('ai_call_start', 'processing');
         await dbQuery(
@@ -578,7 +629,6 @@ export async function processGenerationTask(params: {
         );
 
         // 2. 获取 Mask
-        let maskImageBase64: string | null = null;
         const maskDimensions = getMaskDimensions(modelSlug);
         const maskUrl = getMaskUrl(modelSlug, origin);
         await logStep('mask_selected', undefined, undefined, {
@@ -594,43 +644,81 @@ export async function processGenerationTask(params: {
         }
         // -----------------------------------
 
+        // New mask fetching logic
+        let geminiMaskUri: string | undefined;
         try {
-            console.log(`[AI-GEN] [Task:${taskId}] Fetching mask from: ${maskUrl}`);
-            const maskResponse = await fetch(maskUrl);
-
-            if (maskResponse.ok) {
-                const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
-                console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
-                maskImageBase64 = maskBuffer.toString('base64');
-                await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
-
-            } else {
-                console.error(`[AI-GEN] [Task:${taskId}] ❌ Failed to fetch mask. Status: ${maskResponse.status}`);
-                await logStep('mask_load_failed', 'failed', `HTTP ${maskResponse.status}`);
-            }
-        } catch (error: any) {
-            console.error(`[AI-GEN] [Task:${taskId}] ❌ Mask fetch exception:`, error);
-            await logStep('mask_load_failed', 'failed', error.message || 'Exception during fetch');
+            await logStep('prepare_mask_start');
+            geminiMaskUri = await getGeminiFileUri({
+                cacheKey: `mask:${modelSlug}`,
+                assetUrl: maskUrl,
+                mimeType: 'image/png',
+                displayName: `${modelSlug}_mask`
+            });
+            await logStep('prepare_mask_success', undefined, `uri=${geminiMaskUri}`);
+        } catch (maskErr) {
+            console.error(`[AI-GEN] [${requestId}] Failed to prepare Gemini Mask URI:`, maskErr);
+            await logStep('prepare_mask_failed', 'processing', String(maskErr));
+            // Fallback will be handled by generateWrapTexture if we pass undefined, but Gemini Files is now preferred.
         }
 
-        if (!maskImageBase64) {
+        // Original mask fetch (now fallback if Gemini Files fails or is not used)
+        let maskImageBase64: string | null = null;
+        if (!geminiMaskUri) {
+            try {
+                console.log(`[AI-GEN] [Task:${taskId}] Fetching mask from: ${maskUrl}`);
+                const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
+
+                if (maskResponse.ok) {
+                    const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
+                    console.log(`[AI-GEN] [Task:${taskId}] Mask fetched. Size: ${maskBuffer.length} bytes`);
+                    maskImageBase64 = maskBuffer.toString('base64');
+                    await logStep('mask_load_success', 'processing', `Loaded ${maskBuffer.length} bytes`);
+
+                } else {
+                    console.error(`[AI-GEN] [Task:${taskId}] ❌ Failed to fetch mask. Status: ${maskResponse.status}`);
+                    await logStep('mask_load_failed', 'failed', `HTTP ${maskResponse.status}`);
+                }
+            } catch (error: any) {
+                console.error(`[AI-GEN] [Task:${taskId}] ❌ Mask fetch exception:`, error);
+                await logStep('mask_load_failed', 'failed', error.message || 'Exception during fetch');
+            }
+        }
+
+
+        if (!geminiMaskUri && !maskImageBase64) {
             await markTaskFailed('Mask fetch failed');
             await refundTaskCredits(taskId, 'Mask fetch failed');
             return;
         }
 
         // 3. 参考图准备（默认直接使用前端上传后的 URL，不再后端重复上传）
-        const referenceImageUrls: string[] = [];
+        const referenceImageUris: string[] = [];
         const referenceImagesBase64: string[] = [];
-        if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
-            console.log(`[AI-GEN] Processing ${referenceImages.length} reference images...`);
-            for (const inputRef of referenceImages) {
+        const savedReferenceUrls: string[] = []; // This will now store original URLs for logging/fallback
+
+        if (inputReferenceImages && Array.isArray(inputReferenceImages) && inputReferenceImages.length > 0) {
+            console.log(`[AI-GEN] Processing ${inputReferenceImages.length} reference images...`);
+            await logStep('prepare_refs_start');
+            for (let i = 0; i < inputReferenceImages.length; i++) {
+                const inputRef = inputReferenceImages[i];
                 if (typeof inputRef !== 'string') continue;
                 const ref = inputRef.trim();
                 if (!ref) continue;
 
                 if (ref.startsWith('http')) {
-                    referenceImageUrls.push(ref);
+                    savedReferenceUrls.push(ref); // Store original URL
+                    try {
+                        const uri = await getGeminiFileUri({
+                            cacheKey: ref, // Use URL as cache key for reference images
+                            assetUrl: ref,
+                            mimeType: 'image/jpeg', // Most references are JPEG optimized in our frontend
+                            displayName: `reference_${i}`
+                        });
+                        referenceImageUris.push(uri);
+                    } catch (refErr) {
+                        console.error(`[AI-GEN] [${requestId}] Failed to prepare Gemini Reference URI for ${ref}:`, refErr);
+                        // Continue processing other references, but this one won't use Gemini Files API
+                    }
                     continue;
                 }
 
@@ -641,12 +729,13 @@ export async function processGenerationTask(params: {
                 }
                 referenceImagesBase64.push(payload);
             }
+            await logStep('prepare_refs_complete', undefined, `uris=${referenceImageUris.length}, inline=${referenceImagesBase64.length}`);
         }
 
-        const savedReferenceUrls = Array.from(new Set(referenceImageUrls));
-        const dedupedReferenceImageUrls = savedReferenceUrls;
+        // const savedReferenceUrls = Array.from(new Set(referenceImageUrls)); // No longer needed, savedReferenceUrls is built above
+        const dedupedReferenceImageUrls = Array.from(new Set(savedReferenceUrls)); // Use the collected original URLs
         console.log(
-            `[AI-GEN] [Task:${taskId}] Reference payload prepared. URLs=${dedupedReferenceImageUrls.length}, inline=${referenceImagesBase64.length}`
+            `[AI-GEN] [Task:${taskId}] Reference payload prepared. GeminiURIs=${referenceImageUris.length}, URLs=${dedupedReferenceImageUrls.length}, inline=${referenceImagesBase64.length}`
         );
 
         console.log(`[AI-GEN] Starting Gemini image generation...`);
@@ -658,10 +747,13 @@ export async function processGenerationTask(params: {
             modelSlug,
             modelName,
             prompt: finalPromptUsed,
-            maskImageUrl: maskUrl,
-            maskImageBase64: maskImageBase64 || undefined,
-            referenceImageUrls: dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
-            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
+            maskFileUri: geminiMaskUri, // Pass Gemini File URI
+            maskImageBase64: geminiMaskUri ? undefined : maskImageBase64 || undefined, // Fallback to base64 if no URI
+            referenceFileUris: referenceImageUris.length > 0 ? referenceImageUris : undefined, // Pass Gemini File URIs
+            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined, // Still pass base64 directly
+            // Also pass original URLs as fallback or for logging if needed, if Gemini URIs are not used for them
+            maskImageUrl: geminiMaskUri ? undefined : maskUrl,
+            referenceImageUrls: referenceImageUris.length === 0 && dedupedReferenceImageUrls.length > 0 ? dedupedReferenceImageUrls : undefined,
         });
 
         if (!result.success && ENABLE_PROMPT_OPTIMIZE_RETRY && shouldRetryWithOptimizedPrompt(result)) {
@@ -995,7 +1087,9 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             prompt: normalizedPrompt,
             amount: requiredCredits,
-            idempotencyKey: idempotencyKey || null
+            idempotencyKey: idempotencyKey || null,
+            modelSlug: currentModelSlug,
+            referenceImages: referenceImages || null
         });
 
         if (!deductResultRaw?.success) {
