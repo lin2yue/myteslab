@@ -575,7 +575,7 @@ export async function generateWrapTexture(
         });
         const requestPartsLayoutMode = resolveRequestPartsLayoutMode();
 
-        const primaryModel = (process.env.GEMINI_IMAGE_MODEL || 'gemini-2.0-flash').trim();
+        const primaryModel = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
         if (!primaryModel) {
             throw new Error('GEMINI_IMAGE_MODEL is empty');
         }

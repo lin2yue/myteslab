@@ -37,18 +37,19 @@ export async function logTaskStep(
             Object.assign(stepObj, metadata);
         }
 
+        // 1. Update the database
         await dbQuery(
             `UPDATE generation_tasks
              SET steps = COALESCE(steps, '[]'::jsonb) || $2::jsonb,
                  status = CASE WHEN $3::text IS NOT NULL THEN $3::generation_status ELSE status END,
                  updated_at = NOW(),
                  error_message = CASE WHEN $4::text IS NOT NULL THEN COALESCE(error_message, $4::text) ELSE error_message END
-             WHERE id = $1;
-             
-             -- Notify for SSE real-time updates
-             NOTIFY generation_task_updates, $1;`,
+             WHERE id = $1`,
             [taskId, JSON.stringify([stepObj]), status || null, reason || null]
         );
+
+        // 2. Notify for SSE real-time updates (Non-blocking or separate)
+        await dbQuery(`SELECT pg_notify('generation_task_updates', $1)`, [taskId]);
     } catch (err) {
         console.error(`[TASK-LOG] ❌ Global error logging step ${step}:`, err);
     }
