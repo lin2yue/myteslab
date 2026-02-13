@@ -29,6 +29,27 @@ export async function GET(
             return NextResponse.json({ error: '请登录后下载' }, { status: 401 });
         }
 
+        // Referer 校验
+        const referer = request.headers.get('referer');
+        if (referer && !referer.includes('tewan.club') && !referer.includes('localhost')) {
+            return NextResponse.json({ error: '非法请求' }, { status: 403 });
+        }
+
+        // 检查下载配额 (每日 20 次)
+        const { rows: countRows } = await dbQuery<{ count: string }>(
+            `SELECT COUNT(*)::int as count 
+             FROM user_downloads 
+             WHERE user_id = $1 
+             AND downloaded_at > NOW() - INTERVAL '24 hours'`,
+            [user.id]
+        );
+
+        if (Number(countRows[0]?.count || 0) >= 20) {
+            return NextResponse.json({
+                error: '已达到每日下载上限 (20次)，请明天再试'
+            }, { status: 429 });
+        }
+
         const isOwner = user.id === wrap.user_id;
         const isPubliclyAvailable = wrap.is_public && wrap.is_active;
 

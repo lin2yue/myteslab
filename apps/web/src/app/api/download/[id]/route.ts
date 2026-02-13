@@ -11,7 +11,36 @@ export async function GET(
         const { id } = await params
         const supabase = await createClient()
 
-        // 1. 获取贴图信息 - 从合并后的 wraps 表拉取
+        // 基础安全校验：Referer
+        const referer = request.headers.get('referer');
+        if (referer && !referer.includes('myteslab.com') && !referer.includes('localhost') && !referer.includes('tewan.club')) {
+            return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 });
+        }
+
+        // 1. 获取用户信息
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // 强制登录保护
+        if (!user) {
+            return NextResponse.json({ error: 'Please login to download' }, { status: 401 });
+        }
+
+        // 2. 检查下载配额 (每日 20 次)
+        const { count, error: countError } = await supabase
+            .from('user_downloads')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gt('downloaded_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+        if (countError) {
+            console.error('[download] count check failed:', countError);
+        } else if (count !== null && count >= 20) {
+            return NextResponse.json({
+                error: 'Daily download limit reached (20). please try again tomorrow.'
+            }, { status: 429 });
+        }
+
+        // 3. 获取贴图信息
         const { data: wrap, error: wrapError } = await supabase
             .from('wraps')
             .select('*')
@@ -19,7 +48,7 @@ export async function GET(
             .single()
 
         if (wrapError || !wrap) {
-            return NextResponse.json({ error: '贴图不存在' }, { status: 404 })
+            return NextResponse.json({ error: 'Wrap not found' }, { status: 404 })
         }
 
         const wrapData = {
@@ -47,9 +76,7 @@ export async function GET(
             )
         }
 
-        // 2. 增加下载计数并记录下载历史
-        const { data: { user } } = await supabase.auth.getUser();
-
+        // 5. 增加下载计数并记录下载历史
         // 增加总下载量 (使用 service role 绕过 RLS，避免匿名用户更新失败)
         try {
             const admin = createAdminClient();
@@ -60,13 +87,11 @@ export async function GET(
             console.error('[download] increment_download_count failed:', err);
         }
 
-        // 如果用户已登录，记录到个人下载历史
-        if (user) {
-            await supabase.from('user_downloads').insert({
-                user_id: user.id,
-                wrap_id: id
-            });
-        }
+        // 记录到个人下载历史 (已经在上方验证过 user 存在)
+        await supabase.from('user_downloads').insert({
+            user_id: user.id,
+            wrap_id: id
+        });
 
         // 3. 优化下载逻辑：服务端压缩处理 (Server-Side Compression)
         // 目标：保持 1024x1024 分辨率，但文件体积必须 < 1MB
