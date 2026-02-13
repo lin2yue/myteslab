@@ -48,29 +48,7 @@ async function uploadToGemini(buffer: Buffer, mimeType: string, displayName: str
 
     const url = `${GEMINI_API_BASE_URL}/upload/v1beta/files?key=${GEMINI_API_KEY}`;
 
-    console.log(`[GEMINI-FILES] Uploading to Gemini Files API: ${displayName} (${mimeType}, ${buffer.length} bytes)`);
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'X-Goog-Upload-Protocol': 'multipart',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            file: { displayName }
-        })
-    });
-
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Gemini upload initialization failed: ${response.status} ${errText}`);
-    }
-
-    // Note: Simple multipart upload for files < 20MB. 
-    // For production-grade reliability with multiple parts, we use the standard metadata + data flow.
-    // However, Gemini Files API also supports a simpler X-Goog-Upload-Protocol: resumable or multipart.
-    // Let's use the most robust single-request multipart for these small images.
-
+    // Simplified multipart upload for Gemini Files API as a single request.
     const boundary = '-------' + Math.random().toString(36).substring(2);
     const metadata = JSON.stringify({ file: { displayName } });
 
