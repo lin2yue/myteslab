@@ -756,7 +756,6 @@ export default function AIGeneratorMain({
         const pollAll = async () => {
             if (!active || polling) return
             polling = true
-            // Poll sequentially to avoid burst requests when multiple tasks are pending.
             try {
                 for (const taskId of taskIds) {
                     if (!active) return
@@ -767,12 +766,54 @@ export default function AIGeneratorMain({
             }
         }
 
-        void pollAll()
+        // --- Real-time SSE Subscription ---
+        const sseConnections: Record<string, EventSource> = {};
+
+        const setupSSE = (taskId: string) => {
+            if (sseConnections[taskId]) return;
+            const es = new EventSource(`/api/wrap/events?taskId=${taskId}`);
+            sseConnections[taskId] = es;
+
+            es.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'update' && data.task) {
+                        const updatedTask = data.task;
+                        const status = updatedTask.status as TaskStatus;
+                        const steps = normalizeTaskSteps(updatedTask.steps);
+                        const retryState = resolveRetryState(status, steps);
+
+                        setTaskHistory(prev => prev.map(t => (t.id === updatedTask.id ? {
+                            ...t,
+                            status,
+                            steps,
+                            error_message: updatedTask.error_message || null,
+                            is_retrying: retryState.isRetrying,
+                            retry_started_at: retryState.retryStartedAt,
+                            updated_at: new Date().toISOString()
+                        } : t)));
+                    }
+                } catch (err) {
+                    console.error('[SSE] Update parse error:', err);
+                }
+            };
+
+            es.onerror = () => {
+                es.close();
+                delete sseConnections[taskId];
+                // Fallback is handled by the 5s interval polling below
+            };
+        };
+
+        taskIds.forEach(setupSSE);
+        void pollAll(); // Initial poll
+
         const timer = window.setInterval(() => void pollAll(), 5000)
 
         return () => {
             active = false
             window.clearInterval(timer)
+            Object.values(sseConnections).forEach(es => es.close());
         }
     }, [pendingTaskKey, fetchHistory])
 

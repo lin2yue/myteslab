@@ -43,7 +43,10 @@ export async function logTaskStep(
                  status = CASE WHEN $3::text IS NOT NULL THEN $3::generation_status ELSE status END,
                  updated_at = NOW(),
                  error_message = CASE WHEN $4::text IS NOT NULL THEN COALESCE(error_message, $4::text) ELSE error_message END
-             WHERE id = $1`,
+             WHERE id = $1;
+             
+             -- Notify for SSE real-time updates
+             NOTIFY generation_task_updates, $1;`,
             [taskId, JSON.stringify([stepObj]), status || null, reason || null]
         );
     } catch (err) {
