@@ -49,6 +49,9 @@ export default function AuthButton() {
 
     const handleSignOut = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('wrap_gallery_last_model');
+        }
         setUser(null);
         setAvatarUrl(null);
         setBalance(null);

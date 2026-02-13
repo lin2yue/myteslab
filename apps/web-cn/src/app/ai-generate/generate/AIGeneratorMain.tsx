@@ -298,6 +298,7 @@ export default function AIGeneratorMain({
     const taskHistoryRef = useRef<GenerationTaskHistory[]>([])
     const modelSyncTimerRef = useRef<number | null>(null)
     const lastSyncedModelRef = useRef<string | null>(null)
+    const hasHydratedModelPreferenceRef = useRef(false)
     const [isModelPreferenceReady, setIsModelPreferenceReady] = useState(false)
 
     const aiThemeStorageKey = 'ai_viewer_theme'
@@ -312,13 +313,6 @@ export default function AIGeneratorMain({
         return sortedModels.some(m => m.slug === targetModel) ? targetModel : null
     }, [sortedModels])
 
-    // 当模型改变时保存到 localStorage
-    useEffect(() => {
-        if (typeof window !== 'undefined' && selectedModel) {
-            localStorage.setItem(modelPreferenceStorageKey, selectedModel)
-        }
-    }, [selectedModel, modelPreferenceStorageKey])
-
     // Hydration-safe restore: only read localStorage after mount.
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -326,6 +320,7 @@ export default function AIGeneratorMain({
         if (regenTargetModel) {
             setSelectedModel(regenTargetModel)
             localStorage.setItem(modelPreferenceStorageKey, regenTargetModel)
+            hasHydratedModelPreferenceRef.current = true
             return
         }
         const savedModel = localStorage.getItem(modelPreferenceStorageKey)
@@ -338,7 +333,16 @@ export default function AIGeneratorMain({
             }
             return sortedModels[0]?.slug || prev
         })
+        hasHydratedModelPreferenceRef.current = true
     }, [sortedModels, resolveRegenTargetModel, modelPreferenceStorageKey])
+
+    // 当模型改变时保存到 localStorage（跳过首次 hydration 前的默认值写入）
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (!hasHydratedModelPreferenceRef.current) return
+        if (!selectedModel) return
+        localStorage.setItem(modelPreferenceStorageKey, selectedModel)
+    }, [selectedModel, modelPreferenceStorageKey])
 
     useEffect(() => {
         if (typeof window === 'undefined') return
