@@ -50,6 +50,7 @@ interface GenerationTask {
     profiles: {
         display_name: string;
         email: string;
+        avatar_url: string | null;
     } | null;
 }
 
@@ -227,13 +228,31 @@ export default function AdminTasksPage() {
                                             {getStatusBadge(task.status)}
                                         </td>
                                         <td className="px-6 py-5">
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px]">
-                                                    {task.profiles?.display_name || 'Anonymous User'}
-                                                </span>
-                                                <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1 uppercase tracking-tighter">
-                                                    ID: {task.user_id.substring(0, 8)}
-                                                </span>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0 border border-gray-100 dark:border-zinc-800">
+                                                    {task.profiles?.avatar_url ? (
+                                                        <img
+                                                            src={task.profiles.avatar_url}
+                                                            alt={task.profiles.display_name}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).src = 'https://cdn.tewan.club/avatars/default_avatar.jpg';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                            <User size={20} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px]">
+                                                        {task.profiles?.display_name || 'Anonymous User'}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1 uppercase tracking-tighter">
+                                                        ID: {task.user_id.substring(0, 8)}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 min-w-[300px]">

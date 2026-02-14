@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslations } from '@/lib/i18n'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
-import { X, Loader2, Globe, ShieldCheck, DownloadCloud } from 'lucide-react'
+import { X, Loader2, Globe, ShieldCheck, DownloadCloud, AlertTriangle } from 'lucide-react'
 import Portal from '../Portal';
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface PublishModalProps {
     isOpen: boolean
@@ -31,8 +32,8 @@ export default function PublishModal({
     const tGen = useTranslations('Generator')
     const [agree, setAgree] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
+    const alert = useAlert()
     const viewerRef = useRef<ModelViewerRef>(null)
-    const hiddenViewerRef = useRef<ModelViewerRef>(null)
 
     // Params from render_config.json to match the generation script exactly
     const previewParams = {
@@ -48,25 +49,35 @@ export default function PublishModal({
     if (!isOpen) return null
 
     const handleConfirm = async () => {
-        if (!hiddenViewerRef.current) return
+        if (!viewerRef.current) {
+            alert.error('预览系统未就绪，请稍后重试')
+            return
+        }
 
         setIsProcessing(true)
         try {
-            // Wait for theDedicated snapshot renderer to be fully ready
-            const ready = await hiddenViewerRef.current.waitForReady(15000)
+            // Wait for the visible viewer to be fully ready
+            // Reusing the visible viewer saves significant memory on mobile
+            const ready = await viewerRef.current.waitForReady(30000)
             if (!ready) {
-                console.error('[PublishModal] Hidden viewer did not become ready in time, aborting publish snapshot.')
+                console.error('[PublishModal] Viewer did not become ready in time, aborting publish snapshot.')
+                alert.error('预览图加载超时，请检查网络并重试。')
                 return
             }
 
-            // Capture from the standard 1024x768 instance
-            const imageBase64 = await hiddenViewerRef.current.takeHighResScreenshot({ useStandardView: true })
+            // Capture from the visible instance
+            // takeHighResScreenshot with useStandardView: true will temporarily switch
+            // to the fixed camera/view, take the shot, and revert.
+            const imageBase64 = await viewerRef.current.takeHighResScreenshot({ useStandardView: true })
 
             if (imageBase64) {
                 await onConfirm(imageBase64)
+            } else {
+                alert.error('图抓取失败，请重试')
             }
         } catch (error) {
             console.error('Failed to capture snapshot:', error)
+            alert.error('发布失败：' + (error instanceof Error ? error.message : '未知错误'))
         } finally {
             setIsProcessing(false)
         }
@@ -205,37 +216,6 @@ export default function PublishModal({
                         </div>
                     </div>
 
-                    {/* 
-                  Snapshot Pipe: Dedicated hidden instance locked at 1024x768 
-                  This follows the industry standard of separating 'Viewing' from 'Asset Generation'.
-                */}
-                    <div
-                        style={{
-                            position: 'fixed',
-                            left: 0,
-                            top: 0,
-                            width: '1024px',
-                            height: '768px',
-                            opacity: 0.01,
-                            pointerEvents: 'none',
-                            zIndex: -1
-                        }}
-                        aria-hidden="true"
-                    >
-                        <ModelViewer
-                            ref={hiddenViewerRef}
-                            modelUrl={modelUrl}
-                            wheelUrl={wheelUrl}
-                            textureUrl={textureUrl}
-                            modelSlug={modelSlug}
-                            backgroundColor="#1F1F1F"
-                            autoRotate={false}
-                            className="w-full h-full"
-                            cameraOrbit={previewParams.cameraOrbit}
-                            fieldOfView={previewParams.fieldOfView}
-                            cameraControls={false}
-                        />
-                    </div>
                 </div>
             </div>
         </Portal>

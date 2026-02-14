@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getMPOAuthUserInfo } from '@/lib/wechat-mp';
 import { dbQuery } from '@/lib/db';
-import { findUserByWechatOpenId, findUserByWechatUnionId, createUser, linkWechatMPIdentity, DbUser } from '@/lib/auth/users';
+import { findUserByWechatOpenId, findUserByWechatUnionId, createUser, linkWechatMPIdentity, DbUser, updateUserInfo } from '@/lib/auth/users';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -34,11 +34,11 @@ export async function GET(request: Request) {
                 avatarUrl: headimgurl || null,
             });
         } else if (nickname && (!user.display_name || user.display_name === '微信用户' || /^\d+$/.test(user.display_name || ''))) {
-            // 更新背景资料 (包括处理纯数字昵称的旧数据)
-            await dbQuery(
-                `UPDATE users SET display_name = $1, avatar_url = $2 WHERE id = $3`,
-                [nickname, headimgurl || user.avatar_url, user.id]
-            );
+            // 更新背景资料 (包括处理纯数字昵称的旧数据)，使用统一同步接口
+            await updateUserInfo(user.id, {
+                displayName: nickname,
+                avatarUrl: headimgurl || user.avatar_url
+            });
         }
 
         // 3. 关联身份

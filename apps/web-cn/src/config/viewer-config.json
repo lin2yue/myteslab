@@ -4,7 +4,7 @@
         "fieldOfView": "30deg",
         "exposure": 1.0,
         "environmentImage": "neutral",
-        "shadowIntensity": 2.2,
+        "shadowIntensity": 1.2,
         "shadowSoftness": 0.9,
         "autoRotate": false,
         "interactionPrompt": "none",

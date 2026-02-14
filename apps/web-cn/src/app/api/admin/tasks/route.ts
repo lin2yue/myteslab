@@ -121,7 +121,8 @@ export async function GET(request: Request) {
         `SELECT
             t.*,
             p.display_name AS profile_display_name,
-            p.email AS profile_email
+            p.email AS profile_email,
+            p.avatar_url AS profile_avatar_url
          FROM generation_tasks t
          LEFT JOIN profiles p ON p.id = t.user_id
          ORDER BY t.created_at DESC
@@ -144,6 +145,7 @@ export async function GET(request: Request) {
             profiles: row.profile_display_name || row.profile_email ? {
                 display_name: row.profile_display_name,
                 email: row.profile_email,
+                avatar_url: row.profile_avatar_url as string | null
             } : null
         };
     });
