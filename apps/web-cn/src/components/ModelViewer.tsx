@@ -111,18 +111,20 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     }
                 }
 
-                // Wait for renderer to settle
+                // Wait for renderer to settle:
+                // Use a smart frame-loop instead of fixed timeout.
+                // 5 frames ensures that the render loop has fully committed changes
+                // including shadow maps and post-processing on slower devices.
                 if (viewer.requestUpdate) viewer.requestUpdate();
                 if (viewer.updateComplete) await viewer.updateComplete;
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => setTimeout(resolve, 800)); // Increased for low-perf devices
+                for (let i = 0; i < 5; i++) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                }
 
                 // Capture screenshot
                 const blob = await viewer.toBlob({
                     mimeType: 'image/png',
                     qualityArgument: 1.0
-                    // Removed invalid idealAspect parameter
                 });
 
                 if (blob) {
