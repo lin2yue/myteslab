@@ -68,7 +68,10 @@ export default function PublishModal({
             // Capture from the visible instance
             // takeHighResScreenshot with useStandardView: true will temporarily switch
             // to the fixed camera/view, take the shot, and revert.
-            const imageBase64 = await viewerRef.current.takeHighResScreenshot({ useStandardView: true })
+            const imageBase64 = await viewerRef.current.takeHighResScreenshot({
+                useStandardView: true,
+                preserveAspect: true
+            })
 
             if (imageBase64) {
                 await onConfirm(imageBase64)
