@@ -11,11 +11,26 @@ export async function GET() {
     }
 
     try {
-        const { rows } = await dbQuery<{ balance: number }>(
-            'SELECT balance FROM user_credits WHERE user_id = $1 LIMIT 1',
+        const { rows } = await dbQuery<{ balance: number; reserved: number }>(
+            `SELECT 
+                c.balance,
+                COALESCE((
+                    SELECT SUM(credits_spent) 
+                    FROM generation_tasks 
+                    WHERE user_id = c.user_id 
+                      AND status IN ('pending', 'processing')
+                ), 0) as reserved
+             FROM user_credits c
+             WHERE c.user_id = $1 
+             LIMIT 1`,
             [user.id]
         );
-        return NextResponse.json({ balance: rows[0]?.balance ?? 0 });
+
+        const balance = rows[0]?.balance ?? 0;
+        const reserved = rows[0]?.reserved ?? 0;
+
+        // Return Available Balance = Total Balance - In-flight Reserved
+        return NextResponse.json({ balance: Math.max(balance - reserved, 0) });
     } catch (error) {
         console.error('[credits/balance] error', error);
         return NextResponse.json({ balance: 0 });

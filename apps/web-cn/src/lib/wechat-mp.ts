@@ -150,3 +150,27 @@ export async function getMPOAuthUserInfo(code: string) {
 
     return userInfoData;
 }
+
+export async function sendMPTemplateMessage(params: {
+    touser: string;
+    template_id: string;
+    url?: string;
+    data: Record<string, { value: string; color?: string }>;
+}) {
+    const token = await getMPAccessToken();
+    const apiUrl = `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`;
+
+    const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+
+    const data = await res.json();
+    if (data.errcode) {
+        console.error('[wechat-mp] Failed to send template message', data);
+        return { success: false, error: data.errmsg };
+    }
+
+    return { success: true, msgid: data.msgid };
+}

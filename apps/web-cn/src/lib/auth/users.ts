@@ -1,4 +1,5 @@
 import { dbQuery } from '@/lib/db';
+import { notifyAdminOfNewUser } from '@/lib/utils/admin';
 
 export type DbUser = {
     id: string;
@@ -77,6 +78,13 @@ export async function createUser(params: {
              ON CONFLICT (user_id) DO NOTHING`,
             [user.id]
         );
+
+        // 异步发送新用户通知，不阻塞主流程
+        notifyAdminOfNewUser({
+            id: user.id,
+            email: user.email,
+            displayName: user.display_name
+        }).catch(err => console.error('[Auth] Failed to send new user notification:', err));
     }
 
     return user;

@@ -963,6 +963,9 @@ export default function AIGeneratorMain({
                 setCurrentTexture(null)
                 setActiveWrapId(null)
                 setActiveTaskId(data.taskId)
+                if (typeof data.remainingBalance === 'number') {
+                    setBalance(data.remainingBalance)
+                }
                 alert.info('任务已提交，正在后台生成')
                 return true
             }
