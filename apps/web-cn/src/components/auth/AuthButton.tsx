@@ -121,7 +121,6 @@ export default function AuthButton() {
                     {isMenuOpen && (
                         <div className="absolute right-0 top-full mt-2 w-56 bg-white/98 dark:bg-zinc-900/98 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] p-1.5 ring-1 ring-black/5 dark:ring-white/10 z-[100] animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur no-scrollbar">
                             <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('email_label')}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
                                     {user.display_name || user.email || user.phone || '用户'}
                                 </p>

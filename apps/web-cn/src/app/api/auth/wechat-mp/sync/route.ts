@@ -1,7 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import { getMPOAuthUserInfo } from '@/lib/wechat-mp';
-import { dbQuery } from '@/lib/db';
+import { updateUserInfo } from '@/lib/auth/users';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -26,13 +25,11 @@ export async function GET(request: Request) {
         const { nickname, headimgurl } = userInfo;
         console.log(`[wechat-mp] Got OAuth user info: ${nickname}`);
 
-        // 2. 更新数据库
-        await dbQuery(
-            `UPDATE users 
-             SET display_name = $1, avatar_url = $2 
-             WHERE id = $3`,
-            [nickname, headimgurl || null, userId]
-        );
+        // 2. 更新数据库 (使用统一同步函数更新 users 和 profiles)
+        await updateUserInfo(userId, {
+            displayName: nickname,
+            avatarUrl: headimgurl || null
+        });
 
         console.log(`[wechat-mp] Successfully updated user ${userId} with real info`);
 

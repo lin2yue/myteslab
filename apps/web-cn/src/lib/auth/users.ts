@@ -170,3 +170,44 @@ export async function updateVerificationToken(userId: string, token: string) {
         [token, userId]
     );
 }
+
+/**
+ * Atomic update for user profile information across both 'users' and 'profiles' tables.
+ * This ensures consistency for navbar (from users) and profile page (from profiles).
+ */
+export async function updateUserInfo(userId: string, params: {
+    displayName?: string | null;
+    avatarUrl?: string | null;
+}) {
+    const { displayName, avatarUrl } = params;
+
+    // 1. Prepare dynamic SQL for both tables
+    const updates: string[] = [];
+    const values: any[] = [userId];
+    let placeholderIdx = 2;
+
+    if (displayName !== undefined) {
+        updates.push(`display_name = $${placeholderIdx++}`);
+        values.push(displayName);
+    }
+    if (avatarUrl !== undefined) {
+        updates.push(`avatar_url = $${placeholderIdx++}`);
+        values.push(avatarUrl);
+    }
+
+    if (updates.length === 0) return;
+
+    const setClause = updates.join(', ');
+
+    // 2. Perform updates in parallel (or consider transaction for strict consistency)
+    await Promise.all([
+        dbQuery(
+            `UPDATE users SET ${setClause}, updated_at = NOW() WHERE id = $1`,
+            values
+        ),
+        dbQuery(
+            `UPDATE profiles SET ${setClause}, updated_at = NOW() WHERE id = $1`,
+            values
+        )
+    ]);
+}
