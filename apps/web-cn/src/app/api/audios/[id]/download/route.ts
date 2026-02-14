@@ -84,29 +84,47 @@ export async function GET(
         fetchHeaders.set('Referer', 'https://tewan.club/');
         fetchHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        const response = await fetch(downloadUrl, {
-            headers: fetchHeaders,
-        });
+        // 设置 15 秒超时
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-        if (!response.ok) {
-            console.error('[api/audios/download] 获取资源失败:', {
-                status: response.status,
-                statusText: response.statusText,
-                url: downloadUrl,
-                audioId: id
+        try {
+            const response = await fetch(downloadUrl, {
+                headers: fetchHeaders,
+                signal: controller.signal,
             });
-            return NextResponse.json({ success: false, error: '获取资源失败' }, { status: 502 });
+
+            if (!response.ok) {
+                console.error('[api/audios/download] 获取资源失败:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: downloadUrl,
+                    audioId: id
+                });
+                return NextResponse.json({
+                    success: false,
+                    error: `获取资源失败 (HTTP ${response.status})`,
+                    details: response.statusText
+                }, { status: 502 });
+            }
+
+            const filename = `${audio.title || 'lock-sound'}.mp3`;
+            const headers = new Headers();
+            headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+            headers.set('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg');
+
+            return new NextResponse(response.body, { headers });
+        } finally {
+            clearTimeout(timeoutId);
         }
 
-        const filename = `${audio.title || 'lock-sound'}.mp3`;
-        const headers = new Headers();
-        headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-        headers.set('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg');
-
-        return new NextResponse(response.body, { headers });
-
-    } catch (error) {
+    } catch (error: any) {
         console.error('[api/audios/download] 音频下载异常:', error)
-        return NextResponse.json({ success: false, error: '下载失败' }, { status: 500 })
+        return NextResponse.json({
+            success: false,
+            error: '下载失败',
+            details: error instanceof Error ? error.message : String(error),
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 })
     }
 }
