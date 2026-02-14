@@ -90,6 +90,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             const originalMinRenderScale = viewer.getAttribute('min-render-scale');
             const originalFOV = viewer.getAttribute('field-of-view');
             const originalOrbit = viewer.getAttribute('camera-orbit');
+            const originalTarget = viewer.getAttribute('camera-target');
             const originalExposure = viewer.getAttribute('exposure');
             const originalBG = viewer.style.backgroundColor;
 
@@ -100,6 +101,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 if (useStandardView) {
                     viewer.removeAttribute('auto-rotate');
                     viewer.setAttribute('camera-orbit', targetOrbit);
+                    viewer.setAttribute('camera-target', 'auto auto auto'); // CRITICAL: Reset Pan
                     viewer.setAttribute('field-of-view', STANDARD_FOV);
                     viewer.setAttribute('exposure', STANDARD_EXPOSURE);
                     viewer.style.backgroundColor = STANDARD_BG;
@@ -109,16 +111,20 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     }
                 }
 
-                // Wait for renderer to settle
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // Wait for renderer to settle:
+                // Use a smart frame-loop instead of fixed timeout.
+                // 5 frames ensures that the render loop has fully committed changes
+                // including shadow maps and post-processing on slower devices.
+                if (viewer.requestUpdate) viewer.requestUpdate();
+                if (viewer.updateComplete) await viewer.updateComplete;
+                for (let i = 0; i < 5; i++) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                }
 
                 // Capture screenshot
                 const blob = await viewer.toBlob({
                     mimeType: 'image/png',
-                    qualityArgument: 1.0,
-                    idealAspect: false
+                    qualityArgument: 1.0
                 });
 
                 if (blob) {
@@ -189,6 +195,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
                     if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
                     else viewer.removeAttribute('camera-orbit');
+
+                    if (originalTarget) viewer.setAttribute('camera-target', originalTarget);
+                    else viewer.removeAttribute('camera-target');
 
                     if (originalExposure) viewer.setAttribute('exposure', originalExposure);
                     else viewer.removeAttribute('exposure');
