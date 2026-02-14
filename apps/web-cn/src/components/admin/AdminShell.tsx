@@ -81,7 +81,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </aside>
 
             {/* Mobile Header */}
-            <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-40 px-4 flex items-center justify-between">
+            <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-50 px-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <ShieldCheck className="w-6 h-6 text-blue-600" />
                     <span className="font-bold text-lg tracking-tight">Admin Console</span>
@@ -96,7 +96,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
             {/* Mobile Sidebar Overlay & Drawer */}
             {isMobileMenuOpen && (
-                <div className="fixed inset-0 z-50 lg:hidden">
+                <div className="fixed inset-0 z-[60] lg:hidden">
                     {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -105,6 +105,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
                     {/* Drawer */}
                     <aside className="absolute top-0 left-0 bottom-0 w-64 bg-white dark:bg-zinc-900 shadow-xl flex flex-col animate-in slide-in-from-left duration-200">
+                        <div className="flex justify-between items-center pr-4">
+                            {/* Re-use NavContent for the list, but we might need a close button if the header isn't visible in the drawer */}
+                        </div>
                         <NavContent />
                     </aside>
                 </div>
