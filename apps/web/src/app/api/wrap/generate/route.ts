@@ -4,7 +4,7 @@
  */
 
 // Import proxy configuration first
-import '@/lib/proxy-config';
+
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWrapTexture, imageUrlToBase64, generateBilingualMetadata } from '@/lib/ai/gemini-image';
@@ -273,7 +273,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 5. 调用 Gemini 生成纹理 (Call AI)
+        // 5. 调用 Gemini 生成纹理 (Call AI with Retry & Prompt Optimization)
         console.log(`[AI-GEN] Preparing for Gemini generation...`);
         const referenceImagesBase64: string[] = [];
         if (referenceImages && Array.isArray(referenceImages)) {
@@ -299,33 +299,88 @@ export async function POST(request: NextRequest) {
             .eq('id', taskId)
             .eq('user_id', user.id);
 
-        // 同时启动两个 AI 任务
+        // Metadata task (fire and forget / await later)
         const metadataPromise = generateBilingualMetadata(prompt, modelName);
         void metadataPromise.catch(err => {
             console.error('[AI-GEN] Failed to generate bilingual metadata:', err);
         });
-        const imageGenerationPromise = generateWrapTexture({
-            modelSlug,
-            modelName,
-            prompt,
-            maskImageBase64: maskImageBase64 || undefined,
-            referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
-        });
 
-        // 等待生图结果
-        const result = await imageGenerationPromise;
+        // ------------------------------------------------------------------
+        // PROMPT OPTIMIZATION LOOP
+        // ------------------------------------------------------------------
+        // Import optimization function (make sure to import it at top of file)
+        const { optimizePromptForPolicyRetry } = await import('@/lib/ai/gemini-image');
 
-        // 6. 处理结果
-        if (!result.success) {
-            // 失败：更新任务状态并自动退款
-            console.error(`[AI-GEN] AI generation failed, triggering refund for task ${taskId}, user ${user.id}...`);
-            await markTaskFailed(`AI API Error: ${result.error}`);
-            await supabase.rpc('refund_task_credits', {
-                p_task_id: taskId,
-                p_reason: `AI API Error: ${result.error}`
+        let currentPrompt = prompt;
+        let attemptCount = 0;
+        const maxAttempts = 2; // 1 initial + 1 retry
+        let result: any = null;
+
+        while (attemptCount < maxAttempts) {
+            attemptCount++;
+            const isRetry = attemptCount > 1;
+
+            if (isRetry) {
+                await logStep('ai_retry_optimization', 'processing', `Retrying with optimized prompt...`);
+                console.log(`[AI-GEN] 🔄 Attempt ${attemptCount}: Retrying with optimized prompt...`);
+            }
+
+            result = await generateWrapTexture({
+                modelSlug,
+                modelName,
+                prompt: currentPrompt,
+                maskImageBase64: maskImageBase64 || undefined,
+                referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
             });
 
-            return NextResponse.json({ success: false, error: result.error }, { status: 500 });
+            if (result.success) {
+                console.log(`[AI-GEN] ✅ Generation success on attempt ${attemptCount}`);
+                break;
+            }
+
+            // Check if failure is due to policy/safety that we can fix
+            const isPolicyBlock = result.errorCode === 'prompt_blocked' || result.errorCode === 'recitation_blocked';
+            // Only retry if it's a policy block and we haven't exhausted retries
+            if (isPolicyBlock && attemptCount < maxAttempts) {
+                console.warn(`[AI-GEN] ⚠️ Generation blocked (${result.errorCode}), attempting prompt optimization...`);
+                await logStep('ai_policy_block', 'processing', `Blocked: ${result.error}. Optimizing...`);
+
+                const optimization = await optimizePromptForPolicyRetry({
+                    userPrompt: currentPrompt,
+                    modelName,
+                    failureSignal: {
+                        errorCode: result.errorCode,
+                        promptBlockReason: result.promptBlockReason,
+                        finishReasons: result.finishReasons,
+                        finishMessages: result.finishMessages
+                    }
+                });
+
+                if (optimization.success && optimization.changed) {
+                    currentPrompt = optimization.optimizedPrompt;
+                    console.log(`[AI-GEN] 🧠 Prompt optimized. New length: ${currentPrompt.length}`);
+                } else {
+                    console.warn(`[AI-GEN] Prompt optimization failed or unchanged. Aborting retry.`);
+                    break;
+                }
+            } else {
+                // Non-recoverable error or retries exhausted
+                break;
+            }
+        }
+        // ------------------------------------------------------------------
+
+        // 6. 处理结果
+        if (!result || !result.success) {
+            // 失败：更新任务状态并自动退款
+            console.error(`[AI-GEN] AI generation failed after ${attemptCount} attempts, trigger refund for task ${taskId}...`);
+            await markTaskFailed(`AI API Error: ${result?.error || 'Unknown error'}`);
+            await supabase.rpc('refund_task_credits', {
+                p_task_id: taskId,
+                p_reason: `AI API Error: ${result?.error || 'Unknown error'}`
+            });
+
+            return NextResponse.json({ success: false, error: result?.error || 'Generation failed' }, { status: 500 });
         }
 
         // 记录步骤：AI 响应成功
@@ -368,10 +423,10 @@ export async function POST(request: NextRequest) {
                 await logStep('oss_upload_success');
 
             } catch (ossErr) {
-            console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${user.id}:`, ossErr);
-            await markTaskFailed('OSS upload failed');
-            await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'OSS upload failed' });
-            return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
+                console.error(`[AI-GEN] OSS Upload failed for task ${taskId}, user ${user.id}:`, ossErr);
+                await markTaskFailed('OSS upload failed');
+                await supabase.rpc('refund_task_credits', { p_task_id: taskId, p_reason: 'OSS upload failed' });
+                return NextResponse.json({ success: false, error: 'Storage upload failed' }, { status: 500 });
             }
 
         } catch (err) {

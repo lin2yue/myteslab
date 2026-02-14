@@ -1,6 +1,9 @@
 'use client'
 
 import Script from 'next/script'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, Suspense } from 'react'
+
 
 /**
  * 百度统计组件
@@ -19,16 +22,36 @@ export function BaiduAnalytics() {
   }
 
   return (
-    <Script id="baidu-analytics" strategy="afterInteractive">
-      {`
-        var _hmt = _hmt || [];
-        (function() {
-          var hm = document.createElement("script");
-          hm.src = "https://hm.baidu.com/hm.js?${BAIDU_ID}";
-          var s = document.getElementsByTagName("script")[0]; 
-          s.parentNode.insertBefore(hm, s);
-        })();
-      `}
-    </Script>
+    <>
+      <Script id="baidu-analytics" strategy="afterInteractive">
+        {`
+          var _hmt = _hmt || [];
+          (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?${BAIDU_ID}";
+            var s = document.getElementsByTagName("script")[0]; 
+            s.parentNode.insertBefore(hm, s);
+          })();
+        `}
+      </Script>
+      <Suspense fallback={null}>
+        <TrackPageview />
+      </Suspense>
+    </>
   )
 }
+
+function TrackPageview() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window._hmt) {
+      const url = `${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`
+      window._hmt.push(['_trackPageview', url])
+    }
+  }, [pathname, searchParams])
+
+  return null
+}
+
