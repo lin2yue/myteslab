@@ -80,8 +80,21 @@ export async function GET(
         }
 
         // 5. 代理流式下载 (隐藏真实 URL)
-        const response = await fetch(downloadUrl);
+        const fetchHeaders = new Headers();
+        fetchHeaders.set('Referer', 'https://tewan.club/');
+        fetchHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+        const response = await fetch(downloadUrl, {
+            headers: fetchHeaders,
+        });
+
         if (!response.ok) {
+            console.error('[api/audios/download] 获取资源失败:', {
+                status: response.status,
+                statusText: response.statusText,
+                url: downloadUrl,
+                audioId: id
+            });
             return NextResponse.json({ success: false, error: '获取资源失败' }, { status: 502 });
         }
 
@@ -93,7 +106,7 @@ export async function GET(
         return new NextResponse(response.body, { headers });
 
     } catch (error) {
-        console.error('[api/audios/download] 音频下载失败:', error)
+        console.error('[api/audios/download] 音频下载异常:', error)
         return NextResponse.json({ success: false, error: '下载失败' }, { status: 500 })
     }
 }
