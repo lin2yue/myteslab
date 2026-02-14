@@ -108,10 +108,22 @@ export async function GET(
                 }, { status: 502 });
             }
 
-            const filename = `${audio.title || 'lock-sound'}.mp3`;
+            // 动态识别后缀
+            const urlPath = new URL(audio.file_url).pathname;
+            const ext = urlPath.split('.').pop()?.toLowerCase() || 'mp3';
+            const filename = `${audio.title || 'lock-sound'}.${ext}`;
+
+            // 映射 Content-Type
+            const contentTypeMap: Record<string, string> = {
+                'wav': 'audio/wav',
+                'mp3': 'audio/mpeg',
+                'ogg': 'audio/ogg',
+                'm4a': 'audio/mp4'
+            };
+
             const headers = new Headers();
             headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-            headers.set('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg');
+            headers.set('Content-Type', contentTypeMap[ext] || response.headers.get('Content-Type') || 'audio/mpeg');
 
             return new NextResponse(response.body, { headers });
         } finally {
