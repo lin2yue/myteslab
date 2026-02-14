@@ -263,17 +263,14 @@ export default function LockSoundsClient() {
                 : item
         )))
 
-        const link = document.createElement('a')
-        link.href = `/api/audios/${audio.id}/download`
-        link.target = '_blank'
-        link.rel = 'noopener noreferrer'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        // 移动端/微信浏览器对于异步后的 target="_blank" 会有拦截
+        // 直接使用 window.location.assign 触发下载更可靠
+        const downloadUrl = `/api/audios/${audio.id}/download`
+        window.location.assign(downloadUrl)
 
         window.setTimeout(() => {
             setDownloadingId((current) => (current === audio.id ? null : current))
-        }, 1200)
+        }, 1500)
     }, [router])
 
     const handleOpenAlbum = useCallback((album: LockAudioAlbum) => {
