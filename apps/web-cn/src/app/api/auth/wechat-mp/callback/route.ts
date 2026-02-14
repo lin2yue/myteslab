@@ -3,6 +3,7 @@ import { verifyWechatSignature, getMPOAuthQRUrl } from '@/lib/wechat-mp';
 import { XMLParser } from 'fast-xml-parser';
 import { dbQuery } from '@/lib/db';
 import { findUserByWechatOpenId } from '@/lib/auth/users';
+import { generateAIChatReply } from '@/lib/ai/gemini-chat';
 
 const parser = new XMLParser();
 
@@ -110,8 +111,30 @@ export async function POST(request: Request) {
             }
         }
 
+        // Handle text messages
+        if (msg.MsgType === 'text') {
+            const openid = msg.FromUserName;
+            const content = msg.Content;
+
+            const aiReply = await generateAIChatReply(content);
+
+            const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<ToUserName><![CDATA[${openid}]]></ToUserName>
+<FromUserName><![CDATA[${msg.ToUserName}]]></FromUserName>
+<CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+<MsgType><![CDATA[text]]></MsgType>
+<Content><![CDATA[${aiReply}]]></Content>
+</xml>`;
+
+            return new NextResponse(replyXml, {
+                headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
+            });
+        }
+
         return new Response('success');
     } catch (error: any) {
+        console.error('[wechat-callback] Error processing message:', error);
         return new Response('success');
     }
 }
