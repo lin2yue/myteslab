@@ -26,33 +26,39 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
     const [isPending, startTransition] = useTransition()
     const sortedModels = useMemo(() => sortModelsByPreferredOrder(models), [models])
     const modelMemoryKey = 'wrap_gallery_last_model'
-    const hasHydratedModelMemoryRef = useRef(false)
+    const hydrationKey = 'has_restored_model_session'
 
     // Restore remembered model when URL doesn't specify one
     useEffect(() => {
         if (typeof window === 'undefined') return
+
+        // Check if we already handled hydration in this session
+        const hasRestored = sessionStorage.getItem(hydrationKey)
+        if (hasRestored) return
+
         if (actualModel) {
-            hasHydratedModelMemoryRef.current = true
+            sessionStorage.setItem(hydrationKey, 'true')
             return
         }
 
         const savedModel = localStorage.getItem(modelMemoryKey)
         if (!savedModel || !sortedModels.some(model => model.slug === savedModel)) {
-            hasHydratedModelMemoryRef.current = true
+            sessionStorage.setItem(hydrationKey, 'true')
             return
         }
 
         const queryParams = new URLSearchParams(searchParams.toString())
         const queryString = queryParams.toString()
         const suffix = queryString ? `?${queryString}` : ''
+
+        // Mark as restored BEFORE redirect to prevent infinite loops if something fails
+        sessionStorage.setItem(hydrationKey, 'true')
         router.replace(`/models/${savedModel}${suffix}`)
-        hasHydratedModelMemoryRef.current = true
     }, [actualModel, sortedModels, searchParams, router])
 
     // Persist model selection for wrap gallery page (local only)
     useEffect(() => {
         if (typeof window === 'undefined') return
-        if (!hasHydratedModelMemoryRef.current) return
 
         if (actualModel) {
             localStorage.setItem(modelMemoryKey, actualModel)
@@ -121,7 +127,7 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
                                     : 'bg-white/85 text-gray-700 border-black/10 hover:bg-white hover:border-black/20 dark:bg-zinc-900/45 dark:text-zinc-300 dark:border-white/15 dark:hover:bg-zinc-800/70 dark:hover:border-white/30'
                                 }
                             `}
-                    >
+                        >
                             {locale === 'en' ? model.name_en || model.name : model.name}
                         </button>
                     ))}
