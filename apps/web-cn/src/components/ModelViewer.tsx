@@ -112,16 +112,17 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 }
 
                 // Wait for renderer to settle
+                if (viewer.requestUpdate) viewer.requestUpdate();
                 if (viewer.updateComplete) await viewer.updateComplete;
                 await new Promise(resolve => requestAnimationFrame(resolve));
                 await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 800)); // Increased for low-perf devices
 
                 // Capture screenshot
                 const blob = await viewer.toBlob({
                     mimeType: 'image/png',
-                    qualityArgument: 1.0,
-                    idealAspect: true // Ensure consistent aspect ratio regardless of window size
+                    qualityArgument: 1.0
+                    // Removed invalid idealAspect parameter
                 });
 
                 if (blob) {
