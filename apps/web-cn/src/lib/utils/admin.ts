@@ -14,44 +14,85 @@ export interface NotificationPayload {
  * Notify admin via WeChat Service Account Template Message
  */
 export async function notifyWechat(payload: NotificationPayload) {
-    const adminOpenId = process.env.WECHAT_MP_ADMIN_OPENID;
+    const adminOpenIdEnv = process.env.WECHAT_MP_ADMIN_OPENID;
     const templateId = process.env.WECHAT_MP_NEW_USER_TEMPLATE_ID;
 
-    if (!adminOpenId || !templateId) {
-        console.warn('[AdminNotify] WECHAT_MP_ADMIN_OPENID or WECHAT_MP_NEW_USER_TEMPLATE_ID not configured');
+    if (!adminOpenIdEnv) {
+        console.warn('[AdminNotify] WECHAT_MP_ADMIN_OPENID not configured');
         return;
     }
 
-    try {
-        const metadataString = Object.entries(payload.metadata || {})
-            .map(([key, value]) => `${key}: ${value}`)
-            .join('\n');
+    const adminOpenIds = adminOpenIdEnv.split(',').map(id => id.trim()).filter(Boolean);
 
-        const result = await sendMPTemplateMessage({
-            touser: adminOpenId,
-            template_id: templateId,
-            data: {
-                first: { value: payload.title, color: '#173177' },
-                keyword1: { value: payload.message },
-                keyword2: { value: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) },
-                remark: { value: metadataString }
-            }
-        });
-
-        if (!result.success) {
-            console.error('[AdminNotify] WeChat notification failed:', result.error);
-        }
-    } catch (error) {
-        console.error('[AdminNotify] Error sending WeChat notification:', error);
+    if (adminOpenIds.length === 0) {
+        console.warn('[AdminNotify] No valid admin OpenIDs found');
+        return;
     }
+
+    // Prepare content for Custom Message (fallback or primary if no template)
+    const customMessageContent = `${payload.title}\n\n${payload.message}\n\n` +
+        Object.entries(payload.metadata || {})
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n') +
+        `\n\n🕒 ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`;
+
+    // Prepare content for Template Message
+    const metadataString = Object.entries(payload.metadata || {})
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+
+    const templateData = {
+        first: { value: payload.title, color: '#173177' },
+        keyword1: { value: payload.message },
+        keyword2: { value: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) },
+        remark: { value: metadataString }
+    };
+
+    // Send to all admins
+    await Promise.all(adminOpenIds.map(async (openId) => {
+        try {
+            // Strategy: 
+            // 1. If Template ID exists, try Template Message first.
+            // 2. If Template ID missing OR Template Message fails, try Custom Message.
+
+            let sent = false;
+
+            if (templateId) {
+                const result = await sendMPTemplateMessage({
+                    touser: openId,
+                    template_id: templateId,
+                    data: templateData
+                });
+
+                if (result.success) {
+                    sent = true;
+                } else {
+                    console.warn(`[AdminNotify] Template message failed for ${openId}, trying custom message. Error: ${result.error}`);
+                }
+            }
+
+            if (!sent) {
+                // Try Custom Message (requires interaction within 48h)
+                const { sendMPCustomMessage } = await import('@/lib/wechat-mp');
+                const result = await sendMPCustomMessage(openId, customMessageContent);
+
+                if (!result.success) {
+                    console.error(`[AdminNotify] Custom message failed for ${openId} (User might not have interacted in 48h):`, result.error);
+                } else {
+                    console.log(`[AdminNotify] Sent custom message to ${openId}`);
+                }
+            }
+
+        } catch (error) {
+            console.error(`[AdminNotify] Error sending notification to ${openId}:`, error);
+        }
+    }));
 }
 
-/**
- * General admin notification entry point
- */
+// General admin notification entry point
 export async function notifyAdmin(payload: NotificationPayload) {
-    // Only WeChat as requested by user
-    if (process.env.WECHAT_MP_ADMIN_OPENID && process.env.WECHAT_MP_NEW_USER_TEMPLATE_ID) {
+    // Check if at least admin openid is configured
+    if (process.env.WECHAT_MP_ADMIN_OPENID) {
         await notifyWechat(payload);
     } else {
         console.info('[AdminNotify] WeChat notification not configured. Log only:', payload);

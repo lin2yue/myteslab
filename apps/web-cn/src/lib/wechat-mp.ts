@@ -174,3 +174,26 @@ export async function sendMPTemplateMessage(params: {
 
     return { success: true, msgid: data.msgid };
 }
+
+export async function sendMPCustomMessage(touser: string, content: string) {
+    const token = await getMPAccessToken();
+    const apiUrl = `https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=${token}`;
+
+    const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            touser,
+            msgtype: 'text',
+            text: { content }
+        }),
+    });
+
+    const data = await res.json();
+    if (data.errcode) {
+        console.error('[wechat-mp] Failed to send custom message', data);
+        return { success: false, error: data.errmsg, errcode: data.errcode };
+    }
+
+    return { success: true };
+}

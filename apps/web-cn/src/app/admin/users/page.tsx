@@ -184,7 +184,7 @@ export default function AdminUsersPage() {
             {/* Main Table Area */}
             <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="hidden md:table w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50/50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">User Details</th>
@@ -334,6 +334,112 @@ export default function AdminUsersPage() {
                             ))}
                         </tbody>
                     </table>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-zinc-800">
+                        {loading ? (
+                            <div className="p-8 text-center text-gray-400 italic">Fetching user data...</div>
+                        ) : filteredUsers.length === 0 ? (
+                            <div className="p-8 text-center text-gray-400 italic">No users found.</div>
+                        ) : filteredUsers.map((user) => (
+                            <div key={user.id} className="p-4 space-y-3">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-zinc-700">
+                                            {user.avatar_url ? (
+                                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <UserCircle className="w-6 h-6 text-gray-400" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                {user.display_name || 'No Name'}
+                                                {editingUserId !== user.id && getRoleBadge(user.role)}
+                                            </div>
+                                            <div className="text-xs text-gray-400 flex items-center gap-1">
+                                                <Mail size={10} /> {user.email}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-1">
+                                        {editingUserId === user.id ? (
+                                            <>
+                                                <button
+                                                    onClick={() => saveEdit(user.id)}
+                                                    className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm"
+                                                >
+                                                    <Check size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingUserId(null)}
+                                                    className="p-1.5 bg-gray-200 text-gray-600 rounded-lg shadow-sm"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => startEditing(user)}
+                                                className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 dark:bg-zinc-800/50 rounded-lg"
+                                            >
+                                                <Edit3 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Stats Grid in Card */}
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="p-2 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <span className="text-gray-400 block mb-1">Role</span>
+                                        {editingUserId === user.id ? (
+                                            <select
+                                                className="w-full text-xs p-1 rounded border border-gray-300 dark:bg-zinc-800 outline-none"
+                                                value={editForm.role}
+                                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+                                            >
+                                                <option value="user">User</option>
+                                                <option value="admin">Admin</option>
+                                                <option value="super_admin">SuperAdmin</option>
+                                            </select>
+                                        ) : (
+                                            <span className="font-medium">{user.role}</span>
+                                        )}
+                                    </div>
+                                    <div className="p-2 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <span className="text-gray-400 block mb-1">Balance</span>
+                                        {editingUserId === user.id ? (
+                                            <input
+                                                type="number"
+                                                className="w-full text-xs p-1 rounded border border-gray-300 dark:bg-zinc-800 outline-none"
+                                                value={editForm.balance}
+                                                onChange={(e) => setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })}
+                                            />
+                                        ) : (
+                                            <span className="font-mono font-medium text-emerald-600">{user.user_credits?.balance ?? 0}</span>
+                                        )}
+                                    </div>
+                                    <div className="p-2 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <span className="text-gray-400 block mb-1">Top Up</span>
+                                        <span className={user.total_top_up > 0 ? "text-purple-600 font-medium" : "text-gray-400"}>
+                                            {user.total_top_up > 0 ? `+${user.total_top_up}` : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="p-2 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <span className="text-gray-400 block mb-1">Downloads</span>
+                                        <span className="text-blue-600 font-medium">{user.wraps_download_count}W / {user.audio_download_count}A</span>
+                                    </div>
+                                </div>
+
+                                <div className="text-xs text-center text-gray-300 pt-1">
+                                    Joined: {format(new Date(user.created_at), 'yyyy-MM-dd')}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Pagination Placeholder */}
