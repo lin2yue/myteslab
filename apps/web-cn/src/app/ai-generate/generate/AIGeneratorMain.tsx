@@ -1095,7 +1095,10 @@ export default function AIGeneratorMain({
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }
-        if (!viewerRef.current) return;
+        if (!viewerRef.current) {
+            alert.error('预览器未准备好，请稍后再试')
+            return
+        }
         if (!currentTexture) {
             alert.warning('当前作品贴图还未就绪，请稍后再发布')
             return
@@ -1103,7 +1106,10 @@ export default function AIGeneratorMain({
 
         // 已经发布了就不再操作
         const currentWrap = activeWrapId ? history.find(h => h.id === activeWrapId) : null;
-        if (currentWrap?.is_public) return;
+        if (currentWrap?.is_public) {
+            alert.info('该作品已发布')
+            return
+        }
 
         // 打开预览弹窗，而不再直接执行发布
         setShowPublishModal(true);

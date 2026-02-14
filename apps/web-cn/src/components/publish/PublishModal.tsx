@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslations } from '@/lib/i18n'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
-import { X, Loader2, Globe, ShieldCheck, DownloadCloud } from 'lucide-react'
+import { X, Loader2, Globe, ShieldCheck, DownloadCloud, AlertTriangle } from 'lucide-react'
 import Portal from '../Portal';
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface PublishModalProps {
     isOpen: boolean
@@ -31,6 +32,7 @@ export default function PublishModal({
     const tGen = useTranslations('Generator')
     const [agree, setAgree] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
+    const alert = useAlert()
     const viewerRef = useRef<ModelViewerRef>(null)
     const hiddenViewerRef = useRef<ModelViewerRef>(null)
 
@@ -48,14 +50,19 @@ export default function PublishModal({
     if (!isOpen) return null
 
     const handleConfirm = async () => {
-        if (!hiddenViewerRef.current) return
+        if (!hiddenViewerRef.current) {
+            alert.error('预览系统未就绪，请稍后重试')
+            return
+        }
 
         setIsProcessing(true)
         try {
-            // Wait for theDedicated snapshot renderer to be fully ready
-            const ready = await hiddenViewerRef.current.waitForReady(15000)
+            // Wait for the Dedicated snapshot renderer to be fully ready
+            // Increase timeout to 30s for mobile
+            const ready = await hiddenViewerRef.current.waitForReady(30000)
             if (!ready) {
                 console.error('[PublishModal] Hidden viewer did not become ready in time, aborting publish snapshot.')
+                alert.error('生成预览图超时，可能是因为手机内存不足或网络较慢，请刷新页面重试。')
                 return
             }
 
@@ -64,9 +71,12 @@ export default function PublishModal({
 
             if (imageBase64) {
                 await onConfirm(imageBase64)
+            } else {
+                alert.error('预览图抓取失败，请重试')
             }
         } catch (error) {
             console.error('Failed to capture snapshot:', error)
+            alert.error('发布失败：' + (error instanceof Error ? error.message : '未知错误'))
         } finally {
             setIsProcessing(false)
         }
@@ -212,13 +222,14 @@ export default function PublishModal({
                     <div
                         style={{
                             position: 'fixed',
-                            left: 0,
+                            left: '-2048px', // Move far off-screen instead of just 0/0
                             top: 0,
                             width: '1024px',
                             height: '768px',
-                            opacity: 0.01,
+                            opacity: 0.1, // Slight opacity sometimes prevents aggressive culling
                             pointerEvents: 'none',
-                            zIndex: -1
+                            zIndex: -1,
+                            visibility: 'visible'
                         }}
                         aria-hidden="true"
                     >
