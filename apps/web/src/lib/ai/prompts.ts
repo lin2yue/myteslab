@@ -13,17 +13,17 @@ export function buildWrapPrompt(params: {
   const cleanPrompt = userPrompt.trim() || 'Create a print-ready automotive wrap texture.';
 
   const lines = [
-    'Create artwork on the car 3D model UV map, painting only the white regions.',
+    'Draw the pattern on the car 3D model UV map, painting ONLY on the white regions. Do NOT change the white region boundaries.',
   ];
 
   lines.push(`User prompt: ${cleanPrompt}`);
 
   if (hasReferences) {
-    lines.push('Use attached reference images for style guidance only; do not transfer composition or subject placement.');
+    lines.push('Use the style, theme, and elements from the reference image, but do NOT alter the original region constraints.');
   }
 
-  lines.push('Orientation: front at the bottom, rear at the top.');
-  lines.push(PRIMARY_ELEMENT_PLACEMENT);
+  lines.push('Orientation: Front is at the bottom, Rear is at the top.');
+  lines.push('Do not leave rear panels blank. Rear graphics MUST be reversed (upside-down on the UV map). If using a primary element, place it on the side doors or hood, and keep the rear license plate area low-detail.');
 
   return lines.join('\n');
 }
