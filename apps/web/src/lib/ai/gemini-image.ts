@@ -5,8 +5,6 @@
 
 import {
     buildWrapPrompt,
-    getPromptVersionFromEnv,
-    buildMaskHardConstraintSnippet,
 } from './prompts';
 import { getMaskDimensions } from './mask-config';
 import sharp from 'sharp';
@@ -89,7 +87,6 @@ export interface GenerateWrapParams {
     referenceImagesBase64?: string[];
 }
 
-type RequestPartsLayoutMode = 'mask_first' | 'legacy';
 
 export type PromptRetryFailureSignal = {
     errorCode?: string;
@@ -287,11 +284,6 @@ function parseGeminiHttpError(status: number, rawBody: string): ParsedGeminiHttp
         responseId,
         modelVersion,
     };
-}
-
-function resolveRequestPartsLayoutMode(): RequestPartsLayoutMode {
-    const raw = (process.env.GEMINI_IMAGE_PARTS_LAYOUT || '').trim().toLowerCase();
-    return raw === 'legacy' ? 'legacy' : 'mask_first';
 }
 
 function buildRequestTextWithInputContract(params: {
@@ -556,7 +548,6 @@ export async function generateWrapTexture(
             throw new Error('GEMINI_API_KEY is not defined');
         }
 
-        const promptVersion = getPromptVersionFromEnv();
         const hasReferenceInputs = Boolean(
             (referenceImageUrls || []).some((url) => typeof url === 'string' && url.trim())
             || (referenceImagesBase64 || []).some((image) => typeof image === 'string' && image.trim())
@@ -564,14 +555,15 @@ export async function generateWrapTexture(
         textPrompt = buildWrapPrompt({
             userPrompt: prompt,
             modelName,
-            version: promptVersion,
             outputSize: { width: maskDimensions.width, height: maskDimensions.height },
             hasReferences: hasReferenceInputs
         });
-        const maskHardConstraintSnippet = buildMaskHardConstraintSnippet({
-            outputSize: { width: maskDimensions.width, height: maskDimensions.height }
+        const maskHardConstraintSnippet = buildWrapPrompt({
+            userPrompt: prompt,
+            modelName,
+            outputSize: { width: maskDimensions.width, height: maskDimensions.height },
+            hasReferences: false
         });
-        const requestPartsLayoutMode = resolveRequestPartsLayoutMode();
 
         const primaryModel = (process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview').trim();
         if (!primaryModel) {
@@ -650,14 +642,6 @@ export async function generateWrapTexture(
                         }
                     });
                 });
-            }
-
-            if (requestPartsLayoutMode === 'legacy') {
-                return [
-                    { text: promptValue },
-                    ...maskParts,
-                    ...referenceParts
-                ];
             }
 
             const contractPrompt = buildRequestTextWithInputContract({
@@ -757,7 +741,7 @@ export async function generateWrapTexture(
                         lastRequestApiUrl = currentGeminiApiUrl;
                         if (logRequestParts) {
                             const parts = payload?.contents?.[0]?.parts || [];
-                            console.log(`[AI-GEN] [${VERSION}] request layout mode=${requestPartsLayoutMode}, inputMode=${mode}, parts=${summarizeRequestPartKinds(parts)}`);
+                            console.log(`[AI-GEN] [${VERSION}] inputMode=${mode}, parts=${summarizeRequestPartKinds(parts)}`);
                         }
                         const response = await fetchWithRetry(`${currentGeminiApiUrl}?key=${apiKey}`, {
                             method: 'POST',
