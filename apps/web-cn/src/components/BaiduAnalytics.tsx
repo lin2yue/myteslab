@@ -46,9 +46,10 @@ function TrackPageview() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window._hmt) {
+    if (typeof window !== 'undefined' && (window as any)._hmt) {
       const url = `${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`
-      window._hmt.push(['_trackPageview', url])
+      ;(window as any)._hmt.push(['_trackPageview', url])
+      console.log(`[Baidu Analytics] Pageview tracked: ${url}`)
     }
   }, [pathname, searchParams])
 
