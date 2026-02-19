@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
         const user = await getSessionUser();
         const userAgent = req.headers.get('user-agent') || 'unknown';
-        const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.ip || 'unknown';
+        const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
         await dbQuery(
             `INSERT INTO site_analytics (user_id, pathname, referrer, user_agent, ip_address)

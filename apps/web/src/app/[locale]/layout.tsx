@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from 'react';
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { NextIntlClientProvider } from 'next-intl';
@@ -140,7 +141,9 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <AlertProvider>
             <CreditsProvider>
-              <AnalyticsTracker />
+              <Suspense fallback={null}>
+                <AnalyticsTracker />
+              </Suspense>
               <Navbar />
               <main className="flex-1 overflow-x-hidden">
                 {children}
