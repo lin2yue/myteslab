@@ -10,6 +10,7 @@ import { AlertProvider } from '@/components/alert/AlertProvider';
 import { CreditsProvider } from '@/components/credits/CreditsProvider';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import AnalyticsTracker from '@/components/AnalyticsTracker';
 import "../globals.css";
 
 const geistSans = Geist({
@@ -139,6 +140,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <AlertProvider>
             <CreditsProvider>
+              <AnalyticsTracker />
               <Navbar />
               <main className="flex-1 overflow-x-hidden">
                 {children}
