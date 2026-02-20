@@ -699,14 +699,14 @@ export async function generateWrapTexture(
             ].join('\n\n');
         };
 
-        const imageTimeoutMs = readEnvInt('GEMINI_IMAGE_TIMEOUT_MS', 120000);
+        const imageTimeoutMs = readEnvInt('GEMINI_IMAGE_TIMEOUT_MS', 60000);
         const imageMaxRetries = readEnvInt('GEMINI_IMAGE_RETRIES', 2);
         const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
         const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
         const imageSize = (process.env.GEMINI_IMAGE_SIZE || '').trim();
         const logRequestParts = (process.env.GEMINI_LOG_REQUEST_PARTS || '').trim() === '1';
         const noImageRetryRounds = Math.min(readEnvInt('GEMINI_NO_IMAGE_RETRY_ROUNDS', 0), 3);
-        const maxTotalMs = readEnvInt('GEMINI_IMAGE_MAX_TOTAL_MS', 130000);
+        const maxTotalMs = readEnvInt('GEMINI_IMAGE_MAX_TOTAL_MS', 65000);
         const enableFallbackPrompt = (process.env.GEMINI_ENABLE_FALLBACK_PROMPT || '').trim() === '1';
         const generationStartedAt = Date.now();
 
