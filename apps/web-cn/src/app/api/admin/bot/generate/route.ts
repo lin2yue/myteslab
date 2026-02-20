@@ -22,6 +22,9 @@ import { getModelBySlug } from '@/config/models';
 import { getServiceCost, ServiceType } from '@/lib/constants/credits';
 import { processGenerationTask } from '@/app/api/wrap/generate/route';
 
+// Allow up to 300s for async background generation (matches /api/wrap/generate)
+export const maxDuration = 300;
+
 const DEFAULT_ORIGIN = (
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -189,55 +192,54 @@ export async function POST(request: NextRequest) {
 
     console.log(`[BOT-GEN] ✅ Task created: ${taskId} for bot user: ${botUser.display_name} (${virtualUserId})`);
 
-    // 7. 直接在本次请求中处理生成（同步模式）
-    //    如果希望纯异步（worker tick），可以移除这段，让 worker cron 来处理
-    try {
-        await processGenerationTask({
-            taskId,
-            userId: virtualUserId,
-            modelSlug,
-            modelName,
-            prompt,
-            referenceImages: [],
-            origin: DEFAULT_ORIGIN,
-        });
+    // 7. 异步触发生成（fire-and-forget），立即返回 202，不阻塞请求
+    //    maxDuration = 300 确保 Vercel 给后台足够时间完成 Gemini 调用
+    void (async () => {
+        try {
+            await processGenerationTask({
+                taskId,
+                userId: virtualUserId!,
+                modelSlug: modelSlug!,
+                modelName: modelName!,
+                prompt: prompt!,
+                referenceImages: [],
+                origin: DEFAULT_ORIGIN,
+            });
 
-        // 生成成功后，更新选题状态为 generated
-        if (topicId) {
-            const { rows: wrapRows } = await dbQuery(
-                `SELECT id FROM wraps WHERE generation_task_id = $1 LIMIT 1`,
-                [taskId]
-            );
-            await dbQuery(
-                `UPDATE bot_topic_candidates
-                 SET status = 'generated', wrap_id = $2
-                 WHERE id = $1`,
-                [topicId, wrapRows[0]?.id || null]
-            );
+            // 生成成功后，更新选题状态为 generated
+            if (topicId) {
+                const { rows: wrapRows } = await dbQuery(
+                    `SELECT id FROM wraps WHERE generation_task_id = $1 LIMIT 1`,
+                    [taskId]
+                );
+                await dbQuery(
+                    `UPDATE bot_topic_candidates
+                     SET status = 'generated', wrap_id = $2
+                     WHERE id = $1`,
+                    [topicId, wrapRows[0]?.id || null]
+                );
+            }
+
+            console.log(`[BOT-GEN] ✅ Generation completed async: taskId=${taskId}`);
+        } catch (err: any) {
+            console.error('[BOT-GEN] processGenerationTask async error:', err);
+
+            if (topicId) {
+                await dbQuery(
+                    `UPDATE bot_topic_candidates
+                     SET status = 'failed', failure_reason = $2
+                     WHERE id = $1`,
+                    [topicId, err?.message || 'Unknown error']
+                );
+            }
         }
+    })();
 
-        return NextResponse.json({
-            success: true,
-            taskId,
-            message: `Wrap generation completed for ${botUser.display_name}`,
-        });
-
-    } catch (err: any) {
-        console.error('[BOT-GEN] processGenerationTask error:', err);
-
-        if (topicId) {
-            await dbQuery(
-                `UPDATE bot_topic_candidates
-                 SET status = 'failed', failure_reason = $2
-                 WHERE id = $1`,
-                [topicId, err?.message || 'Unknown error']
-            );
-        }
-
-        return NextResponse.json({
-            success: false,
-            error: 'Generation failed. Task recorded in admin panel for inspection.',
-            taskId,
-        }, { status: 500 });
-    }
+    // 立即返回 202，前端/bot 通过轮询 taskId 状态获知结果
+    return NextResponse.json({
+        success: true,
+        taskId,
+        status: 'pending',
+        message: `Generation queued for ${botUser.display_name}`,
+    }, { status: 202 });
 }
