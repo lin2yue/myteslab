@@ -7,6 +7,18 @@ if (typeof dns.setDefaultResultOrder === 'function') {
 }
 
 const GEMINI_API_URL_MODEL = (process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash').trim();
+const ACK_ONLY_REGEX = /^(好的|好滴|好|明白了?|收到|了解了|知道了|行|ok|okay|嗯|嗯嗯|谢谢|感谢|辛苦了|3q|thx|thanks|👌|👍)[\s!！.。~～]*$/i;
+
+function getAckOnlyReply(input: string): string | null {
+    const normalized = (input || '').trim();
+    if (!normalized) return null;
+    if (!ACK_ONLY_REGEX.test(normalized)) return null;
+
+    if (/谢|thanks|thx|3q/i.test(normalized)) {
+        return '不客气，有需要随时叫我。';
+    }
+    return '好的，有需要随时叫我。';
+}
 
 export interface ChatMessage {
     role: 'user' | 'model';
@@ -14,6 +26,9 @@ export interface ChatMessage {
 }
 
 export async function generateAIChatReply(userMessage: string): Promise<string> {
+    const ackReply = getAckOnlyReply(userMessage);
+    if (ackReply) return ackReply;
+
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) {
         console.error('[AI-CHAT] GEMINI_API_KEY is not defined');
@@ -35,8 +50,8 @@ export async function generateAIChatReply(userMessage: string): Promise<string> 
             parts: [{ text: WECHAT_AI_SYSTEM_PROMPT }]
         },
         generationConfig: {
-            maxOutputTokens: 500,
-            temperature: 0.7,
+            maxOutputTokens: 360,
+            temperature: 0.45,
         }
     };
 
