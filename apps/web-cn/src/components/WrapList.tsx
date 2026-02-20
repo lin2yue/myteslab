@@ -13,7 +13,7 @@ interface WrapListProps {
     sortBy?: 'latest' | 'popular'
 }
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 15
 
 export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: WrapListProps) {
     const [wraps, setWraps] = useState<Wrap[]>(initialWraps)

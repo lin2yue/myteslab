@@ -17,7 +17,7 @@ export default async function HomePage({
     const sortBy = (sort as 'latest' | 'popular') || 'latest'
 
     const [wraps, models] = await Promise.all([
-        getWraps(model, 1, 12, sortBy),
+        getWraps(model, 1, 15, sortBy),
         getModels(),
     ])
 
@@ -88,7 +88,7 @@ export default async function HomePage({
                         '@type': 'ItemList',
                         name: '特斯拉贴膜设计',
                         description: '精选特斯拉车身改色设计库，支持免费下载',
-                        itemListElement: wraps.slice(0, 12).map((wrap, index) => ({
+                        itemListElement: wraps.slice(0, 15).map((wrap, index) => ({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
