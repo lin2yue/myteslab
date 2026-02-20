@@ -134,7 +134,9 @@ async function fetchWrapsInternal(
             params.push(modelSlug)
             where += ` AND w.model_slug = $${params.length}`
         }
-        const orderBy = sortBy === 'popular' ? 'w.download_count DESC' : 'w.created_at DESC'
+        const orderBy = sortBy === 'popular'
+            ? 'w.download_count DESC, w.id DESC'
+            : 'w.created_at DESC, w.id DESC'
         params.push(pageSize)
         const limitParam = `$${params.length}`
         params.push(from)

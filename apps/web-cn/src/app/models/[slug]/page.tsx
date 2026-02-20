@@ -77,7 +77,7 @@ export default async function ModelPage({
     const sortBy = (sort as 'latest' | 'popular') || 'latest'
 
     const [wraps, models] = await Promise.all([
-        getWraps(slug, 1, 12, sortBy),
+        getWraps(slug, 1, 15, sortBy),
         getModels(),
     ])
 
