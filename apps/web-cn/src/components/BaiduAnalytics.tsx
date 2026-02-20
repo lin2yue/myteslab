@@ -21,6 +21,11 @@ export function BaiduAnalytics() {
     return null
   }
 
+  // 非生产环境不加载,避免本地开发数据污染百度统计
+  if (process.env.NODE_ENV !== 'production') {
+    return null
+  }
+
   return (
     <>
       <Script id="baidu-analytics" strategy="afterInteractive">
