@@ -56,6 +56,7 @@ export function generateWebSiteSchema(locale: string) {
 export function generateProductSchema(wrap: Wrap, locale: string) {
     const prefix = localePrefix(locale)
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
+    const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0
     const description = locale === 'en'
         ? wrap.description_en || wrap.description || `Premium Tesla wrap design - ${name}`
         : wrap.description || `优质特斯拉车身贴图 - ${name}`
@@ -78,10 +79,10 @@ export function generateProductSchema(wrap: Wrap, locale: string) {
             availability: 'https://schema.org/InStock',
             url: `https://tewan.club${prefix}/wraps/${wrap.slug}`,
         },
-        aggregateRating: wrap.download_count > 0 ? {
+        aggregateRating: displayDownloadCount > 0 ? {
             '@type': 'AggregateRating',
             ratingValue: '5',
-            reviewCount: wrap.download_count.toString(),
+            reviewCount: displayDownloadCount.toString(),
         } : undefined,
     }
 }

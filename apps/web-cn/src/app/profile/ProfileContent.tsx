@@ -26,6 +26,7 @@ interface Wrap {
     model_slug: string; // Added model_slug
     browse_count?: number | null;
     download_count?: number | null;
+    user_download_count?: number | null;
 }
 
 interface ModelConfig {
@@ -296,7 +297,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                             <div className="font-semibold text-green-700 dark:text-green-400">{t('published')}</div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="inline-flex items-center gap-1"><Eye size={12} /> {wrap.browse_count ?? 0}</span>
-                                                                <span className="inline-flex items-center gap-1"><Download size={12} /> {wrap.download_count ?? 0}</span>
+                                                                <span className="inline-flex items-center gap-1"><Download size={12} /> {wrap.user_download_count ?? wrap.download_count ?? 0}</span>
                                                             </div>
                                                         </div>
                                                     ) : <div />}

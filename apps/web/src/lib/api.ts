@@ -109,6 +109,7 @@ function normalizeWrap(w: any): Wrap {
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
         download_count: w.download_count || 0,
+        user_download_count: w.user_download_count ?? w.download_count ?? 0,
         created_at: w.created_at || new Date().toISOString(),
         reference_images: Array.isArray(w.reference_images)
             ? w.reference_images.map((img: any) => typeof img === 'string' ? ensureCdnUrl(img) : null).filter(Boolean)
@@ -159,6 +160,7 @@ async function fetchWrapsInternal(
                 model_slug, 
                 user_id, 
                 download_count, 
+                user_download_count,
                 is_public, 
                 is_active, 
                 created_at, 
@@ -170,7 +172,7 @@ async function fetchWrapsInternal(
         if (modelSlug) query = query.eq('model_slug', modelSlug)
 
         if (sortBy === 'popular') {
-            query = query.order('download_count', { ascending: false })
+            query = query.order('user_download_count', { ascending: false }).order('download_count', { ascending: false })
         } else {
             query = query.order('created_at', { ascending: false })
         }
@@ -217,6 +219,7 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             'is_public',
             'user_id',
             'download_count',
+            'user_download_count',
             'created_at',
             'reference_images'
         ].join(',');

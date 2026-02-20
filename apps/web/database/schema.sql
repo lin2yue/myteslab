@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   attribution TEXT,                       -- [NEW] 归属
   
   download_count INTEGER DEFAULT 0,
+  user_download_count INTEGER DEFAULT 0,
   sort_order INTEGER DEFAULT 0,           -- [NEW]
   is_public BOOLEAN DEFAULT TRUE,         -- 是否公开
   is_active BOOLEAN DEFAULT TRUE,         -- 是否激活
@@ -166,6 +167,7 @@ CREATE INDEX IF NOT EXISTS idx_wraps_model_slug ON wraps(model_slug);
 CREATE INDEX IF NOT EXISTS idx_wraps_deleted_at ON wraps(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public_created_at ON wraps(is_public, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_public_download_count ON wraps(is_public, download_count DESC);
+CREATE INDEX IF NOT EXISTS idx_wraps_is_public_user_download_count ON wraps(is_public, user_download_count DESC);
 CREATE INDEX IF NOT EXISTS idx_wraps_created_at ON wraps(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_active ON wraps(is_active);
 CREATE INDEX IF NOT EXISTS idx_wraps_name_search ON wraps USING gin (name gin_trgm_ops); -- For fuzzy search if pg_trgm is enabled, otherwise use normal index
@@ -213,7 +215,10 @@ CREATE TRIGGER on_auth_user_created
 CREATE OR REPLACE FUNCTION increment_download_count(wrap_id UUID)
 RETURNS void AS $$
 BEGIN
-  UPDATE wraps SET download_count = download_count + 1 WHERE id = wrap_id;
+  UPDATE wraps
+  SET download_count = COALESCE(download_count, 0) + 1,
+      user_download_count = COALESCE(user_download_count, download_count, 0) + 1
+  WHERE id = wrap_id;
 END;
 $$ LANGUAGE plpgsql;
 

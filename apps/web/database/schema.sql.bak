@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   preview_url TEXT NOT NULL,
   category VARCHAR(50) DEFAULT 'official',
   download_count INTEGER DEFAULT 0,
+  user_download_count INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -59,7 +60,8 @@ CREATE OR REPLACE FUNCTION increment_download_count(wrap_id UUID)
 RETURNS void AS $$
 BEGIN
   UPDATE wraps 
-  SET download_count = download_count + 1 
+  SET download_count = COALESCE(download_count, 0) + 1,
+      user_download_count = COALESCE(user_download_count, download_count, 0) + 1
   WHERE id = wrap_id;
 END;
 $$ LANGUAGE plpgsql;
