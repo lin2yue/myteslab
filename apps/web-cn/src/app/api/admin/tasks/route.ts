@@ -115,20 +115,31 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Number(searchParams.get('limit') || 50), 200);
+    const page = Math.max(Number(searchParams.get('page') || 1), 1);
+    const pageSize = Math.min(Number(searchParams.get('pageSize') || searchParams.get('limit') || 50), 200);
+    const offset = (page - 1) * pageSize;
 
-    const { rows } = await dbQuery(
+    const [listRes, countRes] = await Promise.all([
+        dbQuery(
         `SELECT
             t.*,
             p.display_name AS profile_display_name,
             p.email AS profile_email,
-            p.avatar_url AS profile_avatar_url
+            p.avatar_url AS profile_avatar_url,
+            w.preview_url AS wrap_preview_url,
+            w.texture_url AS wrap_texture_url
          FROM generation_tasks t
          LEFT JOIN profiles p ON p.id = t.user_id
+         LEFT JOIN wraps w ON w.id = t.wrap_id
          ORDER BY t.created_at DESC
-         LIMIT $1`,
-        [limit]
-    );
+         LIMIT $1
+         OFFSET $2`,
+            [pageSize, offset]
+        ),
+        dbQuery(`SELECT COUNT(*)::int AS total FROM generation_tasks`)
+    ]);
+    const rows = listRes.rows;
+    const total = Number((countRes.rows?.[0] as any)?.total || 0);
 
     const tasks = rows.map((rawRow) => {
         const row = rawRow as TaskRow;
@@ -142,6 +153,9 @@ export async function GET(request: Request) {
             gemini_request_mode: artifacts.geminiRequestMode,
             gemini_request_api_url: artifacts.geminiRequestApiUrl,
             gemini_request_attempt: artifacts.geminiRequestAttempt,
+            reference_images: Array.isArray((row as any).reference_images) ? (row as any).reference_images : [],
+            wrap_preview_url: (row as any).wrap_preview_url || null,
+            wrap_texture_url: (row as any).wrap_texture_url || null,
             profiles: row.profile_display_name || row.profile_email ? {
                 display_name: row.profile_display_name,
                 email: row.profile_email,
@@ -150,5 +164,12 @@ export async function GET(request: Request) {
         };
     });
 
-    return NextResponse.json({ success: true, tasks });
+    return NextResponse.json({
+        success: true,
+        tasks,
+        page,
+        pageSize,
+        total,
+        hasMore: offset + tasks.length < total
+    });
 }
