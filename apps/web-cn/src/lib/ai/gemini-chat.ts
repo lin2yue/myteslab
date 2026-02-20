@@ -25,6 +25,17 @@ export interface ChatMessage {
     parts: { text: string }[];
 }
 
+function extractGeminiText(data: any): string {
+    const candidate = data?.candidates?.[0];
+    const parts = candidate?.content?.parts;
+    if (!Array.isArray(parts)) return '';
+
+    return parts
+        .map((part: any) => (typeof part?.text === 'string' ? part.text : ''))
+        .join('')
+        .trim();
+}
+
 export async function generateAIChatReply(userMessage: string): Promise<string> {
     const ackReply = getAckOnlyReply(userMessage);
     if (ackReply) return ackReply;
@@ -92,14 +103,19 @@ export async function generateAIChatReply(userMessage: string): Promise<string> 
         }
 
         const data = await response.json();
-        const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const replyText = extractGeminiText(data);
+        const finishReason = data?.candidates?.[0]?.finishReason;
 
         if (!replyText) {
             console.warn('[AI-CHAT] Gemini returned empty response', JSON.stringify(data));
             return '抱歉，我没能理解您的意思。';
         }
 
-        return replyText.trim();
+        if (finishReason && finishReason !== 'STOP') {
+            console.warn(`[AI-CHAT] Non-stop finishReason: ${finishReason}`);
+        }
+
+        return replyText;
     } catch (error) {
         console.error('[AI-CHAT] Error calling Gemini API:', error);
         return '抱歉，连接 AI 服务时出现问题。';
