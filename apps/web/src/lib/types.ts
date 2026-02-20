@@ -36,6 +36,7 @@ export interface Wrap {
     author_avatar_url?: string // 从关联表计算出的头像
 
     download_count: number
+    user_download_count?: number
     is_public: boolean
     is_active: boolean
     created_at: string

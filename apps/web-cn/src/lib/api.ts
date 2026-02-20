@@ -93,6 +93,7 @@ function normalizeWrap(w: any): Wrap {
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
         download_count: w.download_count || 0,
+        user_download_count: w.user_download_count ?? w.download_count ?? 0,
         created_at: w.created_at || new Date().toISOString(),
         reference_images: Array.isArray(w.reference_images)
             ? w.reference_images.map((img: any) => typeof img === 'string' ? ensureCdnUrl(img) : null).filter(Boolean)
@@ -135,7 +136,7 @@ async function fetchWrapsInternal(
             where += ` AND w.model_slug = $${params.length}`
         }
         const orderBy = sortBy === 'popular'
-            ? 'w.download_count DESC, w.id DESC'
+            ? 'COALESCE(w.user_download_count, w.download_count, 0) DESC, w.id DESC'
             : 'w.created_at DESC, w.id DESC'
         params.push(pageSize)
         const limitParam = `$${params.length}`
@@ -154,6 +155,7 @@ async function fetchWrapsInternal(
                 w.model_slug,
                 w.user_id,
                 w.download_count,
+                w.user_download_count,
                 w.is_public,
                 w.is_active,
                 w.created_at,
@@ -208,6 +210,7 @@ export async function getWrap(slugOrId: string): Promise<Wrap | null> {
                 w.user_id,
                 w.deleted_at,
                 w.download_count,
+                w.user_download_count,
                 w.created_at,
                 w.reference_images,
                 w.tags,
@@ -303,7 +306,10 @@ export async function getModels(): Promise<Model[]> {
 export async function incrementDownloadCount(wrapId: string): Promise<void> {
     try {
         await dbQuery(
-            'UPDATE wraps SET download_count = COALESCE(download_count, 0) + 1 WHERE id = $1',
+            `UPDATE wraps
+             SET download_count = COALESCE(download_count, 0) + 1,
+                 user_download_count = COALESCE(user_download_count, download_count, 0) + 1
+             WHERE id = $1`,
             [wrapId]
         )
     } catch (error) {

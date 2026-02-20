@@ -10,6 +10,7 @@ interface WrapCardProps {
 
 export function WrapCard({ wrap }: WrapCardProps) {
     const locale = useLocale()
+    const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0;
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name;
     const modelDisplay = locale === 'en'
         ? wrap.model_name_en || wrap.model_name || (wrap.category === 'official' ? 'Official' : 'Custom')
@@ -103,7 +104,7 @@ export function WrapCard({ wrap }: WrapCardProps) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                             <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400">
-                                {wrap.download_count || 0}
+                                {displayDownloadCount}
                             </span>
                         </div>
                     </div>
