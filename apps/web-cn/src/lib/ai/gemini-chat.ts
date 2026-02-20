@@ -61,7 +61,7 @@ export async function generateAIChatReply(userMessage: string): Promise<string> 
             parts: [{ text: WECHAT_AI_SYSTEM_PROMPT }]
         },
         generationConfig: {
-            maxOutputTokens: 360,
+            maxOutputTokens: 800,
             temperature: 0.45,
         }
     };
@@ -95,7 +95,12 @@ export async function generateAIChatReply(userMessage: string): Promise<string> 
                 });
                 if (fallbackRes.ok) {
                     const data = await fallbackRes.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '抱歉，我没能理解您的意思。';
+                    const fallbackText = extractGeminiText(data);
+                    if (!fallbackText) {
+                        console.warn('[AI-CHAT] Fallback Gemini returned empty response', JSON.stringify(data));
+                        return '抱歉，我没能理解您的意思。';
+                    }
+                    return fallbackText;
                 }
             }
 
