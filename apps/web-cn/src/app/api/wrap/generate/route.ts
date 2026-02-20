@@ -111,8 +111,8 @@ function jsonAccepted(body: unknown) {
 
 function buildLocalWrapMetadata(prompt: string, modelName: string) {
     const normalizedPrompt = prompt.replace(/\s+/g, ' ').trim();
-    const titleSeed = normalizedPrompt.slice(0, 24) || 'AI 车贴';
-    const title = `${titleSeed}${titleSeed.endsWith('风') ? '' : '风'}`.slice(0, 30);
+    // Use the prompt as the title seed, but don't force a "风" suffix if it's already descriptive
+    const title = normalizedPrompt.slice(0, 30) || 'AI 车贴';
     const description = `${modelName} · ${normalizedPrompt}`.slice(0, 120);
     return {
         name: title || 'AI 车贴',
