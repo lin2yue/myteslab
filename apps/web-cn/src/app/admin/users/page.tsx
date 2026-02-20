@@ -206,10 +206,25 @@ export default function AdminUsersPage() {
                                 <tr>
                                     <td colSpan={8} className="px-6 py-12 text-center text-gray-400 italic">No users found matching your criteria.</td>
                                 </tr>
-                            ) : filteredUsers.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors group">
+                            ) : filteredUsers.map((user) => {
+                                const isTopUpUser = user.total_top_up > 0;
+                                return (
+                                <tr
+                                    key={user.id}
+                                    className={cn(
+                                        "transition-colors group",
+                                        isTopUpUser
+                                            ? "bg-amber-50/60 hover:bg-amber-50 dark:bg-amber-900/10 dark:hover:bg-amber-900/20"
+                                            : "hover:bg-gray-50/50 dark:hover:bg-zinc-800/20"
+                                    )}
+                                >
                                     {/* User Details */}
-                                    <td className="px-6 py-4 sticky left-0 bg-white dark:bg-zinc-900 group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/20">
+                                    <td className={cn(
+                                        "px-6 py-4 sticky left-0",
+                                        isTopUpUser
+                                            ? "bg-amber-50/60 group-hover:bg-amber-50 dark:bg-amber-900/10 dark:group-hover:bg-amber-900/20"
+                                            : "bg-white dark:bg-zinc-900 group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/20"
+                                    )}>
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-zinc-700 shrink-0">
                                                 {user.avatar_url ? (
@@ -295,12 +310,17 @@ export default function AdminUsersPage() {
                                     {/* Joined */}
                                     <td className="px-6 py-4 text-center whitespace-nowrap">
                                         <span className="text-xs text-gray-500 flex items-center justify-center gap-1">
-                                            <Calendar size={12} /> {format(new Date(user.created_at), 'yyyy-MM-dd')}
+                                            <Calendar size={12} /> {format(new Date(user.created_at), 'yyyy-MM-dd HH:mm:ss')}
                                         </span>
                                     </td>
 
                                     {/* Actions */}
-                                    <td className="px-6 py-4 text-right sticky right-0 bg-white dark:bg-zinc-900 group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/20">
+                                    <td className={cn(
+                                        "px-6 py-4 text-right sticky right-0",
+                                        isTopUpUser
+                                            ? "bg-amber-50/60 group-hover:bg-amber-50 dark:bg-amber-900/10 dark:group-hover:bg-amber-900/20"
+                                            : "bg-white dark:bg-zinc-900 group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/20"
+                                    )}>
                                         <div className="flex items-center justify-end gap-2">
                                             {editingUserId === user.id ? (
                                                 <>
@@ -331,7 +351,8 @@ export default function AdminUsersPage() {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

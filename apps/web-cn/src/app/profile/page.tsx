@@ -30,10 +30,15 @@ export default async function ProfilePage() {
     const [profileRes, creditsRes, wrapsRes, downloadsRes, modelsRes, historyRes, usageRes] = await Promise.all([
         dbQuery(`SELECT display_name, avatar_url, email FROM profiles WHERE id = $1`, [userId]),
         dbQuery(`SELECT balance, total_earned FROM user_credits WHERE user_id = $1`, [userId]),
-        dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug
-                 FROM wraps
-                 WHERE user_id = $1 AND deleted_at IS NULL
-                 ORDER BY created_at DESC
+        dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug, download_count,
+                        COALESCE((
+                            SELECT COUNT(*)
+                            FROM site_analytics sa
+                            WHERE sa.pathname = ('/wraps/' || COALESCE(NULLIF(w.slug, ''), w.id::text))
+                        ), 0) AS browse_count
+                 FROM wraps w
+                 WHERE w.user_id = $1 AND w.deleted_at IS NULL
+                 ORDER BY w.created_at DESC
                  LIMIT 24`, [userId]),
         dbQuery(`SELECT d.id, d.downloaded_at, w.id AS wrap_id, w.name, w.preview_url, w.texture_url
                  FROM user_downloads d
@@ -84,6 +89,8 @@ export default async function ProfilePage() {
     }));
 
     const t = await getTranslations('Profile');
+    const avatarSeed = profile?.display_name || user?.email || 'U';
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(String(avatarSeed).charAt(0))}&background=random`;
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -96,8 +103,12 @@ export default async function ProfilePage() {
                     <Card className="overflow-hidden p-6">
                         <h2 className="text-lg font-medium text-gray-900 dark:text-zinc-100 mb-4">{t('user_details')}</h2>
                         <div className="flex items-center">
-                            <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-zinc-800 flex items-center justify-center text-2xl font-bold text-gray-500 dark:text-zinc-400 mr-4">
-                                {profile?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
+                            <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-zinc-800 flex items-center justify-center text-2xl font-bold text-gray-500 dark:text-zinc-400 mr-4 overflow-hidden">
+                                <img
+                                    src={profile?.avatar_url || defaultAvatar}
+                                    alt={profile?.display_name || user?.email || 'avatar'}
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-gray-500 dark:text-zinc-400">{t('email')}</p>

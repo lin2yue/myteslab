@@ -36,6 +36,17 @@ interface CreditLog {
     } | null;
 }
 
+interface TopUpUserRow {
+    user_id: string;
+    total_top_up_credits: number;
+    top_up_count: number;
+    latest_top_up_at: string;
+    profiles: {
+        display_name: string;
+        email: string;
+    } | null;
+}
+
 export default function AdminCreditsPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
@@ -43,6 +54,11 @@ export default function AdminCreditsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('all');
+    const [topUpSummary, setTopUpSummary] = useState<{ total_top_up_credits: number; top_up_users: number }>({
+        total_top_up_credits: 0,
+        top_up_users: 0
+    });
+    const [topUpUsers, setTopUpUsers] = useState<TopUpUserRow[]>([]);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -57,6 +73,8 @@ export default function AdminCreditsPage() {
                 throw new Error(data?.error || 'Failed to load credits');
             }
             setLogs(data.logs || []);
+            setTopUpSummary(data.topUpSummary || { total_top_up_credits: 0, top_up_users: 0 });
+            setTopUpUsers(data.topUpUsers || []);
         } catch (err: any) {
             alert.error(err.message || 'Failed to load credits');
         }
@@ -117,7 +135,7 @@ export default function AdminCreditsPage() {
             </div>
 
             {/* Stats Summary */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm transition-all hover:scale-[1.01]">
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl">
@@ -155,6 +173,21 @@ export default function AdminCreditsPage() {
                         {logs.filter(l => l.type === 'top-up').reduce((sum, l) => sum + l.amount, 0)}
                     </div>
                     <p className="text-sm text-gray-400 mt-1">Initial/Promotion credits</p>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm transition-all hover:scale-[1.01]">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl">
+                            <ArrowUpCircle className="w-6 h-6" />
+                        </div>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Top-up Users</span>
+                    </div>
+                    <div className="text-3xl font-black text-gray-900 dark:text-white">
+                        {topUpSummary.top_up_users}
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">
+                        Credits recharged: {topUpSummary.total_top_up_credits}
+                    </p>
                 </div>
             </div>
 
@@ -226,6 +259,41 @@ export default function AdminCreditsPage() {
                                     <br />
                                     <span className="text-[10px] opacity-70">{format(new Date(log.created_at), 'HH:mm:ss')}</span>
                                 </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+                    <h2 className="text-sm font-bold text-gray-800 dark:text-gray-200">充值积分用户统计</h2>
+                </div>
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50 dark:bg-zinc-800/50 text-gray-400 text-xs uppercase font-bold tracking-wider">
+                        <tr>
+                            <th className="px-6 py-3">User</th>
+                            <th className="px-6 py-3">Top-up Credits</th>
+                            <th className="px-6 py-3">Top-up Count</th>
+                            <th className="px-6 py-3">Last Top-up</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
+                        {topUpUsers.length === 0 ? (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-10 text-center text-gray-400 italic">No top-up records</td>
+                            </tr>
+                        ) : topUpUsers.map((row) => (
+                            <tr key={row.user_id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                <td className="px-6 py-3">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium">{row.profiles?.display_name || row.profiles?.email || row.user_id.slice(0, 8)}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono">{row.user_id.slice(0, 16)}...</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-3 text-sm font-semibold text-amber-700">{row.total_top_up_credits}</td>
+                                <td className="px-6 py-3 text-sm">{row.top_up_count}</td>
+                                <td className="px-6 py-3 text-xs text-gray-500">{format(new Date(row.latest_top_up_at), 'yyyy-MM-dd HH:mm:ss')}</td>
                             </tr>
                         ))}
                     </tbody>

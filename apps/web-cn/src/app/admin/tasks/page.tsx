@@ -10,7 +10,8 @@ import {
     User,
     Zap,
     ChevronDown,
-    ChevronUp,
+    ChevronLeft,
+    ChevronRight,
     ExternalLink,
     Wallet
 } from 'lucide-react';
@@ -47,6 +48,9 @@ interface GenerationTask {
     gemini_request_api_url?: string | null;
     gemini_request_attempt?: number | null;
     created_at: string;
+    wrap_preview_url?: string | null;
+    wrap_texture_url?: string | null;
+    reference_images?: string[] | null;
     profiles: {
         display_name: string;
         email: string;
@@ -61,16 +65,26 @@ export default function AdminTasksPage() {
     const [loading, setLoading] = useState(true);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
     const [refundingId, setRefundingId] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(30);
+    const [total, setTotal] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
 
     const fetchTasks = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/tasks');
+            const params = new URLSearchParams({
+                page: String(page),
+                pageSize: String(pageSize),
+            });
+            const res = await fetch(`/api/admin/tasks?${params.toString()}`);
             const data = await res.json();
             if (!res.ok || !data?.success) {
                 throw new Error(data?.error || 'Failed to load tasks');
             }
             setTasks(data.tasks || []);
+            setTotal(Number(data.total || 0));
+            setHasMore(Boolean(data.hasMore));
         } catch (err: any) {
             alert.error(err.message || 'Failed to load tasks');
         }
@@ -81,7 +95,7 @@ export default function AdminTasksPage() {
         fetchTasks();
         const timer = setInterval(fetchTasks, 15000);
         return () => clearInterval(timer);
-    }, []);
+    }, [page]);
 
     const handleRefund = async (taskId: string) => {
         if (!confirm(t('refund_confirm'))) return;
@@ -156,6 +170,19 @@ export default function AdminTasksPage() {
             const seconds = durationSec % 60;
             return `${minutes}m ${seconds}s`;
         }
+    };
+
+    const getStepTimeLabel = (task: GenerationTask, idx: number): string => {
+        const steps = Array.isArray(task.steps) ? task.steps : [];
+        const currentTs = new Date(steps[idx]?.ts || task.created_at).getTime();
+        if (idx === 0) {
+            return format(new Date(task.created_at), 'yyyy-MM-dd HH:mm:ss');
+        }
+        const baseTs = new Date(task.created_at).getTime();
+        const diffSec = Math.max(0, Math.floor((currentTs - baseTs) / 1000));
+        const mm = String(Math.floor(diffSec / 60)).padStart(2, '0');
+        const ss = String(diffSec % 60).padStart(2, '0');
+        return `+${mm}:${ss}`;
     };
 
     return (
@@ -341,7 +368,7 @@ export default function AdminTasksPage() {
                                                                                         {step.step.replace(/_/g, ' ')}
                                                                                     </span>
                                                                                     <span className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded uppercase font-bold">
-                                                                                        +{format(new Date(step.ts), 'HH:mm:ss')}
+                                                                                        {getStepTimeLabel(task, idx)}
                                                                                     </span>
                                                                                 </div>
                                                                                 {step.reason && (
@@ -395,6 +422,41 @@ export default function AdminTasksPage() {
                                                                             <pre className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words bg-gray-50/70 dark:bg-zinc-900 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
                                                                                 {task.assembled_prompt}
                                                                             </pre>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {(task.wrap_preview_url || task.wrap_texture_url) && (
+                                                                        <div>
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Generated Wrap</span>
+                                                                            <a
+                                                                                href={task.wrap_preview_url || task.wrap_texture_url || undefined}
+                                                                                target="_blank"
+                                                                                rel="noreferrer"
+                                                                                className="block"
+                                                                            >
+                                                                                <img
+                                                                                    src={task.wrap_preview_url || task.wrap_texture_url || ''}
+                                                                                    alt="generated wrap"
+                                                                                    className="w-full aspect-[4/3] rounded-xl object-cover border border-gray-100 dark:border-zinc-800"
+                                                                                />
+                                                                            </a>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {task.reference_images && task.reference_images.length > 0 && (
+                                                                        <div>
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Reference Images</span>
+                                                                            <div className="grid grid-cols-3 gap-2">
+                                                                                {task.reference_images.map((url) => (
+                                                                                    <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
+                                                                                        <img
+                                                                                            src={url}
+                                                                                            alt="reference"
+                                                                                            className="w-full aspect-square rounded-xl object-cover border border-gray-100 dark:border-zinc-800"
+                                                                                        />
+                                                                                    </a>
+                                                                                ))}
+                                                                            </div>
                                                                         </div>
                                                                     )}
 
@@ -462,10 +524,22 @@ export default function AdminTasksPage() {
             </div>
 
             <div className="flex items-center justify-between px-2">
-                <p className="text-xs text-gray-400 font-medium">System showing real-time updates for latest 50 requests.</p>
-                <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-2" />
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Feed Active</span>
+                <p className="text-xs text-gray-400 font-medium">Total tasks: {total} | Page {page}</p>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                        disabled={page <= 1}
+                        className="p-2 rounded-lg border border-gray-200 text-gray-500 disabled:opacity-40"
+                    >
+                        <ChevronLeft size={14} />
+                    </button>
+                    <button
+                        onClick={() => setPage((current) => current + 1)}
+                        disabled={!hasMore}
+                        className="p-2 rounded-lg border border-gray-200 text-gray-500 disabled:opacity-40"
+                    >
+                        <ChevronRight size={14} />
+                    </button>
                 </div>
             </div>
         </div>

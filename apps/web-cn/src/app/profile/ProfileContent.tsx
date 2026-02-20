@@ -12,6 +12,7 @@ import PublishModal from '@/components/publish/PublishModal';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { MoreHorizontal, Eye, Download } from 'lucide-react';
 
 interface Wrap {
     id: string;
@@ -23,6 +24,8 @@ interface Wrap {
     is_public: boolean;
     created_at: string;
     model_slug: string; // Added model_slug
+    browse_count?: number | null;
+    download_count?: number | null;
 }
 
 interface ModelConfig {
@@ -35,6 +38,7 @@ interface DownloadItem {
     id: string;
     downloaded_at: string;
     wraps: {
+        id: string;
         name: string;
         preview_url: string;
     } | null;
@@ -54,6 +58,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [wraps, setWraps] = useState(generatedWraps);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
 
     // Publish Modal State
@@ -219,8 +224,13 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                                 {wraps.map((wrap) => {
                                     const wrapSlug = wrap.slug || wrap.id;
+                                    const isMenuOpen = openMenuId === wrap.id;
                                     return (
-                                        <Card key={wrap.id} variant="muted" className="rounded-xl overflow-hidden hover:border-black/15 dark:hover:border-white/15 transition-all group/card flex flex-col">
+                                        <Card
+                                            key={wrap.id}
+                                            variant="muted"
+                                            className={`rounded-xl overflow-visible hover:border-black/15 dark:hover:border-white/15 transition-all group/card flex flex-col relative ${isMenuOpen ? 'z-40' : 'z-0'}`}
+                                        >
                                             {wrapSlug ? (
                                                 <Link href={`/wraps/${wrapSlug}`} className="block">
                                                     <div className="relative aspect-square overflow-hidden group">
@@ -280,26 +290,49 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                         </p>
                                                     )}
                                                 </div>
-
-                                                <div className="flex justify-between items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleTogglePublish(wrap)}
-                                                        disabled={loadingId === wrap.id}
-                                                        className={`flex-1 text-xs font-bold h-9 rounded-lg transition-all ${wrap.is_public
-                                                            ? 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-zinc-200'
-                                                            : 'bg-black text-white hover:bg-zinc-800 shadow-[0_8px_16px_rgba(0,0,0,0.18)]'
-                                                            }`}
-                                                    >
-                                                        {loadingId === wrap.id ? '...' : (wrap.is_public ? t('unpublish') : t('publish'))}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setPendingDeleteId(wrap.id)}
-                                                        disabled={loadingId === wrap.id}
-                                                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-red-200/50 dark:border-red-900/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-200 dark:hover:border-red-800 transition-all text-xs"
-                                                        title={t('delete')}
-                                                    >
-                                                        {loadingId === wrap.id ? '...' : '✕'}
-                                                    </button>
+                                                <div className="flex justify-between items-center">
+                                                    {wrap.is_public ? (
+                                                        <div className="text-[11px] text-gray-500 space-y-1">
+                                                            <div className="font-semibold text-green-700 dark:text-green-400">{t('published')}</div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="inline-flex items-center gap-1"><Eye size={12} /> {wrap.browse_count ?? 0}</span>
+                                                                <span className="inline-flex items-center gap-1"><Download size={12} /> {wrap.download_count ?? 0}</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : <div />}
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setOpenMenuId(openMenuId === wrap.id ? null : wrap.id)}
+                                                            className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200/80 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all"
+                                                            title="More"
+                                                        >
+                                                            <MoreHorizontal size={16} />
+                                                        </button>
+                                                        {openMenuId === wrap.id && (
+                                                            <div className="absolute right-0 mt-2 z-50 w-36 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setOpenMenuId(null);
+                                                                        handleTogglePublish(wrap);
+                                                                    }}
+                                                                    disabled={loadingId === wrap.id}
+                                                                    className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-50"
+                                                                >
+                                                                    {wrap.is_public ? t('unpublish') : t('publish')}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setOpenMenuId(null);
+                                                                        setPendingDeleteId(wrap.id);
+                                                                    }}
+                                                                    disabled={loadingId === wrap.id}
+                                                                    className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                                                                >
+                                                                    {t('delete')}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </Card>
@@ -316,37 +349,54 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
 
                 {/* Downloads Tab */}
                 {activeTab === 'downloads' && (
-                    <div className="max-w-4xl mx-auto">
+                    <div>
                         {downloads && downloads.length > 0 ? (
-                            <ul className="space-y-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                                 {downloads.map((item) => (
-                                    <li key={item.id} className="p-4 flex items-center justify-between bg-white/80 dark:bg-zinc-900/70 border border-black/5 dark:border-white/10 rounded-xl hover:border-black/15 transition-all backdrop-blur">
-                                        <div className="flex items-center">
-                                            <div className="h-14 w-14 flex-shrink-0 relative bg-black/5 dark:bg-white/10 rounded-lg overflow-hidden border border-black/5 dark:border-white/10">
-                                                {item.wraps?.preview_url ? (
-                                                    <ResponsiveOSSImage
-                                                        src={item.wraps.preview_url}
-                                                        alt={item.wraps.name}
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                    <Card key={item.id} variant="muted" className="rounded-xl overflow-hidden hover:border-black/15 dark:hover:border-white/15 transition-all">
+                                        {item.wraps?.id ? (
+                                            <Link href={`/wraps/${item.wraps.id}`} className="block">
+                                                <div className="relative aspect-square overflow-hidden">
+                                                    {item.wraps?.preview_url ? (
+                                                        <ResponsiveOSSImage
+                                                            src={item.wraps.preview_url}
+                                                            alt={item.wraps.name}
+                                                            fill
+                                                            className="object-cover transition-transform duration-500 hover:scale-105"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-300 bg-black/5 dark:bg-white/10">
+                                                            <span className="text-[10px] font-bold">NO IMG</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="p-3">
+                                                    <div className="text-sm font-bold text-gray-950 dark:text-zinc-100 line-clamp-1">
+                                                        {item.wraps?.name || 'Unknown Wrap'}
+                                                    </div>
+                                                    <div className="text-[11px] font-medium text-gray-400 dark:text-zinc-500 uppercase tracking-wider mt-1">
+                                                        {new Date(item.downloaded_at).toLocaleString()}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <div className="block">
+                                                <div className="relative aspect-square overflow-hidden">
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-300 bg-black/5 dark:bg-white/10">
                                                         <span className="text-[10px] font-bold">NO IMG</span>
                                                     </div>
-                                                )}
+                                                </div>
+                                                <div className="p-3">
+                                                    <div className="text-sm font-bold text-gray-500 line-clamp-1">Unknown Wrap</div>
+                                                    <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mt-1">
+                                                        {new Date(item.downloaded_at).toLocaleString()}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="ml-4">
-                                                <div className="text-sm font-bold text-gray-950 dark:text-zinc-100">{item.wraps?.name || 'Unknown Wrap'}</div>
-                                                <div className="text-[11px] font-medium text-gray-400 dark:text-zinc-500 uppercase tracking-wider mt-1">{new Date(item.downloaded_at).toLocaleDateString()}</div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            {/* Download link or action could go here if needed */}
-                                        </div>
-                                    </li>
+                                        )}
+                                    </Card>
                                 ))}
-                            </ul>
+                            </div>
                         ) : (
                             <div className="text-center py-12 text-gray-500 dark:text-zinc-400">
                                 {t('no_downloads')}

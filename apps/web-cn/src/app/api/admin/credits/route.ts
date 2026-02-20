@@ -30,7 +30,32 @@ export async function GET(request: Request) {
 
     query += ` ORDER BY l.created_at DESC LIMIT $1`;
 
-    const { rows } = await dbQuery(query, queryParams);
+    const [listRes, topUpSummaryRes, topUpUsersRes] = await Promise.all([
+        dbQuery(query, queryParams),
+        dbQuery(
+            `SELECT
+                COALESCE(SUM(CASE WHEN type = 'top-up' THEN amount ELSE 0 END), 0)::bigint AS total_top_up_credits,
+                COUNT(DISTINCT CASE WHEN type = 'top-up' THEN user_id END)::bigint AS top_up_users
+             FROM credit_ledger`
+        ),
+        dbQuery(
+            `SELECT
+                l.user_id,
+                COALESCE(SUM(l.amount), 0)::bigint AS total_top_up_credits,
+                COUNT(*)::int AS top_up_count,
+                MAX(l.created_at) AS latest_top_up_at,
+                p.display_name AS profile_display_name,
+                p.email AS profile_email
+             FROM credit_ledger l
+             LEFT JOIN profiles p ON p.id = l.user_id
+             WHERE l.type = 'top-up'
+             GROUP BY l.user_id, p.display_name, p.email
+             ORDER BY total_top_up_credits DESC
+             LIMIT 50`
+        )
+    ]);
+
+    const rows = listRes.rows;
 
     const logs = rows.map((row: any) => ({
         ...row,
@@ -40,6 +65,21 @@ export async function GET(request: Request) {
         } : null
     }));
 
-    return NextResponse.json({ success: true, logs });
-}
+    const topUpSummary = {
+        total_top_up_credits: Number((topUpSummaryRes.rows?.[0] as any)?.total_top_up_credits || 0),
+        top_up_users: Number((topUpSummaryRes.rows?.[0] as any)?.top_up_users || 0),
+    };
 
+    const topUpUsers = topUpUsersRes.rows.map((row: any) => ({
+        user_id: row.user_id,
+        total_top_up_credits: Number(row.total_top_up_credits || 0),
+        top_up_count: Number(row.top_up_count || 0),
+        latest_top_up_at: row.latest_top_up_at,
+        profiles: row.profile_display_name || row.profile_email ? {
+            display_name: row.profile_display_name,
+            email: row.profile_email,
+        } : null
+    }));
+
+    return NextResponse.json({ success: true, logs, topUpSummary, topUpUsers });
+}

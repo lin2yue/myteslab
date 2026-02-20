@@ -47,18 +47,37 @@ export async function GET(request: Request) {
     params.push(offset);
     const offsetIdx = params.length;
 
+    const countSql = `
+        SELECT COUNT(*)::int AS total
+        FROM wraps w
+        LEFT JOIN profiles p ON p.id = w.user_id
+        ${whereSql}
+    `;
+
     const sql = `
         SELECT
             w.id,
+            w.slug,
             w.name,
             w.model_slug,
             w.category,
             w.preview_url,
+            w.texture_url,
+            w.prompt,
+            w.reference_images,
+            w.download_count,
             w.is_active,
             w.is_public,
             w.created_at,
+            w.updated_at,
+            COALESCE((
+                SELECT COUNT(*)
+                FROM site_analytics sa
+                WHERE sa.pathname = ('/wraps/' || COALESCE(NULLIF(w.slug, ''), w.id::text))
+            ), 0) AS browse_count,
             p.display_name AS profile_display_name,
-            p.email AS profile_email
+            p.email AS profile_email,
+            p.avatar_url AS profile_avatar_url
         FROM wraps w
         LEFT JOIN profiles p ON p.id = w.user_id
         ${whereSql}
@@ -67,15 +86,27 @@ export async function GET(request: Request) {
         OFFSET $${offsetIdx}
     `;
 
-    const { rows } = await dbQuery(sql, params);
+    const [listRes, countRes] = await Promise.all([
+        dbQuery(sql, params),
+        dbQuery(countSql, params.slice(0, offsetIdx - 2))
+    ]);
+    const rows = listRes.rows;
+    const total = Number((countRes.rows?.[0] as any)?.total || 0);
     const wraps = rows.map((row: any) => ({
         ...row,
         profiles: row.profile_display_name || row.profile_email ? {
             display_name: row.profile_display_name,
             email: row.profile_email,
+            avatar_url: row.profile_avatar_url,
         } : null
     }));
 
-    return NextResponse.json({ success: true, wraps });
+    return NextResponse.json({
+        success: true,
+        wraps,
+        page,
+        pageSize,
+        total,
+        hasMore: offset + wraps.length < total
+    });
 }
-

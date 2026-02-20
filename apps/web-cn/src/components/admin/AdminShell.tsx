@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, History, Wallet, RefreshCcw, ShieldCheck, Users, BarChart } from 'lucide-react';
+import { LayoutDashboard, History, Wallet, ShieldCheck, Users, BarChart } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -27,7 +27,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         { name: 'AI Tasks', href: '/admin/tasks', icon: History },
         { name: 'Works', href: '/admin/wraps', icon: LayoutDashboard },
         { name: 'Credit Ledger', href: '/admin/credits', icon: Wallet },
-        { name: 'Batch Refresh', href: '/admin/batch-refresh', icon: RefreshCcw },
     ];
 
     const NavContent = () => (
