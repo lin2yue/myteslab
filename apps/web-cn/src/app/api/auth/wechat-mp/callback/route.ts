@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyWechatSignature, getMPOAuthQRUrl } from '@/lib/wechat-mp';
+import { verifyWechatSignature, getMPOAuthQRUrl, decryptWechatMessage, encryptWechatMessage } from '@/lib/wechat-mp';
 import { XMLParser } from 'fast-xml-parser';
 import { dbQuery } from '@/lib/db';
 import { findUserByWechatOpenId } from '@/lib/auth/users';
@@ -27,23 +27,33 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const { searchParams } = new URL(request.url);
-    const signature = searchParams.get('signature');
+    const signature = searchParams.get('msg_signature') || searchParams.get('signature');
     const timestamp = searchParams.get('timestamp');
     const nonce = searchParams.get('nonce');
 
-    if (!signature || !timestamp || !nonce || !verifyWechatSignature(timestamp, nonce, signature)) {
-        return new Response('Invalid signature', { status: 403 });
-    }
-
     try {
-        const xml = await request.text();
-
-        // 1. Check for encrypted messages (just return success for now to avoid errors)
-        if (xml.includes('<Encrypt>')) {
-            return new Response('success');
+        if (!signature || !timestamp || !nonce) {
+            return new Response('Invalid signature', { status: 403 });
         }
 
-        const result = parser.parse(xml);
+        const xml = await request.text();
+        let inboundEncrypted = false;
+        let parsedEnvelope: any = null;
+        let payloadXml = xml;
+
+        if (xml.includes('<Encrypt>')) {
+            parsedEnvelope = parser.parse(xml);
+            const encrypted = parsedEnvelope?.xml?.Encrypt;
+            if (!encrypted || !verifyWechatSignature(timestamp, nonce, signature, encrypted)) {
+                return new Response('Invalid signature', { status: 403 });
+            }
+            payloadXml = decryptWechatMessage(encrypted);
+            inboundEncrypted = true;
+        } else if (!verifyWechatSignature(timestamp, nonce, signature)) {
+            return new Response('Invalid signature', { status: 403 });
+        }
+
+        const result = parser.parse(payloadXml);
         const msg = result.xml;
 
         if (!msg) {
@@ -84,6 +94,12 @@ export async function POST(request: Request) {
 <MsgType><![CDATA[text]]></MsgType>
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
+                    if (inboundEncrypted) {
+                        const encryptedReply = encryptWechatMessage(replyXml, timestamp, nonce);
+                        return new NextResponse(encryptedReply.responseXml, {
+                            headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
+                        });
+                    }
                     return new NextResponse(replyXml, {
                         headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
                     });
@@ -104,6 +120,12 @@ export async function POST(request: Request) {
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
 
+                    if (inboundEncrypted) {
+                        const encryptedReply = encryptWechatMessage(replyXml, timestamp, nonce);
+                        return new NextResponse(encryptedReply.responseXml, {
+                            headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
+                        });
+                    }
                     return new NextResponse(replyXml, {
                         headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
                     });
@@ -116,7 +138,13 @@ export async function POST(request: Request) {
             const openid = msg.FromUserName;
             const content = msg.Content;
 
-            const aiReply = await generateAIChatReply(content);
+            const timeoutMs = 4500;
+            const aiReply = await Promise.race([
+                generateAIChatReply(content),
+                new Promise<string>((resolve) =>
+                    setTimeout(() => resolve('收到你的问题了，我正在整理最佳答案，请稍后再发我一次，我会更快回复你。'), timeoutMs)
+                )
+            ]);
 
             const replyXml = `<?xml version="1.0" encoding="UTF-8"?>
 <xml>
@@ -127,6 +155,12 @@ export async function POST(request: Request) {
 <Content><![CDATA[${aiReply}]]></Content>
 </xml>`;
 
+            if (inboundEncrypted) {
+                const encryptedReply = encryptWechatMessage(replyXml, timestamp, nonce);
+                return new NextResponse(encryptedReply.responseXml, {
+                    headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
+                });
+            }
             return new NextResponse(replyXml, {
                 headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' }
             });

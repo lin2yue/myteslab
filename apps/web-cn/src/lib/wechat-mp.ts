@@ -1,5 +1,6 @@
 
 import { createHash } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 const ACCESS_TOKEN_CACHE_KEY = 'wechat_mp_access_token';
 
@@ -82,15 +83,101 @@ export async function createQRScene(sceneId: string, expireSeconds = 600) {
     };
 }
 
-export function verifyWechatSignature(timestamp: string, nonce: string, signature: string) {
+function sha1Signature(parts: string[]) {
+    return createHash('sha1').update(parts.sort().join('')).digest('hex');
+}
+
+export function verifyWechatSignature(
+    timestamp: string,
+    nonce: string,
+    signature: string,
+    encrypted?: string
+) {
     const token = process.env.WECHAT_MP_TOKEN;
     if (!token) return false;
 
-    const list = [token, timestamp, nonce].sort();
-    const str = list.join('');
-    const hash = createHash('sha1').update(str).digest('hex');
+    const hash = encrypted
+        ? sha1Signature([token, timestamp, nonce, encrypted])
+        : sha1Signature([token, timestamp, nonce]);
 
     return hash === signature;
+}
+
+function getWechatAesKeyBuffer() {
+    const aesKey = (process.env.WECHAT_MP_AES_KEY || '').trim();
+    if (!aesKey) {
+        throw new Error('WECHAT_MP_AES_KEY is not configured');
+    }
+    return Buffer.from(`${aesKey}=`, 'base64');
+}
+
+function decodePKCS7(buf: Buffer): Buffer {
+    const pad = buf[buf.length - 1];
+    const padLen = pad < 1 || pad > 32 ? 0 : pad;
+    return padLen ? buf.subarray(0, buf.length - padLen) : buf;
+}
+
+function encodePKCS7(buf: Buffer): Buffer {
+    const blockSize = 32;
+    const amountToPad = blockSize - (buf.length % blockSize || blockSize);
+    const pad = Buffer.alloc(amountToPad, amountToPad);
+    return Buffer.concat([buf, pad]);
+}
+
+export function decryptWechatMessage(encrypted: string): string {
+    const key = getWechatAesKeyBuffer();
+    const iv = key.subarray(0, 16);
+    const decipher = createDecipheriv('aes-256-cbc', key, iv);
+    decipher.setAutoPadding(false);
+
+    const encryptedBuffer = Buffer.from(encrypted, 'base64');
+    const decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+    const plainBuffer = decodePKCS7(decryptedBuffer);
+
+    // WeChat packet: 16 bytes random + 4 bytes msg_len + xml + appid
+    const msgLength = plainBuffer.readUInt32BE(16);
+    const xmlStart = 20;
+    const xmlEnd = xmlStart + msgLength;
+    const xml = plainBuffer.subarray(xmlStart, xmlEnd).toString('utf8');
+    const appId = plainBuffer.subarray(xmlEnd).toString('utf8');
+    const expectedAppId = (process.env.WECHAT_MP_APP_ID || '').trim();
+    if (expectedAppId && appId !== expectedAppId) {
+        throw new Error('Wechat appid mismatch when decrypting message');
+    }
+
+    return xml;
+}
+
+export function encryptWechatMessage(plainXml: string, timestamp: string, nonce: string) {
+    const token = (process.env.WECHAT_MP_TOKEN || '').trim();
+    const appId = (process.env.WECHAT_MP_APP_ID || '').trim();
+    if (!token || !appId) {
+        throw new Error('WECHAT_MP_TOKEN or WECHAT_MP_APP_ID is not configured');
+    }
+
+    const key = getWechatAesKeyBuffer();
+    const iv = key.subarray(0, 16);
+    const random16 = randomBytes(16);
+    const xmlBuffer = Buffer.from(plainXml, 'utf8');
+    const msgLength = Buffer.alloc(4);
+    msgLength.writeUInt32BE(xmlBuffer.length, 0);
+    const appIdBuffer = Buffer.from(appId, 'utf8');
+    const content = encodePKCS7(Buffer.concat([random16, msgLength, xmlBuffer, appIdBuffer]));
+
+    const cipher = createCipheriv('aes-256-cbc', key, iv);
+    cipher.setAutoPadding(false);
+    const encrypted = Buffer.concat([cipher.update(content), cipher.final()]).toString('base64');
+    const signature = sha1Signature([token, timestamp, nonce, encrypted]);
+
+    const responseXml = `<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Encrypt><![CDATA[${encrypted}]]></Encrypt>
+<MsgSignature><![CDATA[${signature}]]></MsgSignature>
+<TimeStamp>${timestamp}</TimeStamp>
+<Nonce><![CDATA[${nonce}]]></Nonce>
+</xml>`;
+
+    return { encrypted, signature, responseXml };
 }
 
 export async function getMPUserInfo(openid: string) {
