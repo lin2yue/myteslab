@@ -289,10 +289,10 @@
         "subtitle": "选择最适合您的方案，每次生成仅需 10 积分",
         "most_popular": "最受欢迎",
         "tiers": {
-            "starter": "轻量体验包",
-            "explorer": "进阶创作包",
-            "advanced": "量型优选包",
-            "collector": "终极收藏包"
+            "starter": "体验包",
+            "explorer": "创作包",
+            "advanced": "优选包",
+            "collector": "收藏包"
         },
         "descriptions": {
             "starter": "轻松开启新风格尝试",

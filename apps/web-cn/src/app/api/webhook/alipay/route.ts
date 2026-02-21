@@ -1,14 +1,7 @@
 import { getAlipaySdk } from '@/lib/alipay';
 import { dbQuery } from '@/lib/db';
-import { PRICING_TIERS } from '@/lib/constants/credits';
+import { getPricingTierDisplayName, PRICING_TIERS } from '@/lib/constants/credits';
 import { notifyUserTopUpByWechat } from '@/lib/utils/user-reward-notify';
-
-const PRICING_TIER_CN_NAME: Record<string, string> = {
-    starter: '体验包',
-    explorer: '创作包',
-    advanced: '优选包',
-    collector: '收藏包',
-};
 
 function safeDecodeURIComponent(value: string) {
     try {
@@ -155,7 +148,7 @@ export async function POST(request: Request) {
                     userId,
                     creditsAdded: creditsToAdd,
                     category: '支付宝充值',
-                    projectName: PRICING_TIER_CN_NAME[matchedTier?.id || ''] || '积分充值',
+                    projectName: getPricingTierDisplayName(matchedTier?.id || ''),
                 }).catch((notifyErr) => {
                     console.error('[Alipay Webhook] Top-up notify failed:', notifyErr);
                 });

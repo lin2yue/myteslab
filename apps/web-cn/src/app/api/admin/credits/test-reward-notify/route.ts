@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { dbQuery } from '@/lib/db';
+import { getPricingTierDisplayName } from '@/lib/constants/credits';
 import { notifyUserCreditRewardByWechat, notifyUserTopUpByWechat } from '@/lib/utils/user-reward-notify';
 
 export async function POST(request: Request) {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
             userId: user.id,
             creditsAdded: 200,
             category: '支付宝充值',
-            projectName: '进阶创作包',
+            projectName: getPricingTierDisplayName('explorer'),
         })
         : await notifyUserCreditRewardByWechat({
             userId: user.id,
