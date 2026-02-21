@@ -76,8 +76,14 @@ export async function GET(
             )
         }
 
-        // 5. 增加下载计数并记录下载历史
-        // 增加总下载量 (使用 service role 绕过 RLS，避免匿名用户更新失败)
+        // 5. 先记录下载历史，再按去重 UV 口径更新统计
+        await supabase.from('user_downloads').insert({
+            user_id: user.id,
+            wrap_id: id
+        });
+
+        // 增加总下载量，并按 DISTINCT(user_id) 回填 user_download_count
+        // 使用 service role 绕过 RLS，避免聚合更新失败
         try {
             const admin = createAdminClient();
             await admin.rpc('increment_download_count', {
@@ -86,12 +92,6 @@ export async function GET(
         } catch (err) {
             console.error('[download] increment_download_count failed:', err);
         }
-
-        // 记录到个人下载历史 (已经在上方验证过 user 存在)
-        await supabase.from('user_downloads').insert({
-            user_id: user.id,
-            wrap_id: id
-        });
 
         // 3. 优化下载逻辑：服务端压缩处理 (Server-Side Compression)
         // 目标：保持 1024x1024 分辨率，但文件体积必须 < 1MB
@@ -166,4 +166,3 @@ async function compressImage(input: Buffer): Promise<Buffer> {
         })
         .toBuffer();
 }
-

@@ -1,6 +1,7 @@
 import { getAlipaySdk } from '@/lib/alipay';
 import { dbQuery } from '@/lib/db';
-import { PRICING_TIERS } from '@/lib/constants/credits';
+import { getPricingTierDisplayName, PRICING_TIERS } from '@/lib/constants/credits';
+import { notifyUserTopUpByWechat } from '@/lib/utils/user-reward-notify';
 
 function safeDecodeURIComponent(value: string) {
     try {
@@ -29,7 +30,7 @@ function parsePassbackParams(raw?: string) {
 }
 
 export async function POST(request: Request) {
-    let params: Record<string, string> = {}; // Declare outside try for error logging usage
+    const params: Record<string, string> = {};
 
     try {
         const alipaySdk = getAlipaySdk();
@@ -48,14 +49,13 @@ export async function POST(request: Request) {
 
         // 2. Check Trade Status
         const tradeStatus = params.trade_status;
-        const outTradeNo = params.out_trade_no;
         const tradeNo = params.trade_no; // Alipay transaction ID
-        const totalAmount = params.total_amount;
+        const totalAmount = params.total_amount || '0';
 
         if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED') {
             // 3. Process Business Logic (Idempotent)
             // Extract metadata from passback_params
-            let metadata: any = {};
+            let metadata: { userId?: string } & Record<string, unknown> = {};
             if (params.passback_params) {
                 metadata = parsePassbackParams(params.passback_params);
                 if (!metadata || Object.keys(metadata).length === 0) {
@@ -143,14 +143,23 @@ export async function POST(request: Request) {
                 );
 
                 console.log(`[Alipay Webhook] Success: Added ${creditsToAdd} credits to user ${userId} and logged transaction ${tradeNo}`);
-            } catch (dbError: any) {
+
+                void notifyUserTopUpByWechat({
+                    userId,
+                    creditsAdded: creditsToAdd,
+                    category: '支付宝充值',
+                    projectName: getPricingTierDisplayName(matchedTier?.id || ''),
+                }).catch((notifyErr) => {
+                    console.error('[Alipay Webhook] Top-up notify failed:', notifyErr);
+                });
+            } catch (dbError: unknown) {
                 console.error('[Alipay Webhook] Database update failed:', dbError);
                 return new Response('fail', { status: 500 });
             }
         }
 
         return new Response('success');
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[Alipay Webhook] Error:', error);
         return new Response('fail', { status: 500 });
     }

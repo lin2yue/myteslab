@@ -256,7 +256,11 @@ export async function sendMPTemplateMessage(params: {
     const data = await res.json();
     if (data.errcode) {
         console.error('[wechat-mp] Failed to send template message', data);
-        return { success: false, error: data.errmsg };
+        return {
+            success: false,
+            error: data.errmsg,
+            errcode: data.errcode
+        };
     }
 
     return { success: true, msgid: data.msgid };

@@ -4,21 +4,19 @@ import { useState } from 'react';
 import { useTranslations } from '@/lib/i18n';
 import PricingModal from '@/components/pricing/PricingModal';
 import CreditHistoryModal from './CreditHistoryModal';
-import UsageHistoryModal from './UsageHistoryModal';
+import type { CreditTransaction } from './CreditHistoryModal';
 import Card from '@/components/ui/Card';
 
 interface CreditsSectionProps {
     balance: number;
     totalEarned: number;
-    history: any[];
-    usageHistory: any[];
+    history: CreditTransaction[];
 }
 
-export default function CreditsSection({ balance, totalEarned, history, usageHistory }: CreditsSectionProps) {
+export default function CreditsSection({ balance, totalEarned, history }: CreditsSectionProps) {
     const t = useTranslations('Profile');
     const [isPricingOpen, setIsPricingOpen] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-    const [isUsageOpen, setIsUsageOpen] = useState(false);
 
     return (
         <Card className="overflow-hidden p-6 flex flex-col h-full relative group">
@@ -43,20 +41,12 @@ export default function CreditsSection({ balance, totalEarned, history, usageHis
                     <p className="text-sm text-gray-500 dark:text-zinc-400">
                         {t('total_earned')}: <span className="font-bold text-gray-700 dark:text-zinc-200">{totalEarned}</span>
                     </p>
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setIsHistoryOpen(true)}
-                            className="btn-ghost h-8 px-2 text-xs font-bold"
-                        >
-                            {t('purchase_history')}
-                        </button>
-                        <button
-                            onClick={() => setIsUsageOpen(true)}
-                            className="btn-ghost h-8 px-2 text-xs font-bold text-gray-500"
-                        >
-                            {t('usage_history')}
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setIsHistoryOpen(true)}
+                        className="btn-ghost h-8 px-2 text-xs font-bold"
+                    >
+                        {t('purchase_history')}
+                    </button>
                 </div>
             </div>
 
@@ -69,12 +59,6 @@ export default function CreditsSection({ balance, totalEarned, history, usageHis
                 isOpen={isHistoryOpen}
                 onClose={() => setIsHistoryOpen(false)}
                 history={history}
-            />
-
-            <UsageHistoryModal
-                isOpen={isUsageOpen}
-                onClose={() => setIsUsageOpen(false)}
-                history={usageHistory}
             />
         </Card>
     );

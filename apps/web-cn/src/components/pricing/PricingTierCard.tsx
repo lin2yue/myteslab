@@ -4,18 +4,19 @@ import { Check } from 'lucide-react';
 import { useTranslations, useLocale } from '@/lib/i18n';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { type PricingTier } from '@/lib/constants/credits';
+import { getPricingTierDisplayName, type PricingTier } from '@/lib/constants/credits';
 import { trackBeginCheckout } from '@/lib/analytics';
 import Button from '@/components/ui/Button';
 
 interface PricingTierCardProps {
     tier: PricingTier;
-    onBuySuccess?: (data: any) => void;
+    onBuySuccess?: (data: unknown) => void;
 }
 
 export default function PricingTierCard({ tier }: PricingTierCardProps) {
     const t = useTranslations('Pricing');
     const locale = useLocale();
+    const tierDisplayName = getPricingTierDisplayName(tier.id);
     const [status, setStatus] = useState<'idle' | 'loading' | 'redirecting'>('idle');
     const router = useRouter();
 
@@ -23,7 +24,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
         // Track begin checkout
         trackBeginCheckout({
             id: tier.polarProductId || tier.id,
-            name: t(`tiers.${tier.nameKey}`),
+            name: tierDisplayName,
             price: parseFloat(tier.price),
         })
 
@@ -83,7 +84,7 @@ export default function PricingTierCard({ tier }: PricingTierCardProps) {
             {/* Header Area */}
             <div className="mb-8">
                 <h3 className="text-lg font-semibold mb-2 text-zinc-900 dark:text-white">
-                    {t(`tiers.${tier.nameKey}`)}
+                    {tierDisplayName}
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-500">
                     {t(`descriptions.${tier.nameKey}`)}

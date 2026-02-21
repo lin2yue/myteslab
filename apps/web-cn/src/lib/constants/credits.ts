@@ -32,12 +32,23 @@ export const CREDITS_CONFIG = {
  */
 interface PricingTierBase {
     id: string;
-    nameKey: string;      // i18n key
+    nameKey: string;      // i18n key for descriptions/features
     price: string;        // USD
     credits: number;      // 赠送积分
     popular?: boolean;
     savings?: string;     // 节省百分比
     polarProductId: string; // [NEW] Polar.sh product ID
+}
+
+export const PRICING_TIER_DISPLAY_NAMES = {
+    starter: '体验包',
+    explorer: '创作包',
+    advanced: '优选包',
+    collector: '收藏包',
+} as const;
+
+export function getPricingTierDisplayName(tierId: string): string {
+    return PRICING_TIER_DISPLAY_NAMES[tierId as keyof typeof PRICING_TIER_DISPLAY_NAMES] || '积分充值';
 }
 
 /**
