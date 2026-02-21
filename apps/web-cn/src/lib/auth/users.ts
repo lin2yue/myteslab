@@ -1,5 +1,6 @@
 import { dbQuery } from '@/lib/db';
 import { notifyAdminOfNewUser } from '@/lib/utils/admin';
+import { getCreditRulesSnapshot } from '@/lib/credits/rules';
 
 export type DbUser = {
     id: string;
@@ -65,6 +66,18 @@ export async function createUser(params: {
     const user = rows[0] || null;
 
     if (user) {
+        let registrationEnabled = true;
+        let registrationCredits = 30;
+        try {
+            const rules = await getCreditRulesSnapshot();
+            registrationEnabled = rules.registration_enabled;
+            registrationCredits = rules.registration_credits;
+        } catch (err) {
+            console.error('[Auth] Failed to load credit rules, fallback to defaults:', err);
+        }
+
+        const giftCredits = registrationEnabled ? Math.max(0, registrationCredits) : 0;
+
         await dbQuery(
             `INSERT INTO profiles (id, email, display_name, avatar_url, role)
              VALUES ($1, $2, $3, $4, $5)
@@ -74,10 +87,18 @@ export async function createUser(params: {
 
         await dbQuery(
             `INSERT INTO user_credits (user_id, balance, total_earned, total_spent)
-             VALUES ($1, 30, 30, 0)
+             VALUES ($1, $2, $2, 0)
              ON CONFLICT (user_id) DO NOTHING`,
-            [user.id]
+            [user.id, giftCredits]
         );
+
+        if (giftCredits > 0) {
+            await dbQuery(
+                `INSERT INTO credit_ledger (user_id, amount, type, description, metadata)
+                 VALUES ($1, $2, 'system_reward', 'New user registration reward', $3::jsonb)`,
+                [user.id, giftCredits, JSON.stringify({ source: 'new_user_signup' })]
+            );
+        }
 
         // 异步发送新用户通知，不阻塞主流程
         notifyAdminOfNewUser({
@@ -183,7 +204,7 @@ export async function updateUserInfo(userId: string, params: {
 
     // 1. Prepare dynamic SQL for both tables
     const updates: string[] = [];
-    const values: any[] = [userId];
+    const values: Array<string | null> = [userId];
     let placeholderIdx = 2;
 
     if (displayName !== undefined) {

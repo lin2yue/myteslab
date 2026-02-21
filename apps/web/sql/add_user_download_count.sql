@@ -19,7 +19,11 @@ RETURNS void AS $$
 BEGIN
   UPDATE wraps
   SET download_count = COALESCE(download_count, 0) + 1,
-      user_download_count = COALESCE(user_download_count, download_count, 0) + 1
+      user_download_count = COALESCE((
+        SELECT COUNT(DISTINCT ud.user_id)::int
+        FROM user_downloads ud
+        WHERE ud.wrap_id = increment_download_count.wrap_id
+      ), 0)
   WHERE id = wrap_id;
 END;
 $$ LANGUAGE plpgsql;

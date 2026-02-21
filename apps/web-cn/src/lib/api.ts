@@ -308,7 +308,11 @@ export async function incrementDownloadCount(wrapId: string): Promise<void> {
         await dbQuery(
             `UPDATE wraps
              SET download_count = COALESCE(download_count, 0) + 1,
-                 user_download_count = COALESCE(user_download_count, download_count, 0) + 1
+                 user_download_count = (
+                     SELECT COUNT(DISTINCT ud.user_id)::int
+                     FROM user_downloads ud
+                     WHERE ud.wrap_id = $1
+                 )
              WHERE id = $1`,
             [wrapId]
         )

@@ -1,0 +1,74 @@
+import { dbQuery } from '@/lib/db';
+import { sendMPTemplateMessage } from '@/lib/wechat-mp';
+
+interface RewardWechatNotifyParams {
+    userId: string;
+    rewardCredits: number;
+    milestoneDownloads: number;
+    wrapName?: string | null;
+}
+
+const DEFAULT_REWARD_TEMPLATE_ID = 'OvZNfxr9f-Ws2CjtrTmxU7gfJ4Cp7ZYRVEL7J0nygqs';
+
+function toThing(value: string, maxLen = 20) {
+    const text = (value || '').trim();
+    if (!text) return '-';
+    return text.length > maxLen ? `${text.slice(0, Math.max(0, maxLen - 1))}…` : text;
+}
+
+export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyParams) {
+    const templateId = process.env.WECHAT_MP_CREDIT_REWARD_TEMPLATE_ID || DEFAULT_REWARD_TEMPLATE_ID;
+
+    const [identityRes, profileRes, creditRes] = await Promise.all([
+        dbQuery<{ openid_mp: string | null }>(
+            `SELECT openid_mp
+             FROM user_identities
+             WHERE user_id = $1
+               AND provider = 'wechat'
+               AND openid_mp IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [params.userId]
+        ),
+        dbQuery<{ display_name: string | null }>(
+            `SELECT display_name
+             FROM profiles
+             WHERE id = $1
+             LIMIT 1`,
+            [params.userId]
+        ),
+        dbQuery<{ balance: number | null }>(
+            `SELECT balance
+             FROM user_credits
+             WHERE user_id = $1
+             LIMIT 1`,
+            [params.userId]
+        )
+    ]);
+
+    const openId = identityRes.rows[0]?.openid_mp;
+    if (!openId) {
+        console.info(`[UserRewardNotify] Skip: user ${params.userId} has no MP openid`);
+        return;
+    }
+
+    const accountName = profileRes.rows[0]?.display_name?.trim() || `用户${params.userId.slice(0, 8)}`;
+    const balance = Number(creditRes.rows[0]?.balance || 0);
+    const wrapText = toThing(params.wrapName?.trim() || '下载里程碑奖励作品');
+
+    const result = await sendMPTemplateMessage({
+        touser: openId,
+        template_id: templateId,
+        data: {
+            character_string27: { value: accountName },
+            thing4: { value: '下载里程碑奖励' },
+            thing16: { value: wrapText },
+            character_string20: { value: String(Math.max(0, Math.floor(params.rewardCredits))) },
+            amount6: { value: `${balance}` }
+        }
+    });
+
+    if (!result.success) {
+        console.error('[UserRewardNotify] Template send failed:', result.error);
+    }
+}
