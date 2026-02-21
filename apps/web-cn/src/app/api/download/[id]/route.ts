@@ -180,7 +180,7 @@ export async function GET(
         }
 
         // 返回文件流
-        return new NextResponse(finalBuffer, {
+        return new NextResponse(new Uint8Array(finalBuffer), {
             headers: {
                 'Content-Disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
                 'Content-Type': 'image/png',

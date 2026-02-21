@@ -110,9 +110,9 @@ export default async function ProfilePage() {
         downloaded_at: item.downloaded_at,
         wraps: item.wrap_id ? {
             id: item.wrap_id,
-            name: item.name,
-            preview_url: item.preview_url,
-            texture_url: item.texture_url
+            name: item.name || '',
+            preview_url: item.preview_url || '',
+            texture_url: item.texture_url || ''
         } : null
     }));
 
