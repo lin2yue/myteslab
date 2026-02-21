@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { dbQuery } from '@/lib/db';
-import { notifyUserCreditRewardByWechat } from '@/lib/utils/user-reward-notify';
+import { notifyUserCreditRewardByWechat, notifyUserTopUpByWechat } from '@/lib/utils/user-reward-notify';
 
 export async function POST(request: Request) {
     const admin = await requireAdmin();
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const displayName = String(body?.displayName || '').trim();
+    const mode = String(body?.mode || 'milestone').trim();
     if (!displayName) {
         return NextResponse.json({ success: false, error: 'displayName is required' }, { status: 400 });
     }
@@ -27,15 +28,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    const result = await notifyUserCreditRewardByWechat({
-        userId: user.id,
-        rewardCredits: 10,
-        milestoneDownloads: 0,
-        wrapName: '里程碑奖励通知测试'
-    });
+    const result = mode === 'topup'
+        ? await notifyUserTopUpByWechat({
+            userId: user.id,
+            creditsAdded: 200,
+            category: '支付宝充值',
+            projectName: '进阶创作包',
+        })
+        : await notifyUserCreditRewardByWechat({
+            userId: user.id,
+            rewardCredits: 10,
+            milestoneDownloads: 0,
+            wrapName: '里程碑奖励通知测试'
+        });
 
     return NextResponse.json({
         success: result.success,
+        mode,
         userId: user.id,
         displayName: user.display_name,
         notifyResult: result
