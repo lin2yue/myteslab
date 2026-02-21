@@ -8,6 +8,14 @@ interface RewardWechatNotifyParams {
     wrapName?: string | null;
 }
 
+export interface RewardWechatNotifyResult {
+    attempted: boolean;
+    success: boolean;
+    reason?: string;
+    errcode?: number;
+    error?: string;
+}
+
 const DEFAULT_REWARD_TEMPLATE_ID = 'OvZNfxr9f-Ws2CjtrTmxU7gfJ4Cp7ZYRVEL7J0nygqs';
 
 function toThing(value: string, maxLen = 20) {
@@ -16,7 +24,7 @@ function toThing(value: string, maxLen = 20) {
     return text.length > maxLen ? `${text.slice(0, Math.max(0, maxLen - 1))}…` : text;
 }
 
-export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyParams) {
+export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyParams): Promise<RewardWechatNotifyResult> {
     const templateId = process.env.WECHAT_MP_CREDIT_REWARD_TEMPLATE_ID || DEFAULT_REWARD_TEMPLATE_ID;
 
     const [identityRes, profileRes, creditRes] = await Promise.all([
@@ -49,7 +57,7 @@ export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyP
     const openId = identityRes.rows[0]?.openid_mp;
     if (!openId) {
         console.info(`[UserRewardNotify] Skip: user ${params.userId} has no MP openid`);
-        return;
+        return { attempted: false, success: false, reason: 'no_openid_mp' };
     }
 
     const accountName = profileRes.rows[0]?.display_name?.trim() || `用户${params.userId.slice(0, 8)}`;
@@ -70,5 +78,13 @@ export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyP
 
     if (!result.success) {
         console.error('[UserRewardNotify] Template send failed:', result.error);
+        return {
+            attempted: true,
+            success: false,
+            errcode: result.errcode,
+            error: result.error
+        };
     }
+
+    return { attempted: true, success: true };
 }
