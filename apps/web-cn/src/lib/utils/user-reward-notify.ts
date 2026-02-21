@@ -38,8 +38,8 @@ export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyP
              LIMIT 1`,
             [params.userId]
         ),
-        dbQuery<{ display_name: string | null }>(
-            `SELECT display_name
+        dbQuery<{ display_name: string | null; email: string | null }>(
+            `SELECT display_name, email
              FROM profiles
              WHERE id = $1
              LIMIT 1`,
@@ -60,7 +60,13 @@ export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyP
         return { attempted: false, success: false, reason: 'no_openid_mp' };
     }
 
-    const accountName = profileRes.rows[0]?.display_name?.trim() || `用户${params.userId.slice(0, 8)}`;
+    const profile = profileRes.rows[0];
+    const rawName = profile?.display_name?.trim() || '';
+    const emailPrefix = (profile?.email || '').split('@')[0] || '';
+    const normalizedAccount = (emailPrefix || rawName)
+        .replace(/[^A-Za-z0-9]/g, '')
+        .slice(0, 20);
+    const accountName = normalizedAccount || `U${params.userId.replace(/-/g, '').slice(0, 12)}`;
     const balance = Number(creditRes.rows[0]?.balance || 0);
     const wrapText = toThing(params.wrapName?.trim() || '下载里程碑奖励作品');
 
