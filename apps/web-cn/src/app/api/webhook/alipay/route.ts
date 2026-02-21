@@ -4,10 +4,10 @@ import { PRICING_TIERS } from '@/lib/constants/credits';
 import { notifyUserTopUpByWechat } from '@/lib/utils/user-reward-notify';
 
 const PRICING_TIER_CN_NAME: Record<string, string> = {
-    starter: '轻量体验包',
-    explorer: '进阶创作包',
-    advanced: '量型优选包',
-    collector: '终极收藏包',
+    starter: '体验包',
+    explorer: '创作包',
+    advanced: '优选包',
+    collector: '收藏包',
 };
 
 function safeDecodeURIComponent(value: string) {
