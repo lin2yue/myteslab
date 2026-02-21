@@ -16,7 +16,7 @@ export interface RewardWechatNotifyResult {
     error?: string;
 }
 
-const DEFAULT_REWARD_TEMPLATE_ID = 'OvZNfxr9f-Ws2CjtrTmxU7gfJ4Cp7ZYRVEL7J0nygqs';
+const DEFAULT_REWARD_TEMPLATE_ID = 'OvZNfxr9f-Ws2CjtrTmxUy8rXb4mtY4V_kyywd26Tvw';
 
 function toThing(value: string, maxLen = 20) {
     const text = (value || '').trim();
@@ -63,10 +63,7 @@ export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyP
     const profile = profileRes.rows[0];
     const rawName = profile?.display_name?.trim() || '';
     const emailPrefix = (profile?.email || '').split('@')[0] || '';
-    const normalizedAccount = (emailPrefix || rawName)
-        .replace(/[^A-Za-z0-9]/g, '')
-        .slice(0, 20);
-    const accountName = normalizedAccount || `U${params.userId.replace(/-/g, '').slice(0, 12)}`;
+    const accountName = toThing(rawName || emailPrefix || `U${params.userId.replace(/-/g, '').slice(0, 12)}`, 20);
     const balance = Number(creditRes.rows[0]?.balance || 0);
     const wrapText = toThing(params.wrapName?.trim() || '下载里程碑奖励作品');
 
@@ -74,7 +71,7 @@ export async function notifyUserCreditRewardByWechat(params: RewardWechatNotifyP
         touser: openId,
         template_id: templateId,
         data: {
-            character_string27: { value: accountName },
+            thing3: { value: accountName },
             thing4: { value: '下载里程碑奖励' },
             thing16: { value: wrapText },
             character_string20: { value: String(Math.max(0, Math.floor(params.rewardCredits))) },
