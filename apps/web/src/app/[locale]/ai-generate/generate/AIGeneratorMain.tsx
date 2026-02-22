@@ -175,6 +175,8 @@ export default function AIGeneratorMain({
     const isNightManualRef = useRef(false)
     const [autoRotate, setAutoRotate] = useState(true)
     const viewerRef = useRef<ModelViewerRef>(null)
+    const [viewerResetKey, setViewerResetKey] = useState(0)
+    const hadTextureRef = useRef(false)
     const isFetchingRef = useRef(false)
     const [isLoggedInInternal, setIsLoggedInInternal] = useState(isLoggedIn)
 
@@ -215,6 +217,16 @@ export default function AIGeneratorMain({
     useEffect(() => {
         setIsLoggedInInternal(isLoggedIn)
     }, [isLoggedIn])
+
+    // Force remount when texture transitions from non-empty to empty,
+    // so model-viewer resets to the original material.
+    useEffect(() => {
+        const hasTexture = Boolean(currentTexture)
+        if (!hasTexture && hadTextureRef.current) {
+            setViewerResetKey(prev => prev + 1)
+        }
+        hadTextureRef.current = hasTexture
+    }, [currentTexture])
 
     // Seed initial credits if provider hasn't loaded yet
     useEffect(() => {
@@ -552,6 +564,10 @@ export default function AIGeneratorMain({
             alert.warning('当前作品贴图还未就绪，请稍后再发布');
             return;
         }
+        if (activeMode === 'diy' && !activeWrapId) {
+            alert.warning('请先保存 DIY 作品，再发布');
+            return
+        }
 
         // 已经发布了就不再操作
         const currentWrap = activeWrapId ? history.find(h => h.id === activeWrapId) : null;
@@ -566,6 +582,10 @@ export default function AIGeneratorMain({
         if (!session) {
             alert.warning('Please login again');
             return;
+        }
+        if (!activeWrapId) {
+            alert.warning('请先保存作品，再发布');
+            return
         }
 
         setIsPublishing(true);
@@ -902,6 +922,7 @@ export default function AIGeneratorMain({
                 <div className="flex-none lg:flex-[6.5] flex flex-col p-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
                     <div className="relative w-full aspect-video max-h-[50vh] min-h-[220px] lg:flex-1 lg:aspect-auto lg:max-h-none overflow-hidden m-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
                         <ModelViewer
+                            key={`ai-viewer-${selectedModel}-${viewerResetKey}`}
                             ref={viewerRef}
                             id="ai-viewer"
                             modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
@@ -977,7 +998,7 @@ export default function AIGeneratorMain({
                         </button>
                         <button
                             onClick={handlePublish}
-                            disabled={isPublishing || isSaving || (activeMode === 'ai' && (!activeWrapId || !currentTexture)) || (activeMode === 'diy' && !currentTexture) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
+                            disabled={isPublishing || isSaving || (activeMode === 'ai' && (!activeWrapId || !currentTexture)) || (activeMode === 'diy' && (!currentTexture || !activeWrapId)) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
                             className={`flex items-center gap-1.5 flex-shrink-0 ${isPublishing || isSaving ? 'h-10 px-4 rounded-lg bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'h-10 px-4 rounded-lg bg-gray-100 text-gray-400' : 'btn-primary h-10 px-4')}`}
                         >
                             {(isPublishing || isSaving) ? (
@@ -1265,7 +1286,10 @@ export default function AIGeneratorMain({
                                 <div className="flex-1 overflow-y-auto pr-1">
                                     <StickerEditor
                                         modelSlug={selectedModel}
-                                        onTextureUpdate={(url) => setCurrentTexture(url)}
+                                        onTextureUpdate={(url) => {
+                                            setCurrentTexture(url || null)
+                                            setActiveWrapId(null)
+                                        }}
                                         onSave={handleSaveDiy}
                                         isSaving={isSaving}
                                         isLoggedIn={isLoggedInInternal}
