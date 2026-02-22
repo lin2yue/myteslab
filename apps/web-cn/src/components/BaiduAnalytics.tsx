@@ -2,7 +2,7 @@
 
 import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect, Suspense } from 'react'
+import { useEffect, Suspense, useMemo, useRef } from 'react'
 
 
 /**
@@ -30,9 +30,14 @@ export function BaiduAnalytics() {
     <>
       <Script id="baidu-analytics" strategy="afterInteractive">
         {`
-          var _hmt = _hmt || [];
+          window._hmt = window._hmt || [];
+          if (!window.__baiduAutoPageviewDisabled) {
+            window._hmt.push(['_setAutoPageview', false]);
+            window.__baiduAutoPageviewDisabled = true;
+          }
           (function() {
             var hm = document.createElement("script");
+            hm.async = true;
             hm.src = "https://hm.baidu.com/hm.js?${BAIDU_ID}";
             var s = document.getElementsByTagName("script")[0]; 
             s.parentNode.insertBefore(hm, s);
@@ -49,15 +54,24 @@ export function BaiduAnalytics() {
 function TrackPageview() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const lastTrackedUrlRef = useRef<string>('')
+  const url = useMemo(() => {
+    const query = searchParams.toString()
+    return `${pathname}${query ? `?${query}` : ''}`
+  }, [pathname, searchParams])
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any)._hmt) {
-      const url = `${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`
-      ;(window as any)._hmt.push(['_trackPageview', url])
-      console.log(`[Baidu Analytics] Pageview tracked: ${url}`)
+    if (typeof window === 'undefined') return
+    window._hmt = window._hmt || []
+    if (!window.__baiduAutoPageviewDisabled) {
+      window._hmt.push(['_setAutoPageview', false])
+      window.__baiduAutoPageviewDisabled = true
     }
-  }, [pathname, searchParams])
+    if (lastTrackedUrlRef.current === url) return
+
+    window._hmt.push(['_trackPageview', url])
+    lastTrackedUrlRef.current = url
+  }, [url])
 
   return null
 }
-
