@@ -105,6 +105,8 @@ export default function StickerEditor({
             processImage(result)
         }
         reader.readAsDataURL(file)
+        // Allow selecting the same file again after delete/replace.
+        e.target.value = ''
     }
 
     const handleSave = () => {
@@ -125,6 +127,9 @@ export default function StickerEditor({
                                     const currentUrl = window.location.pathname + window.location.search
                                     router.push(`/${locale}/login?next=${encodeURIComponent(currentUrl)}`)
                                     return
+                                }
+                                if (fileInputRef.current) {
+                                    fileInputRef.current.value = ''
                                 }
                                 fileInputRef.current?.click()
                             }}
@@ -156,7 +161,12 @@ export default function StickerEditor({
                                 <button
                                     type="button"
                                     disabled={isSaving}
-                                    onClick={() => fileInputRef.current?.click()}
+                                    onClick={() => {
+                                        if (fileInputRef.current) {
+                                            fileInputRef.current.value = ''
+                                        }
+                                        fileInputRef.current?.click()
+                                    }}
                                     className="flex-1 h-12 bg-black/5 dark:bg-white/10 hover:bg-black/10 text-gray-700 dark:text-zinc-200 rounded-lg font-bold transition-all text-sm border border-black/5 dark:border-white/10 disabled:opacity-50"
                                 >
                                     {t('replace_image')}
@@ -167,6 +177,9 @@ export default function StickerEditor({
                                     onClick={() => {
                                         setStickerImage(null)
                                         setCurrentMergedTexture(null)
+                                        if (fileInputRef.current) {
+                                            fileInputRef.current.value = ''
+                                        }
                                         onTextureUpdate('')
                                     }}
                                     className="w-12 h-12 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg flex items-center justify-center transition-all border border-red-50 disabled:opacity-50"
