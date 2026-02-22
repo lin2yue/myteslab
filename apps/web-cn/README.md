@@ -49,6 +49,10 @@
 - `WRAP_GEN_SWEEPER_ENABLED`（可选，默认 1）
 - `WRAP_SWEEPER_BATCH_SIZE` / `WRAP_SWEEPER_MAX_BATCH_SIZE`（可选，默认 50 / 200）
 - `WRAP_REFERENCE_ALLOWED_HOSTS`（可选，逗号分隔白名单，默认包含 `cdn.tewan.club`）
+- `BAIDU_PUSH_TOKEN`（百度资源推送 token，启用 API 主动提交必填）
+- `BAIDU_PUSH_SITE`（可选，默认 `tewan.club`；支持 `tewan.club` 或 `https://tewan.club`）
+- `SEO_PUSH_SECRET`（可选，内部 SEO 推送 tick 的 Bearer token；未配时回退 `WRAP_WORKER_SECRET`）
+- `SEO_PUSH_HMAC_SECRET`（可选，内部 SEO 推送 tick 的 HMAC 密钥；未配时回退 `WRAP_WORKER_HMAC_SECRET`）
 
 ### 本地运行
 ```bash
@@ -87,6 +91,29 @@ curl -X POST "http://localhost:3000/api/internal/generation/sweeper-tick" \
   -H "Authorization: Bearer ${WRAP_WORKER_SECRET}" \
   -H "Content-Type: application/json" \
   -d '{"batchSize":50}'
+```
+
+### Baidu SEO Push Tick（热门+核心 URL 持续提交）
+内部接口：`/api/internal/seo/baidu-push-tick`
+
+```bash
+curl -X POST "http://localhost:3000/api/internal/seo/baidu-push-tick" \
+  -H "Authorization: Bearer ${SEO_PUSH_SECRET}" \
+  -H "Content-Type: application/json" \
+  -d '{"maxUrls":800,"hotLimit":300,"latestLimit":300,"topPageLimit":120,"batchSize":100}'
+```
+
+可选 HMAC 鉴权（推荐）：
+
+```bash
+BODY='{"maxUrls":800,"hotLimit":300,"latestLimit":300,"topPageLimit":120,"batchSize":100}'
+TS=$(date +%s)
+SIG=$(printf "%s.%s" "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SEO_PUSH_HMAC_SECRET" -hex | sed 's/^.* //')
+curl -X POST "http://localhost:3000/api/internal/seo/baidu-push-tick" \
+  -H "x-wrap-timestamp: ${TS}" \
+  -H "x-wrap-signature: ${SIG}" \
+  -H "Content-Type: application/json" \
+  -d "${BODY}"
 ```
 
 ## 📚 说明文档
