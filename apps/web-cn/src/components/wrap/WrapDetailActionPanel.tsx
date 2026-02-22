@@ -121,6 +121,7 @@ export default function WrapDetailActionPanel({
       <div className="space-y-3">
         <button
           type="button"
+          hidden
           onClick={() => setShowGenerateModal(true)}
           disabled={!candidateModels.length || !sourceTextureUrl || !sourceModelSlug}
           className="w-full h-11 rounded-xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/70 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-semibold text-gray-800 dark:text-zinc-100 flex items-center justify-center gap-2"
