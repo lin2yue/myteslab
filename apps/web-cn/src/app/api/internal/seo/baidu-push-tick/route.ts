@@ -129,7 +129,9 @@ export async function POST(request: NextRequest) {
         }
 
         const batchSize = normalizeBatchSize(body.batchSize);
-        const results = await batchPushUrlsToBaidu(candidates.urls, batchSize);
+        const results = await batchPushUrlsToBaidu(candidates.urls, batchSize, {
+            source: 'internal_tick'
+        });
         const totalSuccess = results.reduce((sum, item) => sum + (item.success || 0), 0);
         const totalRemain = results[results.length - 1]?.remain ?? 0;
         const errorBatches = results

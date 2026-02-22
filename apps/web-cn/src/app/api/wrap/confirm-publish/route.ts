@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         const wrap = rows[0];
         if (wrap.slug) {
             const { pushWrapToBaidu } = await import('@/lib/seo/baidu-push');
-            pushWrapToBaidu(wrap.slug).catch(err => {
+            pushWrapToBaidu(wrap.slug, { source: 'confirm_publish' }).catch(err => {
                 console.error('[Confirm-Publish] Baidu push failed (non-blocking):', err);
             });
         }
@@ -81,8 +81,9 @@ export async function POST(request: NextRequest) {
             updatedWrap: rows[0]
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error('[Confirm-Publish] Global Error:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }
