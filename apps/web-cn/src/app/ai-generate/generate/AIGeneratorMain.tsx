@@ -116,7 +116,7 @@ const DIY_SAVE_QUALITY_STEPS = [0.9, 0.82, 0.72]
 
 function convertDataUrlToJpeg(dataUrl: string, quality: number): Promise<string> {
     return new Promise((resolve, reject) => {
-        const img = new Image()
+        const img = document.createElement('img')
         img.onload = () => {
             const width = img.naturalWidth || img.width
             const height = img.naturalHeight || img.height
