@@ -116,6 +116,25 @@ curl -X POST "http://localhost:3000/api/internal/seo/baidu-push-tick" \
   -d "${BODY}"
 ```
 
+### Baidu Push 日志查看
+提交日志落表在 `baidu_push_logs`，可用下面 SQL 查看最近记录：
+
+```sql
+SELECT
+  created_at,
+  source,
+  status,
+  request_url_count,
+  valid_url_count,
+  baidu_success,
+  baidu_remain,
+  baidu_error,
+  baidu_message
+FROM baidu_push_logs
+ORDER BY created_at DESC
+LIMIT 50;
+```
+
 ## 📚 说明文档
 - [AI 背景与架构逻辑 (CONTEXT)](../../docs/CONTEXT.md)
 - [贴图旋转标准指南](../../docs/guides/development_principles.md#4-贴图旋转与方向标准-texture-orientation-standards)

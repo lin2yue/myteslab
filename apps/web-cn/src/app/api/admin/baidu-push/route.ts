@@ -133,7 +133,9 @@ export async function POST(request: NextRequest) {
             `[Baidu Batch Push] Start: candidates=${candidates.urls.length}, batchSize=${batchSize}`
         );
 
-        const results = await batchPushUrlsToBaidu(candidates.urls, batchSize);
+        const results = await batchPushUrlsToBaidu(candidates.urls, batchSize, {
+            source: 'admin_batch'
+        });
         if (results.length === 0) {
             return NextResponse.json({
                 success: true,
