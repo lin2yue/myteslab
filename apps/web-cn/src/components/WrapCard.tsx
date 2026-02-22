@@ -6,9 +6,10 @@ import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
 interface WrapCardProps {
     wrap: Wrap
+    source?: 'all' | 'model'
 }
 
-export function WrapCard({ wrap }: WrapCardProps) {
+export function WrapCard({ wrap, source }: WrapCardProps) {
     const locale = useLocale()
     const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0;
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name;
@@ -17,9 +18,12 @@ export function WrapCard({ wrap }: WrapCardProps) {
         : wrap.model_name || (wrap.category === 'official' ? '官方作品' : '自定义');
 
     const wrapSlug = wrap.slug || wrap.id;
+    const detailHref = source === 'all'
+        ? `/wraps/${wrapSlug}?from=all`
+        : `/wraps/${wrapSlug}`
 
     return (
-        <Link href={`/wraps/${wrapSlug}`}>
+        <Link href={detailHref}>
             <div className="bg-white/80 dark:bg-zinc-900/80 rounded-2xl overflow-hidden shadow-none hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_36px_rgba(0,0,0,0.10)] transition-all duration-300 group border border-black/5 dark:border-white/10 flex flex-col h-full backdrop-blur-sm hover:-translate-y-0.5">
                 {/* 预览图容器 */}
                 <div className="aspect-[4/3] relative bg-gray-50 overflow-hidden">
