@@ -91,17 +91,21 @@ async function getModelsBySlugs(slugs: string[]): Promise<Model[]> {
 function normalizeWrap(w: any): Wrap {
     // 作者信息现在 100% 来源于数据库
     const profile = w.profiles;
+    const normalizedTextureUrl = ensureCdnUrl(w.texture_url || w.preview_url || '');
+    const normalizedPreviewUrl = ensureCdnUrl(w.preview_url || w.texture_url || '');
 
     return {
         ...w,
+        texture_url: normalizedTextureUrl,
+        preview_url: normalizedPreviewUrl,
         name: w.name || w.prompt || 'Untitled Wrap',
         name_en: w.name_en || w.name || w.prompt || 'Untitled Wrap',
         description: w.description || '',
         description_en: w.description_en || w.description || '',
         slug: w.slug || w.id,
-        wrap_image_url: w.texture_url ? ensureCdnUrl(w.texture_url) : undefined,
-        preview_image_url: w.preview_url ? ensureCdnUrl(w.preview_url) : undefined,
-        image_url: w.texture_url ? ensureCdnUrl(w.texture_url) : undefined,
+        wrap_image_url: normalizedTextureUrl || undefined,
+        preview_image_url: normalizedPreviewUrl || undefined,
+        image_url: normalizedTextureUrl || undefined,
         model_slug: w.model_slug,
         category: w.category || 'ai_generated', // Maintain a safe fallback for display
         is_active: w.is_active ?? true,
@@ -126,7 +130,7 @@ export async function getWraps(
     try {
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
-            ['wraps-v7', modelSlug || 'all', String(page), sortBy],
+            ['wraps-v9', modelSlug || 'all', String(page), sortBy],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -146,7 +150,7 @@ async function fetchWrapsInternal(
 
     try {
         // 使用 Supabase Join 一次性查出作品及作者资料
-        // 列表页排除巨大的 texture_url 和 reference_images 以符合 Next.js 2MB 缓存限制
+        // 列表页排除 reference_images 以控制缓存体积
         let query = publicSupabase
             .from('wraps')
             .select(`
@@ -156,11 +160,11 @@ async function fetchWrapsInternal(
                 name_en,
                 prompt, 
                 category, 
+                texture_url,
                 preview_url, 
                 model_slug, 
                 user_id, 
                 download_count, 
-                user_download_count,
                 is_public, 
                 is_active, 
                 created_at, 
@@ -172,7 +176,7 @@ async function fetchWrapsInternal(
         if (modelSlug) query = query.eq('model_slug', modelSlug)
 
         if (sortBy === 'popular') {
-            query = query.order('user_download_count', { ascending: false }).order('download_count', { ascending: false })
+            query = query.order('download_count', { ascending: false }).order('created_at', { ascending: false })
         } else {
             query = query.order('created_at', { ascending: false })
         }
@@ -219,7 +223,6 @@ export async function getWrap(slugOrId: string, supabaseClient = publicSupabase)
             'is_public',
             'user_id',
             'download_count',
-            'user_download_count',
             'created_at',
             'reference_images'
         ].join(',');
