@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUser } from '@/lib/auth/session';
+import { verifyInternalRequest } from '@/lib/internal-auth';
 import { batchPushUrlsToBaidu, isBaiduPushConfigured } from '@/lib/seo/baidu-push';
 import { buildBaiduPushCandidates } from '@/lib/seo/baidu-push-strategy';
 
-type PushBody = {
+export const maxDuration = 300;
+
+const SEO_PUSH_SECRET = (
+    process.env.SEO_PUSH_SECRET
+    || process.env.WRAP_WORKER_SECRET
+    || ''
+).trim();
+const SEO_PUSH_HMAC_SECRET = (
+    process.env.SEO_PUSH_HMAC_SECRET
+    || process.env.WRAP_WORKER_HMAC_SECRET
+    || ''
+).trim();
+const SEO_PUSH_ALLOW_LEGACY_TOKEN = (process.env.SEO_PUSH_ALLOW_LEGACY_TOKEN ?? '1').trim() !== '0';
+const SEO_PUSH_HMAC_SKEW_SECONDS = Math.max(30, Number(process.env.SEO_PUSH_HMAC_SKEW_SECONDS ?? 300));
+const DEFAULT_BATCH_SIZE = Math.max(1, Number(process.env.SEO_PUSH_BATCH_SIZE ?? 100));
+
+type TickBody = {
     includeCore?: boolean;
     includeModels?: boolean;
     includeTopPages?: boolean;
@@ -25,17 +41,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function normalizeBatchSize(input: unknown): number {
     const parsed = Number(input);
-    if (!Number.isFinite(parsed)) return 100;
+    if (!Number.isFinite(parsed)) return DEFAULT_BATCH_SIZE;
     return Math.max(1, Math.min(2000, Math.floor(parsed)));
-}
-
-async function parseBody(request: NextRequest): Promise<PushBody> {
-    const raw = await request.text();
-    if (!raw.trim()) return {};
-
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed)) return {};
-    return parsed as PushBody;
 }
 
 function getBaseUrl(): string {
@@ -46,7 +53,6 @@ function getBaseUrl(): string {
     ).trim();
 
     if (!raw) return 'https://tewan.club';
-
     try {
         const parsed = new URL(raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`);
         return `${parsed.protocol}//${parsed.host}`.replace(/\/+$/, '');
@@ -55,43 +61,51 @@ function getBaseUrl(): string {
     }
 }
 
-/**
- * POST /api/admin/baidu-push
- * 策略化批量推送 URL 到百度:
- * - 核心页面
- * - 热门作品页(按下载热度)
- * - 最新作品页
- * - 车型页
- * - 热门访问页(来自站内 analytics)
- */
+function parseBody(rawBody: string): TickBody {
+    if (!rawBody.trim()) return {};
+    const parsed: unknown = JSON.parse(rawBody);
+    if (!isRecord(parsed)) return {};
+    return parsed as TickBody;
+}
+
 export async function POST(request: NextRequest) {
-    try {
-        const user = await getSessionUser();
-        const isAdmin = Boolean(
-            user && (
-                user.role === 'admin'
-                || user.role === 'super_admin'
-                || user.email === 'lin2yue@gmail.com'
-            )
+    if (!SEO_PUSH_SECRET && !SEO_PUSH_HMAC_SECRET) {
+        return NextResponse.json(
+            { success: false, error: 'Baidu push tick not configured: missing SEO_PUSH_SECRET/SEO_PUSH_HMAC_SECRET' },
+            { status: 503 }
         );
+    }
 
-        if (!isAdmin) {
-            return NextResponse.json(
-                { success: false, error: 'Unauthorized' },
-                { status: 403 }
-            );
-        }
+    if (!isBaiduPushConfigured()) {
+        return NextResponse.json(
+            { success: false, error: 'BAIDU_PUSH_TOKEN not configured' },
+            { status: 503 }
+        );
+    }
 
-        let body: PushBody;
-        try {
-            body = await parseBody(request);
-        } catch (error) {
-            return NextResponse.json(
-                { success: false, error: `Invalid JSON body: ${toErrorMessage(error)}` },
-                { status: 400 }
-            );
-        }
+    const rawBody = await request.text();
+    const authed = verifyInternalRequest(request, rawBody, {
+        legacySecret: SEO_PUSH_SECRET,
+        hmacSecret: SEO_PUSH_HMAC_SECRET,
+        allowLegacyToken: SEO_PUSH_ALLOW_LEGACY_TOKEN,
+        maxSkewSeconds: SEO_PUSH_HMAC_SKEW_SECONDS
+    });
 
+    if (!authed) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let body: TickBody;
+    try {
+        body = parseBody(rawBody);
+    } catch (error) {
+        return NextResponse.json(
+            { success: false, error: `Invalid JSON body: ${toErrorMessage(error)}` },
+            { status: 400 }
+        );
+    }
+
+    try {
         const candidates = await buildBaiduPushCandidates({
             baseUrl: getBaseUrl(),
             includeCore: body.includeCore,
@@ -107,46 +121,15 @@ export async function POST(request: NextRequest) {
         if (candidates.urls.length === 0) {
             return NextResponse.json({
                 success: true,
-                message: 'No eligible URLs to push',
+                pushed: 0,
                 candidateTotal: 0,
                 strategy: candidates.options,
                 sourceBreakdown: candidates.stats
             });
         }
 
-        if (!isBaiduPushConfigured()) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    skipped: true,
-                    error: 'BAIDU_PUSH_TOKEN not configured',
-                    candidateTotal: candidates.urls.length,
-                    strategy: candidates.options,
-                    sourceBreakdown: candidates.stats
-                },
-                { status: 503 }
-            );
-        }
-
         const batchSize = normalizeBatchSize(body.batchSize);
-        console.log(
-            `[Baidu Batch Push] Start: candidates=${candidates.urls.length}, batchSize=${batchSize}`
-        );
-
         const results = await batchPushUrlsToBaidu(candidates.urls, batchSize);
-        if (results.length === 0) {
-            return NextResponse.json({
-                success: true,
-                skipped: true,
-                message: process.env.NODE_ENV === 'development'
-                    ? 'Skipped in development environment'
-                    : 'No push response returned from Baidu',
-                candidateTotal: candidates.urls.length,
-                strategy: candidates.options,
-                sourceBreakdown: candidates.stats
-            });
-        }
-
         const totalSuccess = results.reduce((sum, item) => sum + (item.success || 0), 0);
         const totalRemain = results[results.length - 1]?.remain ?? 0;
         const errorBatches = results
@@ -165,7 +148,7 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         const message = toErrorMessage(error);
-        console.error('[Baidu Batch Push] Error:', message);
+        console.error('[Baidu Push Tick] Error:', message);
         return NextResponse.json(
             { success: false, error: message },
             { status: 500 }

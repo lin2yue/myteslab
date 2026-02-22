@@ -8,6 +8,10 @@ import { useEffect } from 'react'
  */
 export function BaiduPush() {
     useEffect(() => {
+        if (process.env.NODE_ENV !== 'production') {
+            return
+        }
+
         // 百度自动推送代码
         if (typeof window !== 'undefined') {
             if (document.querySelector('script[data-baidu-push="1"]')) {

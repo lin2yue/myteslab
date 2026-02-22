@@ -1,7 +1,11 @@
-import { getWraps } from '@/lib/api'
+import { dbQuery } from '@/lib/db'
 
 const baseUrl = 'https://tewan.club'
 const WRAPS_PER_PAGE = 5000
+
+type CountRow = {
+  count: string
+}
 
 export async function GET() {
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -21,13 +25,14 @@ export async function GET() {
 
   // 3. Wraps Sitemaps (Paginated)
   try {
-    const wraps = await getWraps()
-    // Quality Gate matching the sub-sitemap logic
-    const qualifiedWraps = wraps.filter(w =>
-      w.is_active !== false && w.is_public !== false
+    const { rows } = await dbQuery<CountRow>(
+      `SELECT COUNT(*)::text AS count
+       FROM wraps
+       WHERE is_public = true
+         AND is_active = true`
     )
-
-    const totalPages = Math.ceil(qualifiedWraps.length / WRAPS_PER_PAGE) || 1
+    const totalWraps = Number(rows[0]?.count || 0)
+    const totalPages = Math.ceil(totalWraps / WRAPS_PER_PAGE) || 1
 
     for (let i = 1; i <= totalPages; i++) {
       xml += `  <sitemap>

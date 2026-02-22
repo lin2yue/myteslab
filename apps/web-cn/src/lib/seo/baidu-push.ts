@@ -12,6 +12,9 @@ interface BaiduPushResponse {
     message?: string;      // 错误信息
 }
 
+const DEFAULT_SITE_HOST = 'tewan.club';
+const MAX_URLS_PER_REQUEST = 2000;
+
 /**
  * 兼容 BAIDU_PUSH_SITE 的两种配置:
  * - tewan.club
@@ -19,7 +22,7 @@ interface BaiduPushResponse {
  */
 function normalizeSiteHost(site: string): string {
     const trimmed = site.trim();
-    if (!trimmed) return 'tewan.club';
+    if (!trimmed) return DEFAULT_SITE_HOST;
 
     try {
         const withProtocol = /^https?:\/\//i.test(trimmed)
@@ -34,15 +37,24 @@ function normalizeSiteHost(site: string): string {
     }
 }
 
+function readPushConfig() {
+    const token = (process.env.BAIDU_PUSH_TOKEN || '').trim();
+    const site = (process.env.BAIDU_PUSH_SITE || DEFAULT_SITE_HOST).trim() || DEFAULT_SITE_HOST;
+    const siteHost = normalizeSiteHost(site);
+    return { token, siteHost };
+}
+
+export function isBaiduPushConfigured(): boolean {
+    return Boolean(readPushConfig().token);
+}
+
 /**
  * 向百度主动推送 URL
  * @param urls 要推送的 URL 列表(最多 2000 个)
  * @returns 推送结果
  */
 export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPushResponse | null> {
-    const token = (process.env.BAIDU_PUSH_TOKEN || '').trim();
-    const site = (process.env.BAIDU_PUSH_SITE || 'tewan.club').trim() || 'tewan.club';
-    const siteHost = normalizeSiteHost(site);
+    const { token, siteHost } = readPushConfig();
 
     // 开发环境或未配置 token 时跳过
     if (!token) {
@@ -58,9 +70,16 @@ export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPus
 
     try {
         const urlList = Array.isArray(urls) ? urls : [urls];
+        const dedupedUrls = Array.from(
+            new Set(
+                urlList
+                    .map(url => (typeof url === 'string' ? url.trim() : ''))
+                    .filter(Boolean)
+            )
+        ).slice(0, MAX_URLS_PER_REQUEST);
 
         // 验证 URL
-        const validUrls = urlList.filter(url => {
+        const validUrls = dedupedUrls.filter(url => {
             try {
                 const urlObj = new URL(url);
                 const hostname = urlObj.hostname.toLowerCase();
@@ -128,8 +147,12 @@ export async function pushUrlsToBaidu(urls: string | string[]): Promise<BaiduPus
  * @param wrapSlug wrap 的 slug
  */
 export async function pushWrapToBaidu(wrapSlug: string): Promise<void> {
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://tewan.club').replace(/\/+$/, '');
-    const url = `${baseUrl}/wraps/${wrapSlug}`;
+    const safeSlug = encodeURIComponent((wrapSlug || '').trim());
+    if (!safeSlug) return;
+
+    const defaultBaseUrl = `https://${normalizeSiteHost(process.env.BAIDU_PUSH_SITE || DEFAULT_SITE_HOST)}`;
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || defaultBaseUrl).replace(/\/+$/, '');
+    const url = `${baseUrl}/wraps/${safeSlug}`;
 
     // 异步推送,不阻塞主流程
     pushUrlsToBaidu(url).catch(err => {
