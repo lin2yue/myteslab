@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import {
+    notifyUserAdminAdjustmentByWechat,
+    type RewardWechatNotifyResult
+} from '@/lib/utils/user-reward-notify';
 
 export async function POST(request: Request) {
     const admin = await requireAdmin();
@@ -18,8 +22,10 @@ export async function POST(request: Request) {
     }
 
     const client = await db().connect();
+    let committed = false;
     try {
         await client.query('BEGIN');
+        let creditDelta = 0;
 
         // 1. Update roles
         await client.query('UPDATE users SET role = $2 WHERE id = $1', [userId, role]);
@@ -39,6 +45,7 @@ export async function POST(request: Request) {
                 [userId, balance]
             );
             if (balance !== 0) {
+                creditDelta = balance;
                 await client.query(
                     `INSERT INTO credit_ledger (user_id, amount, type, description, metadata)
                      VALUES ($1, $2, $3, $4, $5)`,
@@ -49,6 +56,7 @@ export async function POST(request: Request) {
             const oldBalance = currentCredits[0].balance;
             if (oldBalance !== balance) {
                 const diff = balance - oldBalance;
+                creditDelta = diff;
 
                 // If diff > 0, it's a gift, so we increment total_earned
                 // If diff < 0, it's a reduction, we don't touch total_earned (it's cumulative)
@@ -82,13 +90,36 @@ export async function POST(request: Request) {
         }
 
         await client.query('COMMIT');
-        return NextResponse.json({ success: true });
-    } catch (err: any) {
-        await client.query('ROLLBACK');
+        committed = true;
+
+        let notifyResult: RewardWechatNotifyResult | null = null;
+        if (creditDelta !== 0) {
+            try {
+                notifyResult = await notifyUserAdminAdjustmentByWechat({
+                    userId,
+                    deltaCredits: creditDelta
+                });
+            } catch (notifyErr: unknown) {
+                console.error('[admin users update] notify failed:', notifyErr);
+                const message = notifyErr instanceof Error ? notifyErr.message : 'Unknown notify error';
+                notifyResult = {
+                    attempted: true,
+                    success: false,
+                    reason: 'notify_exception',
+                    error: message
+                };
+            }
+        }
+
+        return NextResponse.json({ success: true, notifyResult });
+    } catch (err: unknown) {
+        if (!committed) {
+            await client.query('ROLLBACK');
+        }
         console.error('[admin users update] error:', err);
-        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     } finally {
         client.release();
     }
 }
-
