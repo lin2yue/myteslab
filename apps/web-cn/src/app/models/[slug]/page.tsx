@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { getTranslations } from '@/lib/i18n'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
-import { getWraps, getModels } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
 import { notFound } from 'next/navigation'
 
 export const revalidate = 60 // Enable ISR
@@ -69,16 +69,18 @@ export default async function ModelPage({
     searchParams
 }: {
     params: Promise<{ slug: string }>
-    searchParams: Promise<{ sort?: string }>
+    searchParams: Promise<{ sort?: string, search?: string }>
 }) {
     const { slug } = await params
     const locale = 'zh' as string
-    const { sort } = await searchParams
+    const { sort, search } = await searchParams
     const sortBy = (sort as 'latest' | 'popular') || 'latest'
+    const searchQuery = (search || '').trim()
 
-    const [wraps, models] = await Promise.all([
-        getWraps(slug, 1, 15, sortBy),
+    const [wraps, models, recommendedKeywords] = await Promise.all([
+        getWraps(slug, 1, 15, sortBy, searchQuery),
         getModels(),
+        getWrapKeywordSuggestions(slug, 'zh'),
     ])
 
     const currentModel = models.find(m => m.slug === slug)
@@ -113,8 +115,8 @@ export default async function ModelPage({
                     </p>
                 </section>
 
-                <FilterBarWrapper models={models} sortBy={sortBy}>
-                    <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} />
+                <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
+                    <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
             </main>
         </div>

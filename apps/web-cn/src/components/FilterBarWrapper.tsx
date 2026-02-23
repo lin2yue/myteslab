@@ -8,15 +8,16 @@ interface FilterBarWrapperProps {
     models: Model[]
     children: ReactNode
     sortBy?: 'latest' | 'popular'
+    recommendedKeywords?: string[]
 }
 
-export function FilterBarWrapper({ models, children, sortBy = 'latest' }: FilterBarWrapperProps) {
+export function FilterBarWrapper({ models, children, sortBy = 'latest', recommendedKeywords = [] }: FilterBarWrapperProps) {
     const [isLoading, setIsLoading] = useState(false)
 
     return (
         <>
             <div className="mb-8">
-                <FilterBar models={models} onLoadingChange={setIsLoading} sortBy={sortBy} />
+                <FilterBar models={models} onLoadingChange={setIsLoading} sortBy={sortBy} recommendedKeywords={recommendedKeywords} />
             </div>
             <div className="relative">
                 {children}

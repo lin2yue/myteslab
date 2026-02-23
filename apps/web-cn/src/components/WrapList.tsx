@@ -11,11 +11,12 @@ interface WrapListProps {
     model?: string
     locale: string
     sortBy?: 'latest' | 'popular'
+    searchQuery?: string
 }
 
 const PAGE_SIZE = 15
 
-export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: WrapListProps) {
+export function WrapList({ initialWraps, model, locale, sortBy = 'latest', searchQuery = '' }: WrapListProps) {
     const [wraps, setWraps] = useState<Wrap[]>(initialWraps)
     const [page, setPage] = useState(1)
     const [loading, setLoading] = useState(false)
@@ -28,7 +29,7 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
         setWraps(initialWraps)
         setPage(1)
         setHasMore(initialWraps.length >= PAGE_SIZE)
-    }, [initialWraps, model, sortBy])
+    }, [initialWraps, model, sortBy, searchQuery])
 
     const loadMore = useCallback(async () => {
         if (loading || !hasMore) return
@@ -37,7 +38,7 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
         const nextPage = page + 1
 
         try {
-            const newWraps = await fetchMoreWraps(model, nextPage, sortBy)
+            const newWraps = await fetchMoreWraps(model, nextPage, sortBy, searchQuery)
             if (newWraps.length > 0) {
                 setWraps(prev => {
                     // 过滤重复
@@ -59,7 +60,7 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
         } finally {
             setLoading(false)
         }
-    }, [loading, hasMore, page, model, sortBy])
+    }, [loading, hasMore, page, model, sortBy, searchQuery])
 
     // 无限滚动逻辑
     useEffect(() => {
@@ -90,7 +91,9 @@ export function WrapList({ initialWraps, model, locale, sortBy = 'latest' }: Wra
                     {t('no_wraps')}
                 </h3>
                 <p className="text-gray-500 max-w-md mx-auto">
-                    {model
+                    {searchQuery
+                        ? (locale === 'zh' ? '未找到匹配的贴图，试试其他关键词。' : 'No matching wraps found. Try different keywords.')
+                        : model
                         ? (locale === 'zh' ? '该车型暂无可用贴图，快去尝试 AI 生成一个吧！' : 'No wraps available for this model. Try generating one with AI!')
                         : (locale === 'zh' ? '请先在数据库中添加贴图数据' : 'Please add wrap data to the database first')}
                 </p>

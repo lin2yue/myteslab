@@ -11,9 +11,12 @@ import {
     Eye,
     EyeOff,
     Loader2,
+    Pencil,
     Play,
+    Save,
     Search,
     Square,
+    X,
     ZoomIn
 } from 'lucide-react'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
@@ -55,6 +58,11 @@ interface ModelConfig {
 
 type BatchItemStatus = 'pending' | 'processing' | 'success' | 'error'
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) return error.message
+    return fallback
+}
+
 export default function AdminWrapsPage() {
     const alert = useAlert()
     const locale = useLocale()
@@ -74,6 +82,9 @@ export default function AdminWrapsPage() {
     const [hasMore, setHasMore] = useState(false)
     const [showPreviewPanel, setShowPreviewPanel] = useState(true)
     const [zoomImage, setZoomImage] = useState<string | null>(null)
+    const [editingNameWrapId, setEditingNameWrapId] = useState<string | null>(null)
+    const [editingNameValue, setEditingNameValue] = useState('')
+    const [savingName, setSavingName] = useState(false)
 
     const [batchStatus, setBatchStatus] = useState<'idle' | 'running' | 'completed'>('idle')
     const [isProcessing, setIsProcessing] = useState(false)
@@ -159,8 +170,8 @@ export default function AdminWrapsPage() {
                 })
                 return next
             })
-        } catch (err: any) {
-            alert.error(err?.message || 'Failed to load works')
+        } catch (err: unknown) {
+            alert.error(getErrorMessage(err, 'Failed to load works'))
         } finally {
             setLoading(false)
         }
@@ -234,6 +245,55 @@ export default function AdminWrapsPage() {
         revalidateWraps()
     }
 
+    const startRename = (wrap: WrapRecord) => {
+        if (batchStatus === 'running') return
+        setEditingNameWrapId(wrap.id)
+        setEditingNameValue(wrap.name || '')
+    }
+
+    const cancelRename = () => {
+        if (savingName) return
+        setEditingNameWrapId(null)
+        setEditingNameValue('')
+    }
+
+    const saveRename = async (wrapId: string) => {
+        const normalized = editingNameValue.trim()
+        if (!normalized) {
+            alert.warning('Name cannot be empty')
+            return
+        }
+        if (normalized.length > 200) {
+            alert.warning('Name is too long (max 200)')
+            return
+        }
+
+        setSavingName(true)
+        try {
+            const res = await fetch('/api/admin/wraps/rename', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wrapId, name: normalized })
+            })
+            const data = await res.json()
+            if (!res.ok || !data?.success) throw new Error(data?.error || 'Rename failed')
+
+            setWraps((current) => current.map((item) => (
+                item.id === wrapId
+                    ? { ...item, name: normalized, updated_at: data.wrap?.updated_at || new Date().toISOString() }
+                    : item
+            )))
+            setEditingNameWrapId(null)
+            setEditingNameValue('')
+            alert.success('Name updated')
+            revalidateWraps()
+        } catch (err: unknown) {
+            alert.error(getErrorMessage(err, 'Rename failed'))
+        } finally {
+            setSavingName(false)
+        }
+    }
+
     const processWrap = useCallback(async (wrap: WrapRecord) => {
         if (!viewerRef.current) throw new Error('Viewer not ready')
 
@@ -304,8 +364,8 @@ export default function AdminWrapsPage() {
         try {
             await processWrap(wrap)
             setBatchLogs((current) => ({ ...current, [wrap.id]: { status: 'success' } }))
-        } catch (err: any) {
-            setBatchLogs((current) => ({ ...current, [wrap.id]: { status: 'error', message: String(err?.message || err) } }))
+        } catch (err: unknown) {
+            setBatchLogs((current) => ({ ...current, [wrap.id]: { status: 'error', message: getErrorMessage(err, 'Batch step failed') } }))
         } finally {
             setIsProcessing(false)
         }
@@ -484,7 +544,23 @@ export default function AdminWrapsPage() {
                                                             </span>
                                                         </button>
                                                         <div className="min-w-0">
-                                                            <p className="font-medium text-gray-900 truncate max-w-[130px]">{wrap.name || 'Untitled'}</p>
+                                                            <div className="flex items-center gap-1">
+                                                                <p className="font-medium text-gray-900 truncate max-w-[118px]">{wrap.name || 'Untitled'}</p>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        setActiveWrapId(wrap.id)
+                                                                        startRename(wrap)
+                                                                    }}
+                                                                    disabled={batchStatus === 'running'}
+                                                                    className="text-gray-400 hover:text-gray-700 disabled:opacity-40"
+                                                                    title="Rename"
+                                                                    aria-label="Rename"
+                                                                >
+                                                                    <Pencil size={12} />
+                                                                </button>
+                                                            </div>
                                                             {!wrap.is_active && <p className="text-xs text-red-500">Hidden</p>}
                                                         </div>
                                                     </div>
@@ -575,10 +651,64 @@ export default function AdminWrapsPage() {
                                         <div className="w-full h-full grid place-items-center text-gray-400 text-sm">No model asset</div>
                                     )}
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-semibold text-gray-900">{activeWrap.name || 'Untitled'}</p>
-                                        <p className="text-xs text-gray-500">Model: {getModelName(activeWrap.model_slug)}</p>
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        {editingNameWrapId === activeWrap.id ? (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={editingNameValue}
+                                                        onChange={(e) => setEditingNameValue(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') saveRename(activeWrap.id)
+                                                            if (e.key === 'Escape') cancelRename()
+                                                        }}
+                                                        maxLength={200}
+                                                        className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900"
+                                                        placeholder="Work name"
+                                                        disabled={savingName}
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => saveRename(activeWrap.id)}
+                                                        disabled={savingName}
+                                                        className="inline-flex items-center gap-1 px-2.5 h-9 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50"
+                                                    >
+                                                        {savingName ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={cancelRename}
+                                                        disabled={savingName}
+                                                        className="inline-flex items-center gap-1 px-2.5 h-9 rounded-lg border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+                                                    >
+                                                        <X size={13} />
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500">Model: {getModelName(activeWrap.model_slug)}</p>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold text-gray-900 truncate">{activeWrap.name || 'Untitled'}</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => startRename(activeWrap)}
+                                                        disabled={batchStatus === 'running'}
+                                                        className="text-gray-400 hover:text-gray-700 disabled:opacity-40"
+                                                        title="Rename"
+                                                        aria-label="Rename"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500">Model: {getModelName(activeWrap.model_slug)}</p>
+                                            </div>
+                                        )}
                                     </div>
                                     <a
                                         href={`/wraps/${activeWrap.slug || activeWrap.id}`}

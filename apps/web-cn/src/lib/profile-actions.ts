@@ -64,7 +64,7 @@ export async function updateWrapTitle(wrapId: string, title: string) {
     }
 
     revalidatePath('/profile', 'page')
-    revalidateTag('wraps')
+    revalidateTag('wraps', 'default')
 
     return rows[0]?.name || normalizedTitle
 }
