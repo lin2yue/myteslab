@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type KeyboardEvent } from 'react';
 import { useTranslations } from '@/lib/i18n';
-import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions';
+import { deleteGeneratedWrap, updateWrapVisibility, updateWrapTitle } from '@/lib/profile-actions';
 import { deleteUserAccount } from '@/lib/auth-actions';
-import Image from 'next/image';
-import { getOptimizedImageUrl } from '@/lib/images';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PublishModal from '@/components/publish/PublishModal';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { MoreHorizontal, Eye, Download } from 'lucide-react';
+import Portal from '@/components/Portal';
+import { MoreHorizontal, Eye, Download, X } from 'lucide-react';
 
 interface Wrap {
     id: string;
@@ -51,6 +50,8 @@ interface ProfileContentProps {
     wrapModels: ModelConfig[]; // Added wrapModels
 }
 
+const MAX_WRAP_TITLE_LENGTH = 200;
+
 export default function ProfileContent({ generatedWraps, downloads, wrapModels }: ProfileContentProps) {
     const t = useTranslations('Profile');
     const tCommon = useTranslations('Common');
@@ -61,6 +62,9 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+    const [editingWrap, setEditingWrap] = useState<Wrap | null>(null);
+    const [editingTitle, setEditingTitle] = useState('');
+    const [isUpdatingTitle, setIsUpdatingTitle] = useState(false);
 
     // Publish Modal State
     const [showPublishModal, setShowPublishModal] = useState(false);
@@ -79,6 +83,59 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     useEffect(() => {
         setWraps(generatedWraps);
     }, [generatedWraps]);
+
+    const openEditTitleModal = (wrap: Wrap) => {
+        setEditingWrap(wrap);
+        setEditingTitle((wrap.name || wrap.prompt || '').trim());
+    };
+
+    const closeEditTitleModal = () => {
+        if (isUpdatingTitle) return;
+        setEditingWrap(null);
+        setEditingTitle('');
+    };
+
+    const handleUpdateTitle = async () => {
+        if (!editingWrap) return;
+        const normalizedTitle = editingTitle.trim();
+
+        if (!normalizedTitle) {
+            alert.error(t('title_required'));
+            return;
+        }
+
+        if (normalizedTitle.length > MAX_WRAP_TITLE_LENGTH) {
+            alert.error(t('title_too_long', { max: MAX_WRAP_TITLE_LENGTH }));
+            return;
+        }
+
+        setIsUpdatingTitle(true);
+        try {
+            const updatedTitle = await updateWrapTitle(editingWrap.id, normalizedTitle);
+            setWraps(current => current.map(w => w.id === editingWrap.id ? { ...w, name: updatedTitle } : w));
+            alert.success(t('title_update_success'));
+            setEditingWrap(null);
+            setEditingTitle('');
+        } catch (e) {
+            console.error(e);
+            alert.error(t('title_update_failed'));
+        } finally {
+            setIsUpdatingTitle(false);
+        }
+    };
+
+    const handleEditTitleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!isUpdatingTitle) {
+                handleUpdateTitle();
+            }
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeEditTitleModal();
+        }
+    };
 
 
     const handleDelete = async (id: string) => {
@@ -314,6 +371,16 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                                 <button
                                                                     onClick={() => {
                                                                         setOpenMenuId(null);
+                                                                        openEditTitleModal(wrap);
+                                                                    }}
+                                                                    disabled={loadingId === wrap.id}
+                                                                    className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-50"
+                                                                >
+                                                                    {t('edit_title')}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setOpenMenuId(null);
                                                                         handleTogglePublish(wrap);
                                                                     }}
                                                                     disabled={loadingId === wrap.id}
@@ -436,6 +503,65 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                     textureUrl={activePublishWrap.texture_url}
                     isPublishing={isPublishing}
                 />
+            )}
+
+            {editingWrap && (
+                <Portal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeEditTitleModal} />
+
+                        <div className="relative w-full max-w-md bg-white/90 dark:bg-zinc-900/80 rounded-2xl border border-black/5 dark:border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.35)] p-6 backdrop-blur">
+                            <button
+                                onClick={closeEditTitleModal}
+                                disabled={isUpdatingTitle}
+                                className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-black/5 disabled:opacity-50"
+                                aria-label="Close"
+                            >
+                                <X className="w-4 h-4 text-gray-400" />
+                            </button>
+
+                            <div className="space-y-3">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('edit_title')}</h3>
+                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">{t('edit_title_desc')}</p>
+                            </div>
+
+                            <div className="mt-4">
+                                <input
+                                    type="text"
+                                    value={editingTitle}
+                                    onChange={(event) => setEditingTitle(event.target.value)}
+                                    onKeyDown={handleEditTitleInputKeyDown}
+                                    maxLength={MAX_WRAP_TITLE_LENGTH}
+                                    placeholder={t('title_placeholder')}
+                                    className="w-full h-11 px-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20"
+                                    autoFocus
+                                />
+                                <p className="mt-2 text-[11px] text-gray-400 dark:text-zinc-500 text-right">
+                                    {editingTitle.trim().length}/{MAX_WRAP_TITLE_LENGTH}
+                                </p>
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={closeEditTitleModal}
+                                    disabled={isUpdatingTitle}
+                                    className="btn-secondary h-9 px-3 rounded-lg text-sm"
+                                >
+                                    {tCommon('cancel')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleUpdateTitle}
+                                    disabled={isUpdatingTitle}
+                                    className="btn-primary h-9 px-3 rounded-lg text-sm disabled:opacity-50"
+                                >
+                                    {isUpdatingTitle ? t('saving_title') : t('save')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Portal>
             )}
 
             <ConfirmDialog

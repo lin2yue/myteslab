@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getSessionUser } from '@/lib/auth/session'
 import { dbQuery } from '@/lib/db'
 
@@ -35,4 +35,36 @@ export async function updateWrapVisibility(wrapId: string, isPublic: boolean) {
     )
 
     revalidatePath('/profile', 'page')
+}
+
+export async function updateWrapTitle(wrapId: string, title: string) {
+    const user = await getSessionUser()
+    if (!user) {
+        throw new Error('Unauthorized')
+    }
+
+    const normalizedTitle = title.trim()
+    if (!normalizedTitle) {
+        throw new Error('Title is required')
+    }
+    if (normalizedTitle.length > 200) {
+        throw new Error('Title is too long')
+    }
+
+    const { rows, rowCount } = await dbQuery<{ name: string }>(
+        `UPDATE wraps
+         SET name = $3, updated_at = NOW()
+         WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+         RETURNING name`,
+        [wrapId, user.id, normalizedTitle]
+    )
+
+    if (!rowCount) {
+        throw new Error('Wrap not found')
+    }
+
+    revalidatePath('/profile', 'page')
+    revalidateTag('wraps')
+
+    return rows[0]?.name || normalizedTitle
 }
