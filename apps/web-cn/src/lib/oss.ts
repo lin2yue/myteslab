@@ -19,7 +19,8 @@ const getOSSConfig = () => ({
 export async function uploadToOSS(
     buffer: Buffer,
     filename: string,
-    folder: string = 'wraps/ai-generated'
+    folder: string = 'wraps/ai-generated',
+    contentType: string = 'image/png'
 ): Promise<string> {
     // Avoid top-level require to prevent issues during build/initialization
     const OSS = require('ali-oss');
@@ -36,7 +37,7 @@ export async function uploadToOSS(
     try {
         await client.put(ossKey, buffer, {
             headers: {
-                'Content-Type': 'image/png',
+                'Content-Type': contentType,
                 'Cache-Control': 'public, max-age=31536000'
             }
         });

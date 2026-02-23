@@ -25,18 +25,32 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 });
         }
 
-        // 1. Prepare buffer
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const imageMatch = typeof imageBase64 === 'string'
+            ? imageBase64.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i)
+            : null;
+        if (!imageMatch) {
+            return NextResponse.json({ success: false, error: 'Invalid image format' }, { status: 400 });
+        }
+
+        let mimeType = imageMatch[1].toLowerCase();
+        if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
+        const base64Data = imageMatch[2];
         const buffer = Buffer.from(base64Data, 'base64');
+        const extByMime: Record<string, string> = {
+            'image/png': 'png',
+            'image/jpeg': 'jpg',
+            'image/webp': 'webp'
+        };
+        const ext = extByMime[mimeType] || 'png';
 
         // 2. Generate filename
         const hash = crypto.createHash('md5').update(imageBase64).digest('hex').substring(0, 8);
-        const filename = `diy-${user.id.substring(0, 5)}-${hash}-${Date.now()}.png`;
+        const filename = `diy-${user.id.substring(0, 5)}-${hash}-${Date.now()}.${ext}`;
 
         // 3. Upload to OSS
         let savedUrl: string;
         try {
-            savedUrl = await uploadToOSS(buffer, filename, 'wraps/diy');
+            savedUrl = await uploadToOSS(buffer, filename, 'wraps/diy', mimeType);
         } catch (ossErr) {
             console.error('OSS Upload failed:', ossErr);
             return NextResponse.json({ success: false, error: 'Failed to upload to OSS' }, { status: 500 });

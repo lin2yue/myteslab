@@ -81,6 +81,52 @@ function resizeDataUrl(dataUrl: string, width: number, height: number): Promise<
     })
 }
 
+const DIY_SAVE_MAX_PAYLOAD_BYTES = 850 * 1024
+const DIY_SAVE_QUALITY_STEPS = [0.9, 0.82, 0.72]
+
+function convertDataUrlToJpeg(dataUrl: string, quality: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const img = document.createElement('img')
+        img.onload = () => {
+            const width = img.naturalWidth || img.width
+            const height = img.naturalHeight || img.height
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            if (!ctx) {
+                reject(new Error('Failed to create canvas context'))
+                return
+            }
+            // Keep opaque black background, same as DIY editor canvas.
+            ctx.fillStyle = '#000000'
+            ctx.fillRect(0, 0, width, height)
+            ctx.drawImage(img, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/jpeg', quality))
+        }
+        img.onerror = () => reject(new Error('Failed to load image for compression'))
+        img.src = dataUrl
+    })
+}
+
+async function normalizeDiyUploadDataUrl(dataUrl: string): Promise<string> {
+    const estimatePayloadSize = (img: string) =>
+        JSON.stringify({ modelSlug: 'x', imageBase64: img, prompt: 'DIY Sticker' }).length
+
+    if (estimatePayloadSize(dataUrl) <= DIY_SAVE_MAX_PAYLOAD_BYTES) {
+        return dataUrl
+    }
+
+    let compressed = dataUrl
+    for (const quality of DIY_SAVE_QUALITY_STEPS) {
+        compressed = await convertDataUrlToJpeg(dataUrl, quality)
+        if (estimatePayloadSize(compressed) <= DIY_SAVE_MAX_PAYLOAD_BYTES) {
+            return compressed
+        }
+    }
+    return compressed
+}
+
 export default function AIGeneratorMain({
     initialCredits,
     models,
@@ -528,17 +574,40 @@ export default function AIGeneratorMain({
         }
         setIsSaving(true);
         try {
+            if (!dataUrl.startsWith('data:image/')) {
+                throw new Error('贴图数据无效，请重新上传贴纸后再试')
+            }
+            const uploadDataUrl = await normalizeDiyUploadDataUrl(dataUrl)
+            const payload = JSON.stringify({
+                modelSlug: selectedModel,
+                imageBase64: uploadDataUrl,
+                prompt: 'DIY Sticker'
+            })
+
+            if (payload.length > 1024 * 1024) {
+                throw new Error('贴图数据过大，请更换更小图片后重试')
+            }
+
             const res = await fetch('/api/wrap/save-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    modelSlug: selectedModel,
-                    imageBase64: dataUrl,
-                    prompt: 'DIY Sticker'
-                })
+                body: payload
             });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            const rawText = await res.text()
+            let data: { success?: boolean; error?: string; wrapId?: string } | null = null
+            try {
+                data = JSON.parse(rawText) as { success?: boolean; error?: string; wrapId?: string }
+            } catch {
+                if (res.status === 413 || rawText.includes('Request Entity Too Large')) {
+                    throw new Error('贴图数据过大，请更换更小图片后重试')
+                }
+                throw new Error(`服务返回异常响应 (HTTP ${res.status})`)
+            }
+
+            if (!res.ok || !data.success || !data.wrapId) {
+                throw new Error(data.error || `保存失败 (HTTP ${res.status})`)
+            }
+
             setActiveWrapId(data.wrapId);
             fetchHistory();
             return data.wrapId;
@@ -559,7 +628,10 @@ export default function AIGeneratorMain({
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }
-        if (!viewerRef.current) return;
+        if (!viewerRef.current) {
+            alert.error('预览器未准备好，请稍后再试')
+            return
+        }
         if (!currentTexture) {
             alert.warning('当前作品贴图还未就绪，请稍后再发布');
             return;
@@ -567,6 +639,14 @@ export default function AIGeneratorMain({
         if (activeMode === 'diy' && !activeWrapId) {
             alert.warning('请先保存 DIY 作品，再发布');
             return
+        }
+
+        if (activeMode === 'diy' && !activeWrapId) {
+            const savedWrapId = await handleSaveDiy(currentTexture)
+            if (!savedWrapId) {
+                return
+            }
+            setActiveWrapId(savedWrapId)
         }
 
         // 已经发布了就不再操作
