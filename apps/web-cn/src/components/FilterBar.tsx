@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition, useEffect, useMemo, useRef } from 'react'
+import { useTransition, useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from '@/lib/i18n'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import type { Model } from '@/lib/types'
@@ -10,9 +10,10 @@ interface FilterBarProps {
     models: Model[]
     onLoadingChange?: (loading: boolean) => void
     sortBy?: 'latest' | 'popular'
+    recommendedKeywords?: string[]
 }
 
-export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
+export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }: FilterBarProps) {
     const locale = useLocale()
     const t = useTranslations('Index')
     const router = useRouter()
@@ -22,8 +23,11 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
     const pathModel = params?.slug as string || ''
     const actualModel = pathModel || searchParams.get('model') || ''
     const actualSort = (searchParams.get('sort') as 'latest' | 'popular') || 'latest'
+    const actualSearch = (searchParams.get('search') || '').trim()
 
     const [isPending, startTransition] = useTransition()
+    const [searchInput, setSearchInput] = useState(actualSearch)
+    const [isSuggestOpen, setIsSuggestOpen] = useState(false)
     const sortedModels = useMemo(() => sortModelsByPreferredOrder(models), [models])
     const modelMemoryKey = 'wrap_gallery_last_model'
     const hydrationKey = 'has_restored_model_session'
@@ -72,9 +76,15 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
         onLoadingChange?.(isPending)
     }, [isPending, onLoadingChange])
 
-    const updateUrl = (model: string, sort: string) => {
+    // Sync controlled search input with URL state
+    useEffect(() => {
+        setSearchInput(actualSearch)
+    }, [actualSearch])
+
+    const updateUrl = useCallback((model: string, sort: string, search: string) => {
         const queryParams = new URLSearchParams()
         if (sort && sort !== 'latest') queryParams.set('sort', sort)
+        if (search) queryParams.set('search', search)
 
         const queryString = queryParams.toString()
         const suffix = queryString ? `?${queryString}` : ''
@@ -84,19 +94,46 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
         } else {
             router.push(`/${suffix}`)
         }
-    }
+    }, [router])
+
+    // Debounced keyword search
+    useEffect(() => {
+        const normalizedInput = searchInput.trim()
+        if (normalizedInput === actualSearch) return
+
+        const timer = setTimeout(() => {
+            startTransition(() => {
+                updateUrl(actualModel, actualSort, normalizedInput)
+            })
+        }, 400)
+
+        return () => clearTimeout(timer)
+    }, [searchInput, actualSearch, actualModel, actualSort, startTransition, updateUrl])
 
     const handleModelChange = (value: string) => {
         startTransition(() => {
-            updateUrl(value, actualSort)
+            updateUrl(value, actualSort, searchInput.trim())
         })
     }
 
     const handleSortChange = (value: 'latest' | 'popular') => {
         startTransition(() => {
-            updateUrl(actualModel, value)
+            updateUrl(actualModel, value, searchInput.trim())
         })
     }
+
+    const handleSelectKeyword = (keyword: string) => {
+        setSearchInput(keyword)
+        setIsSuggestOpen(false)
+        startTransition(() => {
+            updateUrl(actualModel, actualSort, keyword.trim())
+        })
+    }
+
+    const normalizedTyped = searchInput.trim().toLowerCase()
+    const suggestionKeywords = recommendedKeywords
+        .filter((keyword) => keyword && (!normalizedTyped || keyword.toLowerCase().includes(normalizedTyped)))
+        .slice(0, 8)
 
     return (
         <div className="space-y-4">
@@ -134,35 +171,89 @@ export function FilterBar({ models, onLoadingChange }: FilterBarProps) {
                 </div>
             </div>
 
-            {/* Sort Filter */}
+            {/* Sort + Search */}
             <div className="w-full">
-                <div className="inline-flex items-center rounded-full p-1 border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10">
-                    <button
-                        onClick={() => handleSortChange('latest')}
-                        className={`
-                            px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200
-                            ${actualSort === 'latest'
-                                ? 'bg-white text-gray-900 border border-black/10 shadow-sm dark:bg-zinc-800 dark:text-white dark:border-white/15'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                            }
-                        `}
-                    >
-                        {t('sort_latest')}
-                    </button>
-                    <button
-                        onClick={() => handleSortChange('popular')}
-                        className={`
-                            px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200
-                            ${actualSort === 'popular'
-                                ? 'bg-white text-gray-900 border border-black/10 shadow-sm dark:bg-zinc-800 dark:text-white dark:border-white/15'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                            }
-                        `}
-                    >
-                        {t('sort_popular')}
-                    </button>
+                <div className="flex items-center gap-2">
+                    <div className="shrink-0 inline-flex items-center rounded-full p-1 border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10">
+                        <button
+                            onClick={() => handleSortChange('latest')}
+                            className={`
+                                px-2.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all duration-200
+                                ${actualSort === 'latest'
+                                    ? 'bg-white text-gray-900 border border-black/10 shadow-sm dark:bg-zinc-800 dark:text-white dark:border-white/15'
+                                    : 'text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }
+                            `}
+                        >
+                            {t('sort_latest')}
+                        </button>
+                        <button
+                            onClick={() => handleSortChange('popular')}
+                            className={`
+                                px-2.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all duration-200
+                                ${actualSort === 'popular'
+                                    ? 'bg-white text-gray-900 border border-black/10 shadow-sm dark:bg-zinc-800 dark:text-white dark:border-white/15'
+                                    : 'text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }
+                            `}
+                        >
+                            {t('sort_popular')}
+                        </button>
+                    </div>
+
+                    <div className="relative w-[46vw] max-w-[220px] min-w-[136px]">
+                        <div className="flex items-center rounded-xl border border-black/10 dark:border-white/15 bg-white/85 dark:bg-zinc-900/45 px-3 h-11">
+                            <input
+                                type="text"
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
+                                onFocus={() => setIsSuggestOpen(true)}
+                                onBlur={() => setTimeout(() => setIsSuggestOpen(false), 120)}
+                                placeholder={locale === 'zh' ? '搜索贴图' : 'Search'}
+                                className="flex-1 min-w-0 bg-transparent outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+                            />
+                            {searchInput && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearchInput('')
+                                        startTransition(() => {
+                                            updateUrl(actualModel, actualSort, '')
+                                        })
+                                    }}
+                                    className="text-sm leading-none text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white px-1 py-1"
+                                    aria-label={locale === 'zh' ? '清空搜索' : 'Clear search'}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+
+                        {isSuggestOpen && suggestionKeywords.length > 0 && (
+                            <div className="absolute top-[calc(100%+6px)] right-0 z-30 w-full rounded-xl border border-black/10 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur shadow-lg p-2">
+                                <p className="text-[11px] text-gray-500 dark:text-zinc-400 px-1.5 pb-1">
+                                    {locale === 'zh' ? '热门推荐' : 'Trending'}
+                                </p>
+                                <div className="flex flex-col gap-1">
+                                    {suggestionKeywords.map((keyword) => (
+                                        <button
+                                            key={keyword}
+                                            type="button"
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => handleSelectKeyword(keyword)}
+                                            className="text-left text-xs px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-zinc-200 truncate"
+                                            title={keyword}
+                                        >
+                                            {keyword}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
         </div>
     )
 }

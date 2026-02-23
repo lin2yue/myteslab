@@ -172,6 +172,8 @@ CREATE INDEX IF NOT EXISTS idx_wraps_created_at ON wraps(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wraps_is_active ON wraps(is_active);
 CREATE INDEX IF NOT EXISTS idx_wraps_name_search ON wraps USING gin (name gin_trgm_ops); -- For fuzzy search if pg_trgm is enabled, otherwise use normal index
 CREATE INDEX IF NOT EXISTS idx_wraps_name_plain ON wraps(name);
+CREATE INDEX IF NOT EXISTS idx_wraps_prompt_search ON wraps USING gin (prompt gin_trgm_ops); -- For fuzzy search if pg_trgm is enabled, otherwise use normal index
+CREATE INDEX IF NOT EXISTS idx_wraps_prompt_plain ON wraps(prompt);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_idempotency ON generation_tasks(idempotency_key);
 

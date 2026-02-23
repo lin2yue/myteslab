@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
-import { getWraps, getModels } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
 import { Link } from '@/i18n/routing'
 import { notFound } from 'next/navigation'
 
@@ -73,15 +73,17 @@ export default async function ModelPage({
     searchParams
 }: {
     params: Promise<{ locale: string, slug: string }>
-    searchParams: Promise<{ sort?: string }>
+    searchParams: Promise<{ sort?: string, search?: string }>
 }) {
     const { locale, slug } = await params
-    const { sort } = await searchParams
+    const { sort, search } = await searchParams
     const sortBy = (sort as 'latest' | 'popular') || 'latest'
+    const searchQuery = (search || '').trim()
 
-    const [wraps, models] = await Promise.all([
-        getWraps(slug, 1, 12, sortBy),
+    const [wraps, models, recommendedKeywords] = await Promise.all([
+        getWraps(slug, 1, 12, sortBy, searchQuery),
         getModels(),
+        getWrapKeywordSuggestions(slug, locale === 'en' ? 'en' : 'zh'),
     ])
 
     const currentModel = models.find(m => m.slug === slug)
@@ -116,8 +118,8 @@ export default async function ModelPage({
                     </p>
                 </section>
 
-                <FilterBarWrapper models={models} sortBy={sortBy}>
-                    <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} />
+                <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
+                    <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
             </main>
         </div>

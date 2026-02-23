@@ -1,7 +1,7 @@
 import { getTranslations } from '@/lib/i18n'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
-import { getWraps, getModels } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
 import { getModelDisplayName } from '@/lib/model-display'
 
 export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提升首页响应速度
@@ -9,16 +9,18 @@ export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提
 export default async function HomePage({
     searchParams,
 }: {
-    searchParams: Promise<{ model?: string, sort?: string }>
+    searchParams: Promise<{ model?: string, sort?: string, search?: string }>
 }) {
     const t = await getTranslations('Index')
-    const { model, sort } = await searchParams
+    const { model, sort, search } = await searchParams
 
     const sortBy = (sort as 'latest' | 'popular') || 'latest'
+    const searchQuery = (search || '').trim()
 
-    const [wraps, models] = await Promise.all([
-        getWraps(model, 1, 15, sortBy),
+    const [wraps, models, recommendedKeywords] = await Promise.all([
+        getWraps(model, 1, 15, sortBy, searchQuery),
         getModels(),
+        getWrapKeywordSuggestions(model, 'zh'),
     ])
 
     return (
@@ -40,8 +42,8 @@ export default async function HomePage({
                     </p>
                 </section>
 
-                <FilterBarWrapper models={models} sortBy={sortBy}>
-                    <WrapList initialWraps={wraps} model={model} locale="zh" sortBy={sortBy} />
+                <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
+                    <WrapList initialWraps={wraps} model={model} locale="zh" sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
             </main>
 
@@ -73,7 +75,7 @@ export default async function HomePage({
                             '@type': 'SearchAction',
                             target: {
                                 '@type': 'EntryPoint',
-                                urlTemplate: `https://tewan.club?model={search_term_string}`
+                                urlTemplate: `https://tewan.club?search={search_term_string}`
                             },
                             'query-input': 'required name=search_term_string'
                         }

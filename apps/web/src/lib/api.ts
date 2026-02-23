@@ -121,16 +121,96 @@ function normalizeWrap(w: any): Wrap {
     } as Wrap
 }
 
+function normalizeSearchQuery(searchQuery?: string): string {
+    return (searchQuery || '').trim().replace(/\s+/g, ' ')
+}
+
+function toSupabaseIlikePattern(searchQuery: string): string {
+    // Supabase filter syntax uses commas/parentheses as operators; strip them from user input.
+    const sanitized = searchQuery.replace(/[(),]/g, ' ').replace(/%/g, ' ').replace(/\s+/g, ' ').trim()
+    if (!sanitized) return ''
+    return `%${sanitized}%`
+}
+
+interface WrapKeywordRow {
+    name: string | null
+    name_en: string | null
+}
+
+export async function getWrapKeywordSuggestions(
+    modelSlug?: string,
+    locale: 'zh' | 'en' = 'zh',
+    limit: number = 8
+): Promise<string[]> {
+    try {
+        return await unstable_cache(
+            () => fetchWrapKeywordSuggestionsInternal(modelSlug, locale, limit),
+            ['wrap-keywords-v1', modelSlug || 'all', locale, String(limit)],
+            { revalidate: 300, tags: ['wraps'] }
+        )()
+    } catch (error) {
+        console.error('获取推荐关键词异常:', error)
+        return []
+    }
+}
+
+async function fetchWrapKeywordSuggestionsInternal(
+    modelSlug: string | undefined,
+    locale: 'zh' | 'en',
+    limit: number
+): Promise<string[]> {
+    try {
+        let query = publicSupabase
+            .from('wraps')
+            .select('name, name_en')
+            .eq('is_public', true)
+            .eq('is_active', true)
+            .order('download_count', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(Math.max(limit * 4, 24))
+
+        if (modelSlug) query = query.eq('model_slug', modelSlug)
+
+        const { data, error } = await query
+        if (error || !data) return []
+
+        const rows = data as WrapKeywordRow[]
+        const seen = new Set<string>()
+        const keywords: string[] = []
+
+        for (const row of rows) {
+            const text = (locale === 'en' ? (row.name_en || row.name || '') : (row.name || row.name_en || '')).trim()
+            if (!text) continue
+            if (seen.has(text)) continue
+            seen.add(text)
+            keywords.push(text)
+            if (keywords.length >= limit) break
+        }
+
+        return keywords
+    } catch (err) {
+        console.error('fetchWrapKeywordSuggestionsInternal error:', err)
+        return []
+    }
+}
+
 export async function getWraps(
     modelSlug?: string,
     page: number = 1,
     pageSize: number = 12,
-    sortBy: 'latest' | 'popular' = 'latest'
+    sortBy: 'latest' | 'popular' = 'latest',
+    searchQuery?: string
 ): Promise<Wrap[]> {
+    const normalizedSearchQuery = normalizeSearchQuery(searchQuery)
+
     try {
+        if (normalizedSearchQuery) {
+            return await fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery)
+        }
+
         return await unstable_cache(
-            () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy),
-            ['wraps-v9', modelSlug || 'all', String(page), sortBy],
+            () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
+            ['wraps-v10', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -143,7 +223,8 @@ async function fetchWrapsInternal(
     modelSlug: string | undefined,
     page: number,
     pageSize: number,
-    sortBy: 'latest' | 'popular'
+    sortBy: 'latest' | 'popular',
+    searchQuery: string = ''
 ): Promise<Wrap[]> {
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
@@ -174,6 +255,12 @@ async function fetchWrapsInternal(
             .eq('is_active', true)
 
         if (modelSlug) query = query.eq('model_slug', modelSlug)
+        if (searchQuery) {
+            const pattern = toSupabaseIlikePattern(searchQuery)
+            if (pattern) {
+                query = query.or(`name.ilike.${pattern},name_en.ilike.${pattern},prompt.ilike.${pattern}`)
+            }
+        }
 
         if (sortBy === 'popular') {
             query = query.order('download_count', { ascending: false }).order('created_at', { ascending: false })
