@@ -41,6 +41,7 @@ export default async function CreatorDashboardPage() {
         monthlyRes,
         totalRes,
         wrapsRes,
+        totalsRes,
         trendRes,
         profileRes,
     ] = await Promise.all([
@@ -69,6 +70,16 @@ export default async function CreatorDashboardPage() {
              LIMIT 10`,
             [userId]
         ),
+        dbQuery<{ published_count: string; total_downloads: string }>(
+            `SELECT
+                COUNT(*)::int AS published_count,
+                COALESCE(SUM(COALESCE(w.user_download_count, w.download_count, 0)), 0)::int AS total_downloads
+             FROM wraps w
+             WHERE w.user_id = $1
+               AND w.is_active = true
+               AND w.deleted_at IS NULL`,
+            [userId]
+        ),
         dbQuery<{ day: string; cnt: string; credits: string }>(
             `SELECT DATE(wp.created_at)::text AS day, COUNT(*)::int AS cnt, COALESCE(SUM(wp.creator_credits_earned), 0)::int AS credits
              FROM wrap_purchases wp
@@ -88,8 +99,8 @@ export default async function CreatorDashboardPage() {
     const monthlyEarning = Number(monthlyRes.rows[0]?.monthly_earning || 0);
     const totalEarning = Number(totalRes.rows[0]?.total_earning || 0);
     const wraps = wrapsRes.rows;
-    const publishedCount = wraps.length;
-    const totalDownloads = wraps.reduce((sum, w) => sum + Number(w.download_count || 0), 0);
+    const publishedCount = Number(totalsRes.rows[0]?.published_count || 0);
+    const totalDownloads = Number(totalsRes.rows[0]?.total_downloads || 0);
     const trendData: TrendDay[] = trendRes.rows.map((r) => ({
         day: r.day,
         cnt: Number(r.cnt),
