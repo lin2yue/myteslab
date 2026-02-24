@@ -11,10 +11,11 @@ interface DownloadButtonProps {
     wrapName: string
     wrapSlug: string
     locale: string
-    isLoggedIn?: boolean // Optional, if not provided will check internally or just fail gracefully
+    isLoggedIn?: boolean
+    priceCredits?: number
 }
 
-export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn }: DownloadButtonProps) {
+export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn, priceCredits = 0 }: DownloadButtonProps) {
     const [isDownloading, setIsDownloading] = useState(false)
     const t = useTranslations('Common')
     const router = useRouter()
@@ -32,23 +33,44 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn 
         setIsDownloading(true)
 
         try {
+            const response = await fetch(`/api/download/${wrapId}`, { method: 'GET' })
+
+            if (response.status === 402) {
+                const data = await response.json().catch(() => ({}))
+                const needCredits = Number(data?.needCredits || priceCredits || 0)
+                const hasPaidBalance = Number(data?.hasPaidBalance || 0)
+                const msg = locale === 'zh'
+                    ? `该作品为付费下载\n需要：${needCredits} 积分\n当前充值积分：${hasPaidBalance} 积分\n\n是否前往充值页？`
+                    : `This wrap requires paid credits.\nNeed: ${needCredits} credits\nCurrent paid balance: ${hasPaidBalance} credits\n\nGo to pricing page?`
+                if (window.confirm(msg)) {
+                    router.push('/pricing')
+                }
+                setIsDownloading(false)
+                return
+            }
+
+            if (!response.ok) {
+                throw new Error(`Download failed: ${response.status}`)
+            }
+
             // 追踪下载事件到 GA4
             trackDownload(wrapId, wrapName, wrapSlug)
 
-            // 创建一个隐藏的链接来触发下载
+            const blob = await response.blob()
+            const objectUrl = window.URL.createObjectURL(blob)
             const link = document.createElement('a')
-            link.href = `/api/download/${wrapId}`
-            link.download = '' // 让浏览器使用服务器指定的文件名
+            link.href = objectUrl
+            link.download = `${wrapSlug || wrapId}.png`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
+            window.URL.revokeObjectURL(objectUrl)
 
-            // 等待一段时间后重置状态（给用户视觉反馈）
-            setTimeout(() => {
-                setIsDownloading(false)
-            }, 2000)
+            setIsDownloading(false)
         } catch (error) {
             console.error('下载失败:', error)
+            const msg = locale === 'zh' ? '下载失败，请稍后重试' : 'Download failed, please try again later'
+            window.alert(msg)
             setIsDownloading(false)
         }
     }
@@ -81,7 +103,9 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn 
                 </span>
             </Button>
             <p className="text-xs text-gray-500 text-center mt-2">
-                {t('free_download')}
+                {priceCredits > 0
+                    ? (locale === 'zh' ? `付费下载：${priceCredits} 积分（使用充值积分）` : `Paid download: ${priceCredits} credits`)
+                    : t('free_download')}
             </p>
         </div>
     )

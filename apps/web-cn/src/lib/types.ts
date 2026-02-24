@@ -38,6 +38,7 @@ export interface Wrap {
 
     download_count: number
     user_download_count?: number
+    price_credits?: number
     is_public: boolean
     is_active: boolean
     created_at: string

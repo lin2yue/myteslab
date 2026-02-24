@@ -54,6 +54,15 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
                         </span>
                     </div>
 
+                    {/* 付费角标 */}
+                    {Number(wrap.price_credits || 0) > 0 && (
+                        <div className="absolute top-3 right-3">
+                            <span className="px-2.5 py-1 bg-amber-500/95 backdrop-blur-md text-white text-[10px] font-bold rounded-full border border-amber-300/40">
+                                {wrap.price_credits}积分
+                            </span>
+                        </div>
+                    )}
+
                     {/* 悬浮遮罩 - 增强质感 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 

@@ -35,6 +35,7 @@ export async function updateWrapVisibility(wrapId: string, isPublic: boolean) {
     )
 
     revalidatePath('/profile', 'page')
+    revalidateTag('wraps', 'default')
 }
 
 export async function updateWrapPrice(wrapId: string, priceCredits: number) {
@@ -60,6 +61,7 @@ export async function updateWrapPrice(wrapId: string, priceCredits: number) {
     }
 
     revalidatePath('/profile', 'page')
+    revalidateTag('wraps', 'default')
 }
 
 export async function updateWrapTitle(wrapId: string, title: string) {

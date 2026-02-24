@@ -144,6 +144,7 @@ export default async function WrapDetailPage({
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
     const description = locale === 'en' ? wrap.description_en || wrap.description : wrap.description
     const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0
+    const priceCredits = Number(wrap.price_credits || 0)
     const backHref = from === 'all' ? '/' : (wrap.model_slug ? `/models/${wrap.model_slug}` : '/')
     const isOwner = !!sessionUser && !!wrap.user_id && sessionUser.id === wrap.user_id
 
@@ -237,8 +238,13 @@ export default async function WrapDetailPage({
                         <div className="flex flex-col gap-6">
                             {/* 标题，标签与作者 */}
                             <div className="space-y-3">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <CategoryBadge category={wrap.category} />
+                                    {priceCredits > 0 && (
+                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50">
+                                            付费 · {priceCredits} 积分
+                                        </span>
+                                    )}
                                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full border border-black/5 dark:border-white/10">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -329,6 +335,7 @@ export default async function WrapDetailPage({
                                     wrapSlug={wrap.slug || wrap.id}
                                     locale={locale}
                                     isLoggedIn={isLoggedIn}
+                                    priceCredits={priceCredits}
                                 />
                             </div>
 
