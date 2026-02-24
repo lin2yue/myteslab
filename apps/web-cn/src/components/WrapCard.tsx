@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { useLocale } from '@/lib/i18n'
 import Link from 'next/link'
+import { CheckCircle2 } from 'lucide-react'
 import type { Wrap } from '@/lib/types'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
@@ -80,27 +81,56 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
 
                     <div className="mt-auto flex items-center justify-between gap-3">
                         {/* 作者信息 */}
-                        <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-gray-100">
-                                {wrap.author_avatar_url ? (
-                                    <Image
-                                        src={wrap.author_avatar_url}
-                                        alt={wrap.author_name || 'User'}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                                        <span className="text-[10px] text-gray-500 font-bold">
-                                            {(wrap.author_name || 'U').charAt(0).toUpperCase()}
-                                        </span>
-                                    </div>
-                                )}
+                        {wrap.author_role === 'creator' && wrap.user_id ? (
+                            <Link
+                                href={`/creator/${wrap.user_id}`}
+                                className="flex items-center gap-2 min-w-0 group/author"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-amber-300 dark:ring-amber-700">
+                                    {wrap.author_avatar_url ? (
+                                        <Image
+                                            src={wrap.author_avatar_url}
+                                            alt={wrap.author_name || 'Creator'}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-200 to-amber-300">
+                                            <span className="text-[10px] text-amber-700 font-bold">
+                                                {(wrap.author_name || 'C').charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate group-hover/author:text-amber-600 dark:group-hover/author:text-amber-400 transition-colors">
+                                    {wrap.author_name}
+                                </span>
+                                <CheckCircle2 className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                            </Link>
+                        ) : (
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-gray-100">
+                                    {wrap.author_avatar_url ? (
+                                        <Image
+                                            src={wrap.author_avatar_url}
+                                            alt={wrap.author_name || 'User'}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                                            <span className="text-[10px] text-gray-500 font-bold">
+                                                {(wrap.author_name || 'U').charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate">
+                                    {wrap.author_name}
+                                </span>
                             </div>
-                            <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate">
-                                {wrap.author_name}
-                            </span>
-                        </div>
+                        )}
 
                         {/* 下载量统计 */}
                         <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md">

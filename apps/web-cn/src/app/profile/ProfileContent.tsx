@@ -6,7 +6,7 @@ import { deleteGeneratedWrap, updateWrapVisibility, updateWrapTitle } from '@/li
 import { deleteUserAccount } from '@/lib/auth-actions';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
-import PublishModal from '@/components/publish/PublishModal';
+import PublishModal, { type MarketplaceOptions } from '@/components/publish/PublishModal';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -48,11 +48,12 @@ interface ProfileContentProps {
     generatedWraps: Wrap[];
     downloads: DownloadItem[];
     wrapModels: ModelConfig[]; // Added wrapModels
+    isCreator?: boolean;
 }
 
 const MAX_WRAP_TITLE_LENGTH = 200;
 
-export default function ProfileContent({ generatedWraps, downloads, wrapModels }: ProfileContentProps) {
+export default function ProfileContent({ generatedWraps, downloads, wrapModels, isCreator = false }: ProfileContentProps) {
     const t = useTranslations('Profile');
     const tCommon = useTranslations('Common');
     const alert = useAlert();
@@ -173,7 +174,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
         }
     };
 
-    const confirmPublish = async (previewImageBase64: string) => {
+    const confirmPublish = async (previewImageBase64: string, marketplaceOptions?: MarketplaceOptions) => {
         if (!activePublishWrap) return;
 
         setIsPublishing(true);
@@ -213,7 +214,8 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     wrapId: activePublishWrap.id,
-                    ossKey: ossKey
+                    ossKey: ossKey,
+                    marketplaceOptions
                 })
             });
 
@@ -502,6 +504,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                     wheelUrl={getWheelUrl(activePublishWrap.model_slug)}
                     textureUrl={activePublishWrap.texture_url}
                     isPublishing={isPublishing}
+                    isCreator={isCreator}
                 />
             )}
 

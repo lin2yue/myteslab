@@ -22,7 +22,7 @@ export async function GET(
 
         // 1. 获取贴图信息 - 从合并后的 wraps 表拉取
         const { rows } = await dbQuery(
-            `SELECT id, texture_url, slug, user_id, is_active, is_public, deleted_at 
+            `SELECT id, texture_url, slug, user_id, is_active, is_public, deleted_at, price_credits
              FROM wraps WHERE id = $1 LIMIT 1`,
             [id]
         )
@@ -65,6 +65,101 @@ export async function GET(
 
         if (!isOwner && !isPubliclyAvailable) {
             return NextResponse.json({ error: '无权下载此私有贴图' }, { status: 403 });
+        }
+
+        // 付费 wrap 购买检查
+        const priceCredits = Number(wrap.price_credits || 0);
+        if (!isOwner && priceCredits > 0) {
+            // 检查是否已购买
+            const { rows: purchaseRows } = await dbQuery(
+                `SELECT id FROM wrap_purchases WHERE buyer_id = $1 AND wrap_id = $2 LIMIT 1`,
+                [user.id, id]
+            );
+            const alreadyPurchased = purchaseRows.length > 0;
+
+            if (!alreadyPurchased) {
+                // 检查 paid_balance 是否足够
+                const { rows: creditRows } = await dbQuery(
+                    `SELECT paid_balance FROM user_credits WHERE user_id = $1 LIMIT 1`,
+                    [user.id]
+                );
+                const userPaidBalance = Number(creditRows[0]?.paid_balance || 0);
+
+                if (userPaidBalance < priceCredits) {
+                    return NextResponse.json({
+                        error: '积分不足，付费作品需使用充值积分',
+                        needCredits: priceCredits,
+                        hasPaidBalance: userPaidBalance
+                    }, { status: 402 });
+                }
+
+                // 事务内完成购买
+                const purchaseClient = await db().connect();
+                try {
+                    await purchaseClient.query('BEGIN');
+
+                    const creatorShare = Math.floor(priceCredits * 0.7);
+
+                    // 扣买家 paid_balance 和 balance
+                    await purchaseClient.query(
+                        `UPDATE user_credits
+                         SET balance = balance - $2,
+                             paid_balance = paid_balance - $2,
+                             total_spent = total_spent + $2,
+                             updated_at = NOW()
+                         WHERE user_id = $1`,
+                        [user.id, priceCredits]
+                    );
+
+                    // 创作者增加 paid_balance + balance + total_earned
+                    await purchaseClient.query(
+                        `INSERT INTO user_credits (user_id, balance, total_earned, paid_balance, updated_at)
+                         VALUES ($1, $2, $2, $2, NOW())
+                         ON CONFLICT (user_id)
+                         DO UPDATE SET
+                            balance = user_credits.balance + $2,
+                            total_earned = user_credits.total_earned + $2,
+                            paid_balance = user_credits.paid_balance + $2,
+                            updated_at = NOW()`,
+                        [wrap.user_id, creatorShare]
+                    );
+
+                    // 插入购买记录
+                    await purchaseClient.query(
+                        `INSERT INTO wrap_purchases (buyer_id, wrap_id, credits_paid, creator_credits_earned)
+                         VALUES ($1, $2, $3, $4)`,
+                        [user.id, id, priceCredits, creatorShare]
+                    );
+
+                    // 买家 credit_ledger
+                    await purchaseClient.query(
+                        `INSERT INTO credit_ledger (user_id, amount, type, description, metadata, created_at)
+                         VALUES ($1, $2, 'marketplace_purchase', $3, $4::jsonb, NOW())`,
+                        [user.id, -priceCredits, `购买付费贴图`, JSON.stringify({ wrap_id: id, creator_id: wrap.user_id })]
+                    );
+
+                    // 创作者 credit_ledger
+                    await purchaseClient.query(
+                        `INSERT INTO credit_ledger (user_id, amount, type, description, metadata, created_at)
+                         VALUES ($1, $2, 'creator_earning', $3, $4::jsonb, NOW())`,
+                        [wrap.user_id, creatorShare, `贴图销售收益`, JSON.stringify({ wrap_id: id, buyer_id: user.id })]
+                    );
+
+                    // 更新 wraps.creator_earnings
+                    await purchaseClient.query(
+                        `UPDATE wraps SET creator_earnings = creator_earnings + $2 WHERE id = $1`,
+                        [id, creatorShare]
+                    );
+
+                    await purchaseClient.query('COMMIT');
+                } catch (purchaseErr) {
+                    await purchaseClient.query('ROLLBACK');
+                    console.error('[download] marketplace purchase failed:', purchaseErr);
+                    return NextResponse.json({ error: '购买失败，请重试' }, { status: 500 });
+                } finally {
+                    purchaseClient.release();
+                }
+            }
         }
 
         const wrapData = {
@@ -299,12 +394,13 @@ async function applyDownloadMilestoneRewardIfNeeded(
     const maxMilestone = createdGrants.reduce((max, grant) => Math.max(max, grant.milestone), 0);
 
     await client.query(
-        `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
-         VALUES ($1, $2, $2, 0, NOW())
+        `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, gift_balance, updated_at)
+         VALUES ($1, $2, $2, 0, $2, NOW())
          ON CONFLICT (user_id)
          DO UPDATE SET
             balance = user_credits.balance + $2,
             total_earned = user_credits.total_earned + $2,
+            gift_balance = user_credits.gift_balance + $2,
             updated_at = NOW()`,
         [params.ownerId, totalRewardCredits]
     );
