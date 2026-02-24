@@ -4,6 +4,15 @@ import type { Wrap, Model } from '@/lib/types'
 import { DEFAULT_MODELS } from '@/config/models'
 
 
+export type WrapSortBy = 'recommended' | 'popular' | 'latest'
+
+const RECOMMENDED_MIN_POOL_SIZE = 180
+const RECOMMENDED_MAX_POOL_SIZE = 720
+const RECOMMENDED_POOL_MULTIPLIER = 8
+const RECOMMENDED_POPULAR_WEIGHT = 0.7
+const RECOMMENDED_FRESH_WEIGHT = 0.3
+const RECOMMENDED_FRESH_DECAY_HOURS = 72
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -132,6 +141,41 @@ function toSupabaseIlikePattern(searchQuery: string): string {
     return `%${sanitized}%`
 }
 
+function getWrapBaseHeat(row: any): number {
+    const value = Number(row?.user_download_count ?? row?.download_count ?? 0)
+    return Number.isFinite(value) && value > 0 ? value : 0
+}
+
+function getWrapCreatedAtMs(row: any): number {
+    const parsed = Date.parse(String(row?.created_at || ''))
+    return Number.isFinite(parsed) ? parsed : 0
+}
+
+function getWrapAgeHours(row: any): number {
+    const createdAtMs = getWrapCreatedAtMs(row)
+    if (!createdAtMs) return 24 * 365
+    const ageMs = Date.now() - createdAtMs
+    if (!Number.isFinite(ageMs) || ageMs < 0) return 0
+    return ageMs / (1000 * 60 * 60)
+}
+
+function getRecommendedScore(row: any): number {
+    const heat = getWrapBaseHeat(row)
+    const popularPart = Math.log1p(heat)
+    const freshPart = Math.exp(-getWrapAgeHours(row) / RECOMMENDED_FRESH_DECAY_HOURS)
+    return (RECOMMENDED_POPULAR_WEIGHT * popularPart) + (RECOMMENDED_FRESH_WEIGHT * freshPart)
+}
+
+function dedupeWrapRows(rows: any[]): any[] {
+    const deduped = new Map<string, any>()
+    for (const row of rows) {
+        const id = row?.id ? String(row.id) : ''
+        if (!id || deduped.has(id)) continue
+        deduped.set(id, row)
+    }
+    return Array.from(deduped.values())
+}
+
 interface WrapKeywordRow {
     name: string | null
     name_en: string | null
@@ -198,7 +242,7 @@ export async function getWraps(
     modelSlug?: string,
     page: number = 1,
     pageSize: number = 12,
-    sortBy: 'latest' | 'popular' = 'latest',
+    sortBy: WrapSortBy = 'latest',
     searchQuery?: string
 ): Promise<Wrap[]> {
     const normalizedSearchQuery = normalizeSearchQuery(searchQuery)
@@ -223,53 +267,93 @@ async function fetchWrapsInternal(
     modelSlug: string | undefined,
     page: number,
     pageSize: number,
-    sortBy: 'latest' | 'popular',
+    sortBy: WrapSortBy,
     searchQuery: string = ''
 ): Promise<Wrap[]> {
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
 
     try {
-        // 使用 Supabase Join 一次性查出作品及作者资料
-        // 列表页排除 reference_images 以控制缓存体积
-        let query = publicSupabase
-            .from('wraps')
-            .select(`
-                id, 
-                slug, 
-                name, 
-                name_en,
-                prompt, 
-                category, 
-                texture_url,
-                preview_url, 
-                model_slug, 
-                user_id, 
-                download_count, 
-                is_public, 
-                is_active, 
-                created_at, 
-                profiles(id, display_name, avatar_url)
-            `)
-            .eq('is_public', true)
-            .eq('is_active', true)
+        const pattern = searchQuery ? toSupabaseIlikePattern(searchQuery) : ''
+        const selectFields = `
+            id, 
+            slug, 
+            name, 
+            name_en,
+            prompt, 
+            category, 
+            texture_url,
+            preview_url, 
+            model_slug, 
+            user_id, 
+            download_count, 
+            user_download_count,
+            is_public, 
+            is_active, 
+            created_at, 
+            profiles(id, display_name, avatar_url)
+        `
 
-        if (modelSlug) query = query.eq('model_slug', modelSlug)
-        if (searchQuery) {
-            const pattern = toSupabaseIlikePattern(searchQuery)
+        const buildBaseQuery = () => {
+            let baseQuery = publicSupabase
+                .from('wraps')
+                .select(selectFields)
+                .eq('is_public', true)
+                .eq('is_active', true)
+
+            if (modelSlug) baseQuery = baseQuery.eq('model_slug', modelSlug)
             if (pattern) {
-                query = query.or(`name.ilike.${pattern},name_en.ilike.${pattern},prompt.ilike.${pattern}`)
+                baseQuery = baseQuery.or(`name.ilike.${pattern},name_en.ilike.${pattern},prompt.ilike.${pattern}`)
             }
+            return baseQuery
         }
 
-        if (sortBy === 'popular') {
-            query = query.order('download_count', { ascending: false }).order('created_at', { ascending: false })
+        let rawWraps: any[] | null = null
+        if (sortBy === 'recommended') {
+            const candidateSize = Math.min(
+                RECOMMENDED_MAX_POOL_SIZE,
+                Math.max((to + 1) * RECOMMENDED_POOL_MULTIPLIER, RECOMMENDED_MIN_POOL_SIZE)
+            )
+
+            const [popularResult, latestResult] = await Promise.all([
+                buildBaseQuery()
+                    .order('download_count', { ascending: false })
+                    .order('created_at', { ascending: false })
+                    .range(0, candidateSize - 1),
+                buildBaseQuery()
+                    .order('created_at', { ascending: false })
+                    .range(0, candidateSize - 1),
+            ])
+
+            if (popularResult.error || latestResult.error) return []
+
+            const merged = dedupeWrapRows([...(popularResult.data || []), ...(latestResult.data || [])])
+            merged.sort((a, b) => {
+                const scoreDiff = getRecommendedScore(b) - getRecommendedScore(a)
+                if (Math.abs(scoreDiff) > Number.EPSILON) return scoreDiff
+
+                const heatDiff = getWrapBaseHeat(b) - getWrapBaseHeat(a)
+                if (heatDiff !== 0) return heatDiff
+
+                const createdAtDiff = getWrapCreatedAtMs(b) - getWrapCreatedAtMs(a)
+                if (createdAtDiff !== 0) return createdAtDiff
+
+                return String(b?.id || '').localeCompare(String(a?.id || ''))
+            })
+            rawWraps = merged.slice(from, to + 1)
         } else {
-            query = query.order('created_at', { ascending: false })
-        }
+            let query = buildBaseQuery()
+            if (sortBy === 'popular') {
+                query = query.order('download_count', { ascending: false }).order('created_at', { ascending: false })
+            } else {
+                query = query.order('created_at', { ascending: false })
+            }
 
-        const { data: rawWraps, error } = await query.range(from, to)
-        if (error || !rawWraps) return []
+            const { data, error } = await query.range(from, to)
+            if (error || !data) return []
+            rawWraps = data
+        }
+        if (!rawWraps) return []
 
         const normalized = rawWraps.map(w => normalizeWrap(w))
         // 注入车型名称

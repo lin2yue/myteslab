@@ -15,8 +15,9 @@
       "one_click_download": "Free Download",
       "one_click_download_desc": "Directly get high-definition texture files for free installation"
     },
-    "sort_latest": "Latest",
+    "sort_recommended": "Recommended",
     "sort_popular": "Popular",
+    "sort_latest": "Latest",
     "view_all": "View All"
   },
   "Common": {

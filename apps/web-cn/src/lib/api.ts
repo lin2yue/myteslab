@@ -4,6 +4,8 @@ import { DEFAULT_MODELS } from '@/config/models'
 import { dbQuery } from '@/lib/db'
 import { getSessionUser } from '@/lib/auth/session'
 
+export type WrapSortBy = 'recommended' | 'popular' | 'latest'
+
 /**
  * 注入车型信息到作品对象中
  */
@@ -175,7 +177,7 @@ export async function getWraps(
     modelSlug?: string,
     page: number = 1,
     pageSize: number = 12,
-    sortBy: 'latest' | 'popular' = 'latest',
+    sortBy: WrapSortBy = 'latest',
     searchQuery?: string
 ): Promise<Wrap[]> {
     const normalizedSearchQuery = normalizeSearchQuery(searchQuery)
@@ -200,7 +202,7 @@ async function fetchWrapsInternal(
     modelSlug: string | undefined,
     page: number,
     pageSize: number,
-    sortBy: 'latest' | 'popular',
+    sortBy: WrapSortBy,
     searchQuery: string = ''
 ): Promise<Wrap[]> {
     const from = (page - 1) * pageSize
@@ -218,9 +220,21 @@ async function fetchWrapsInternal(
             const searchParam = `$${params.length}`
             where += ` AND (w.name ILIKE ${searchParam} OR COALESCE(w.name_en, '') ILIKE ${searchParam} OR COALESCE(w.prompt, '') ILIKE ${searchParam})`
         }
-        const orderBy = sortBy === 'popular'
-            ? 'COALESCE(w.user_download_count, w.download_count, 0) DESC, w.id DESC'
-            : 'w.created_at DESC, w.id DESC'
+        const orderBy = sortBy === 'recommended'
+            ? `
+                (
+                    0.7 * LN(1 + COALESCE(w.user_download_count, w.download_count, 0))
+                    + 0.3 * EXP(
+                        -GREATEST(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600.0, 0) / 72.0
+                    )
+                ) DESC,
+                COALESCE(w.user_download_count, w.download_count, 0) DESC,
+                w.created_at DESC,
+                w.id DESC
+            `
+            : sortBy === 'popular'
+                ? 'COALESCE(w.user_download_count, w.download_count, 0) DESC, w.id DESC'
+                : 'w.created_at DESC, w.id DESC'
         params.push(pageSize)
         const limitParam = `$${params.length}`
         params.push(from)

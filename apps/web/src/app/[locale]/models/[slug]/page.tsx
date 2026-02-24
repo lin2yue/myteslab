@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
-import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions, type WrapSortBy } from '@/lib/api'
 import { Link } from '@/i18n/routing'
 import { notFound } from 'next/navigation'
 
@@ -77,7 +77,9 @@ export default async function ModelPage({
 }) {
     const { locale, slug } = await params
     const { sort, search } = await searchParams
-    const sortBy = (sort as 'latest' | 'popular') || 'latest'
+    const sortBy: WrapSortBy = sort === 'popular' || sort === 'latest' || sort === 'recommended'
+        ? sort
+        : 'recommended'
     const searchQuery = (search || '').trim()
 
     const [wraps, models, recommendedKeywords] = await Promise.all([

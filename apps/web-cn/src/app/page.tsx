@@ -1,7 +1,7 @@
 import { getTranslations } from '@/lib/i18n'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
-import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions, type WrapSortBy } from '@/lib/api'
 import { getModelDisplayName } from '@/lib/model-display'
 
 export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提升首页响应速度
@@ -14,7 +14,9 @@ export default async function HomePage({
     const t = await getTranslations('Index')
     const { model, sort, search } = await searchParams
 
-    const sortBy = (sort as 'latest' | 'popular') || 'latest'
+    const sortBy: WrapSortBy = sort === 'popular' || sort === 'latest' || sort === 'recommended'
+        ? sort
+        : 'recommended'
     const searchQuery = (search || '').trim()
 
     const [wraps, models, recommendedKeywords] = await Promise.all([

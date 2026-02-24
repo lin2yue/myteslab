@@ -4,19 +4,20 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { WrapCard } from './WrapCard'
 import { fetchMoreWraps } from '@/lib/actions'
 import type { Wrap } from '@/lib/types'
+import type { WrapSortBy } from '@/lib/api'
 import { useTranslations } from 'next-intl'
 
 interface WrapListProps {
     initialWraps: Wrap[]
     model?: string
     locale: string
-    sortBy?: 'latest' | 'popular'
+    sortBy?: WrapSortBy
     searchQuery?: string
 }
 
 const PAGE_SIZE = 12
 
-export function WrapList({ initialWraps, model, locale, sortBy = 'latest', searchQuery = '' }: WrapListProps) {
+export function WrapList({ initialWraps, model, locale, sortBy = 'recommended', searchQuery = '' }: WrapListProps) {
     const [wraps, setWraps] = useState<Wrap[]>(initialWraps)
     const [page, setPage] = useState(1)
     const [loading, setLoading] = useState(false)
