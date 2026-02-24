@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { useLocale } from '@/lib/i18n'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import VerifiedCreatorBadge from '@/components/VerifiedCreatorBadge'
 import type { Wrap } from '@/lib/types'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
@@ -12,6 +13,7 @@ interface WrapCardProps {
 
 export function WrapCard({ wrap, source }: WrapCardProps) {
     const locale = useLocale()
+    const router = useRouter()
     const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0;
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name;
     const modelDisplay = locale === 'en'
@@ -91,10 +93,22 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
                     <div className="mt-auto flex items-center justify-between gap-3">
                         {/* 作者信息 */}
                         {wrap.author_role === 'creator' && wrap.user_id ? (
-                            <Link
-                                href={`/creator/${wrap.user_id}`}
-                                className="flex items-center gap-2 min-w-0 group/author"
-                                onClick={(e) => e.stopPropagation()}
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                className="flex items-center gap-2 min-w-0 group/author cursor-pointer"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    router.push(`/creator/${wrap.user_id}`)
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        router.push(`/creator/${wrap.user_id}`)
+                                    }
+                                }}
                             >
                                 <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-amber-300 dark:ring-amber-700">
                                     {wrap.author_avatar_url ? (
@@ -116,7 +130,7 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
                                     {wrap.author_name}
                                 </span>
                                 <VerifiedCreatorBadge size={14} className="flex-shrink-0" />
-                            </Link>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 min-w-0">
                                 <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-gray-100">
