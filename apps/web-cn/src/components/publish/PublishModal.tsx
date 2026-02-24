@@ -25,7 +25,6 @@ interface PublishModalProps {
 }
 
 const PRICE_OPTIONS = [
-    { label: '免费', value: 0, desc: '0 积分' },
     { label: '30 积分', value: 30, desc: '约 ¥3' },
     { label: '100 积分', value: 100, desc: '约 ¥10' },
     { label: '360 积分', value: 360, desc: '约 ¥36' },
@@ -47,7 +46,7 @@ export default function PublishModal({
     const [agree, setAgree] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [marketplaceEnabled, setMarketplaceEnabled] = useState(false)
-    const [selectedPrice, setSelectedPrice] = useState(0)
+    const [selectedPrice, setSelectedPrice] = useState(30)
     const alert = useAlert()
     const viewerRef = useRef<ModelViewerRef>(null)
 
@@ -208,7 +207,7 @@ export default function PublishModal({
                                                 <div>
                                                     <div className="flex items-center gap-1.5">
                                                         <Store className="w-4 h-4 text-amber-500" />
-                                                        <span className="text-sm font-bold text-gray-900 dark:text-zinc-100">同时发布到商城</span>
+                                                        <span className="text-sm font-bold text-gray-900 dark:text-zinc-100">设置为付积分下载</span>
                                                         <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">认证创作者专属</span>
                                                     </div>
                                                     <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
