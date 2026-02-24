@@ -150,7 +150,7 @@ export default function DashboardClient({
                                         <td className="py-3 text-right">
                                             {wrap.price_credits > 0 ? (
                                                 <span className="inline-flex items-center px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-full">
-                                                    {wrap.price_credits} 积分
+                                                    {wrap.price_credits} 积分下载
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full">

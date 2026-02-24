@@ -25,9 +25,9 @@ interface PublishModalProps {
 }
 
 const PRICE_OPTIONS = [
-    { label: '30 积分', value: 30, desc: '约 ¥3' },
-    { label: '100 积分', value: 100, desc: '约 ¥10' },
-    { label: '360 积分', value: 360, desc: '约 ¥36' },
+    { label: '30 积分', value: 30, desc: '¥9' },
+    { label: '60 积分', value: 60, desc: '¥19' },
+    { label: '120 积分', value: 120, desc: '¥39' },
 ] as const;
 
 export default function PublishModal({
@@ -219,7 +219,7 @@ export default function PublishModal({
                                             {marketplaceEnabled && (
                                                 <div className="mt-4 space-y-2">
                                                     <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">选择售价</p>
-                                                    <div className="grid grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-3 gap-2">
                                                         {PRICE_OPTIONS.map((option) => (
                                                             <button
                                                                 key={option.value}

@@ -80,16 +80,18 @@ export async function GET(
             if (!alreadyPurchased) {
                 // 检查 paid_balance 是否足够
                 const { rows: creditRows } = await dbQuery(
-                    `SELECT paid_balance FROM user_credits WHERE user_id = $1 LIMIT 1`,
+                    `SELECT paid_balance, gift_balance FROM user_credits WHERE user_id = $1 LIMIT 1`,
                     [user.id]
                 );
                 const userPaidBalance = Number(creditRows[0]?.paid_balance || 0);
+                const userGiftBalance = Number(creditRows[0]?.gift_balance || 0);
 
                 if (userPaidBalance < priceCredits) {
                     return NextResponse.json({
                         error: '积分不足，付费作品需使用充值积分',
                         needCredits: priceCredits,
-                        hasPaidBalance: userPaidBalance
+                        hasPaidBalance: userPaidBalance,
+                        hasGiftBalance: userGiftBalance
                     }, { status: 402 });
                 }
 

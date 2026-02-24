@@ -66,33 +66,32 @@ const PRICING_TIERS_BASE: PricingTierBase[] = [
     {
         id: 'starter',
         nameKey: 'starter',
-        price: '19.9',
-        credits: 60,
+        price: '9.0',
+        credits: 30,
         polarProductId: '', // Deprecated for Alipay
     },
     {
         id: 'explorer',
         nameKey: 'explorer',
-        price: '59.0',
-        credits: 200,
-        savings: '10',
+        price: '19.0',
+        credits: 60,
         polarProductId: '',
     },
     {
-        id: 'advanced', // New tier
+        id: 'advanced',
         nameKey: 'advanced',
-        price: '128.0',
-        credits: 500,
+        price: '39.0',
+        credits: 120,
         popular: true,
-        savings: '20',
+        savings: '8',
         polarProductId: '',
     },
     {
         id: 'collector',
         nameKey: 'collector',
-        price: '288.0',
-        credits: 1200,
-        savings: '30',
+        price: '79.0',
+        credits: 240,
+        savings: '15',
         polarProductId: '',
     }
 ];

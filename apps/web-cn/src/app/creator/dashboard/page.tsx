@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { Sparkles } from 'lucide-react';
+import VerifiedCreatorBadge from '@/components/VerifiedCreatorBadge';
 import { getSessionUser } from '@/lib/auth/session';
 import { dbQuery } from '@/lib/db';
 import DashboardClient from './DashboardClient';
@@ -118,7 +118,7 @@ export default async function CreatorDashboardPage() {
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-black text-gray-900 dark:text-zinc-100">创作者中心</h1>
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                                <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <VerifiedCreatorBadge size={12} />
                                 <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">认证创作者</span>
                             </div>
                         </div>

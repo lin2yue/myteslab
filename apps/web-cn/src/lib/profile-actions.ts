@@ -44,7 +44,7 @@ export async function updateWrapPrice(wrapId: string, priceCredits: number) {
         throw new Error('Unauthorized')
     }
 
-    const allowed = [0, 30, 100, 360]
+    const allowed = [0, 30, 60, 120]
     if (!allowed.includes(priceCredits)) {
         throw new Error('Invalid price')
     }

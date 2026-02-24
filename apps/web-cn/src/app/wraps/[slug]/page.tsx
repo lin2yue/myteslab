@@ -4,7 +4,7 @@ import { getTranslations } from '@/lib/i18n'
 import { getSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Sparkles } from 'lucide-react'
+import VerifiedCreatorBadge from '@/components/VerifiedCreatorBadge'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl, ensureCdnUrl } from '@/lib/images'
@@ -263,7 +263,7 @@ export default async function WrapDetailPage({
                                         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover/author:text-amber-600 dark:group-hover/author:text-amber-400 transition-colors">
                                             {wrap.author_name || 'Creator'}
                                         </div>
-                                        <Sparkles className="w-4 h-4 text-amber-500" />
+                                        <VerifiedCreatorBadge size={16} />
                                         <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50">
                                             认证创作者
                                         </span>

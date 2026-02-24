@@ -330,8 +330,15 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels, 
                                                             </div>
                                                         )}
                                                         {wrap.is_public && (
-                                                            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded z-10 uppercase tracking-wider">
-                                                                {t('published')}
+                                                            <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10">
+                                                                <div className="bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                                    {t('published')}
+                                                                </div>
+                                                                {(wrap.price_credits ?? 0) > 0 && (
+                                                                    <div className="bg-amber-500/95 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                                                        {wrap.price_credits}积分下载
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -375,7 +382,14 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels, 
                                                 <div className="flex justify-between items-center">
                                                     {wrap.is_public ? (
                                                         <div className="text-[11px] text-gray-500 space-y-1">
-                                                            <div className="font-semibold text-green-700 dark:text-green-400">{t('published')}</div>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <div className="font-semibold text-green-700 dark:text-green-400">{t('published')}</div>
+                                                                {(wrap.price_credits ?? 0) > 0 && (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold">
+                                                                        {wrap.price_credits}积分下载
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="inline-flex items-center gap-1"><Eye size={12} /> {wrap.browse_count ?? 0}</span>
                                                                 <span className="inline-flex items-center gap-1"><Download size={12} /> {wrap.user_download_count ?? wrap.download_count ?? 0}</span>
@@ -619,12 +633,12 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels, 
                             <p className="text-xs text-gray-500 dark:text-zinc-400 mb-5 leading-relaxed">
                                 设置后，新用户下载需消耗充值积分，你获得 <span className="text-amber-600 dark:text-amber-400 font-semibold">70%</span> 收益
                             </p>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-4 gap-2">
                                 {([
                                     { label: '免费', value: 0, desc: '0 积分' },
-                                    { label: '30 积分', value: 30, desc: '约 ¥3' },
-                                    { label: '100 积分', value: 100, desc: '约 ¥10' },
-                                    { label: '360 积分', value: 360, desc: '约 ¥36' },
+                                    { label: '30 积分', value: 30, desc: '¥9' },
+                                    { label: '60 积分', value: 60, desc: '¥19' },
+                                    { label: '120 积分', value: 120, desc: '¥39' },
                                 ] as const).map((opt) => (
                                     <button
                                         key={opt.value}
