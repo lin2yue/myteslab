@@ -13,6 +13,9 @@ export default function CheckoutSuccessPage() {
     const sessionId = searchParams.get('session_id');
     const tierName = searchParams.get('tier_name');
     const amount = searchParams.get('amount');
+    const source = searchParams.get('source');
+    const wrapSlug = searchParams.get('wrapSlug') || searchParams.get('wrapId');
+    const fromPaidDownload = source === 'paid_wrap_download' && !!wrapSlug;
     const hasTracked = useRef(false);
 
     useEffect(() => {
@@ -45,15 +48,15 @@ export default function CheckoutSuccessPage() {
                 </h1>
 
                 <p className="text-gray-600 mb-8 leading-relaxed">
-                    {t('success_desc')}
+                    {fromPaidDownload ? '支付成功，返回作品页面后可继续下载。' : t('success_desc')}
                 </p>
 
                 <div className="space-y-4">
                     <Link
-                        href="/ai-generate/generate"
+                        href={fromPaidDownload ? `/wraps/${wrapSlug}?from=all` : '/ai-generate/generate'}
                         className="block w-full btn-primary h-12"
                     >
-                        {t('back_to_generator')}
+                        {fromPaidDownload ? '返回作品 立即下载' : t('back_to_generator')}
                     </Link>
 
                     <Link

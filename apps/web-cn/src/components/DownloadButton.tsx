@@ -13,6 +13,7 @@ interface DownloadButtonProps {
     wrapSlug: string
     locale: string
     isLoggedIn?: boolean
+    isOwner?: boolean
     priceCredits?: number
 }
 
@@ -23,7 +24,7 @@ interface CreditsBalanceResponse {
     reserved?: number
 }
 
-export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn, priceCredits = 0 }: DownloadButtonProps) {
+export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn, isOwner = false, priceCredits = 0 }: DownloadButtonProps) {
     const [isDownloading, setIsDownloading] = useState(false)
     const [showPayModal, setShowPayModal] = useState(false)
     const [isPurchasing, setIsPurchasing] = useState(false)
@@ -89,6 +90,14 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
             return
         }
 
+        // 付费作品先弹二次确认，不直接扣费
+        if (priceCredits > 0 && !isOwner) {
+            setNeedCredits(priceCredits)
+            await fetchCreditsBalance()
+            setShowPayModal(true)
+            return
+        }
+
         setIsDownloading(true)
 
         try {
@@ -142,6 +151,7 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
                     metadata: {
                         source: 'paid_wrap_download',
                         wrapId,
+                        wrapSlug,
                         needCredits,
                         paidBalance,
                     }
@@ -251,7 +261,7 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
                                         disabled={isPurchasing}
                                         className="h-9 px-3 rounded-lg text-sm bg-amber-500 hover:bg-amber-600 text-white font-semibold disabled:opacity-60"
                                     >
-                                        {isPurchasing ? '购买中...' : '支付积分余额购买'}
+                                        {isPurchasing ? '购买中...' : `支付${needCredits}积分 立即下载`}
                                     </button>
                                 ) : (
                                     <button

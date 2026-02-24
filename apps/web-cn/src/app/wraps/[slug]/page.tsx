@@ -330,6 +330,7 @@ export default async function WrapDetailPage({
                                     wrapSlug={wrap.slug || wrap.id}
                                     locale={locale}
                                     isLoggedIn={isLoggedIn}
+                                    isOwner={isOwner}
                                     priceCredits={priceCredits}
                                 />
                             </div>

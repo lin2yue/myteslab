@@ -13,7 +13,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { productId, locale } = await request.json();
+        const { productId, locale, metadata } = await request.json();
 
         const tier = PRICING_TIERS.find(t => t.id === productId);
         if (!tier) {
@@ -53,9 +53,17 @@ export async function POST(request: Request) {
                     tierId: tier.id,
                 }),
                 // Notify URL should be accessible by Alipay (public IP/Domain)
-                passback_params: encodeURIComponent(JSON.stringify({ userId: user.id })),
+                passback_params: encodeURIComponent(JSON.stringify({
+                    userId: user.id,
+                    source: metadata?.source,
+                    wrapId: metadata?.wrapId,
+                    wrapSlug: metadata?.wrapSlug,
+                })),
             },
-            returnUrl: `${appUrl}${localePrefix}/checkout/success?amount=${tier.price}&credits=${tier.credits}`,
+            returnUrl: `${appUrl}${localePrefix}/checkout/success?amount=${tier.price}&credits=${tier.credits}`
+                + `${metadata?.source ? `&source=${encodeURIComponent(String(metadata.source))}` : ''}`
+                + `${metadata?.wrapId ? `&wrapId=${encodeURIComponent(String(metadata.wrapId))}` : ''}`
+                + `${metadata?.wrapSlug ? `&wrapSlug=${encodeURIComponent(String(metadata.wrapSlug))}` : ''}`,
             notifyUrl: `${appUrl}/api/webhook/alipay`, // MUST BE PUBLIC SECURE URL
         });
 
