@@ -3,7 +3,7 @@ import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import AuthButton from '@/components/auth/AuthButton'
-import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions, type WrapSortBy } from '@/lib/api'
 import { getModelDisplayName } from '@/lib/model-display'
 
 import { Link } from '@/i18n/routing'
@@ -21,7 +21,9 @@ export default async function HomePage({
   const { model, sort, search } = await searchParams
   const { locale } = await params
 
-  const sortBy = (sort as 'latest' | 'popular') || 'latest'
+  const sortBy: WrapSortBy = sort === 'popular' || sort === 'latest' || sort === 'recommended'
+    ? sort
+    : 'recommended'
   const searchQuery = (search || '').trim()
 
   const [wraps, models, recommendedKeywords] = await Promise.all([

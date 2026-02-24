@@ -3,15 +3,16 @@
 import { useState, ReactNode } from 'react'
 import { FilterBar } from './FilterBar'
 import type { Model } from '@/lib/types'
+import type { WrapSortBy } from '@/lib/api'
 
 interface FilterBarWrapperProps {
     models: Model[]
     children: ReactNode
-    sortBy?: 'latest' | 'popular'
+    sortBy?: WrapSortBy
     recommendedKeywords?: string[]
 }
 
-export function FilterBarWrapper({ models, children, sortBy = 'latest', recommendedKeywords = [] }: FilterBarWrapperProps) {
+export function FilterBarWrapper({ models, children, sortBy = 'recommended', recommendedKeywords = [] }: FilterBarWrapperProps) {
     const [isLoading, setIsLoading] = useState(false)
 
     return (

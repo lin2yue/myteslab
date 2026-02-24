@@ -5,11 +5,12 @@ import { useTranslations, useLocale } from '@/lib/i18n'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import type { Model } from '@/lib/types'
 import { sortModelsByPreferredOrder } from '@/lib/model-order'
+import type { WrapSortBy } from '@/lib/api'
 
 interface FilterBarProps {
     models: Model[]
     onLoadingChange?: (loading: boolean) => void
-    sortBy?: 'latest' | 'popular'
+    sortBy?: WrapSortBy
     recommendedKeywords?: string[]
 }
 
@@ -22,7 +23,10 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
     const params = useParams()
     const pathModel = params?.slug as string || ''
     const actualModel = pathModel || searchParams.get('model') || ''
-    const actualSort = (searchParams.get('sort') as 'latest' | 'popular') || 'latest'
+    const sortParam = searchParams.get('sort')
+    const actualSort: WrapSortBy = sortParam === 'popular' || sortParam === 'latest' || sortParam === 'recommended'
+        ? sortParam
+        : 'recommended'
     const actualSearch = (searchParams.get('search') || '').trim()
 
     const [isPending, startTransition] = useTransition()
@@ -81,9 +85,9 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
         setSearchInput(actualSearch)
     }, [actualSearch])
 
-    const updateUrl = useCallback((model: string, sort: string, search: string) => {
+    const updateUrl = useCallback((model: string, sort: WrapSortBy, search: string) => {
         const queryParams = new URLSearchParams()
-        if (sort && sort !== 'latest') queryParams.set('sort', sort)
+        if (sort !== 'recommended') queryParams.set('sort', sort)
         if (search) queryParams.set('search', search)
 
         const queryString = queryParams.toString()
@@ -116,7 +120,7 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
         })
     }
 
-    const handleSortChange = (value: 'latest' | 'popular') => {
+    const handleSortChange = (value: WrapSortBy) => {
         startTransition(() => {
             updateUrl(actualModel, value, searchInput.trim())
         })
@@ -176,16 +180,16 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
                 <div className="flex items-center gap-2">
                     <div className="shrink-0 inline-flex items-center rounded-full p-1 border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10">
                         <button
-                            onClick={() => handleSortChange('latest')}
+                            onClick={() => handleSortChange('recommended')}
                             className={`
                                 px-2.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all duration-200
-                                ${actualSort === 'latest'
+                                ${actualSort === 'recommended'
                                     ? 'bg-white text-gray-900 border border-black/10 shadow-sm dark:bg-zinc-800 dark:text-white dark:border-white/15'
                                     : 'text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                                 }
                             `}
                         >
-                            {t('sort_latest')}
+                            {t('sort_recommended')}
                         </button>
                         <button
                             onClick={() => handleSortChange('popular')}
@@ -198,6 +202,18 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
                             `}
                         >
                             {t('sort_popular')}
+                        </button>
+                        <button
+                            onClick={() => handleSortChange('latest')}
+                            className={`
+                                px-2.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all duration-200
+                                ${actualSort === 'latest'
+                                    ? 'bg-white text-gray-900 border border-black/10 shadow-sm dark:bg-zinc-800 dark:text-white dark:border-white/15'
+                                    : 'text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }
+                            `}
+                        >
+                            {t('sort_latest')}
                         </button>
                     </div>
 

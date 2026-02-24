@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { getTranslations } from '@/lib/i18n'
 import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
-import { getWraps, getModels, getWrapKeywordSuggestions } from '@/lib/api'
+import { getWraps, getModels, getWrapKeywordSuggestions, type WrapSortBy } from '@/lib/api'
 import { notFound } from 'next/navigation'
 
 export const revalidate = 60 // Enable ISR
@@ -74,7 +74,9 @@ export default async function ModelPage({
     const { slug } = await params
     const locale = 'zh' as string
     const { sort, search } = await searchParams
-    const sortBy = (sort as 'latest' | 'popular') || 'latest'
+    const sortBy: WrapSortBy = sort === 'popular' || sort === 'latest' || sort === 'recommended'
+        ? sort
+        : 'recommended'
     const searchQuery = (search || '').trim()
 
     const [wraps, models, recommendedKeywords] = await Promise.all([
