@@ -25,11 +25,12 @@ export default function CreditsSection({ balance, totalEarned, giftBalance = 0, 
 
             <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-baseline">
-                        <span className="text-4xl font-extrabold text-gray-900 dark:text-zinc-100 mr-2">
+                    <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                        <span className="text-4xl font-extrabold text-gray-900 dark:text-zinc-100 mr-1">
                             {balance}
                         </span>
                         <span className="text-gray-500 dark:text-zinc-400 text-sm font-medium">{t('available_credits')}</span>
+                        <span className="text-xs text-gray-400 dark:text-zinc-500">系统赠送积分{giftBalance}</span>
                     </div>
                     <button
                         onClick={() => setIsPricingOpen(true)}
@@ -39,14 +40,9 @@ export default function CreditsSection({ balance, totalEarned, giftBalance = 0, 
                     </button>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 border-t border-black/5 dark:border-white/10 pt-4 gap-2">
-                    <div className="space-y-1">
-                        <p className="text-sm text-gray-500 dark:text-zinc-400">
-                            {t('total_earned')}: <span className="font-bold text-gray-700 dark:text-zinc-200">{totalEarned}</span>
-                        </p>
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                            系统赠送积分{giftBalance}
-                        </p>
-                    </div>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">
+                        {t('total_earned')}: <span className="font-bold text-gray-700 dark:text-zinc-200">{totalEarned}</span>
+                    </p>
                     <button
                         onClick={() => setIsHistoryOpen(true)}
                         className="btn-ghost h-8 px-2 text-xs font-bold"
