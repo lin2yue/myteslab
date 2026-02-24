@@ -239,11 +239,12 @@ export default async function WrapDetailPage({
                             {/* 标题，标签与作者 */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <CategoryBadge category={wrap.category} />
-                                    {priceCredits > 0 && (
+                                    {priceCredits > 0 ? (
                                         <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50">
-                                            付费 · {priceCredits} 积分
+                                            付费作品
                                         </span>
+                                    ) : (
+                                        <CategoryBadge category={wrap.category} />
                                     )}
                                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full border border-black/5 dark:border-white/10">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,7 +407,7 @@ export default async function WrapDetailPage({
                         )}
 
                         {/* AI 提示词卡片 */}
-                        {wrap.category === 'ai_generated' && wrap.prompt && (
+                        {priceCredits === 0 && wrap.category === 'ai_generated' && wrap.prompt && (
                             <div className="pt-6 border-t border-black/5 dark:border-white/10">
                                 <div className="flex items-center justify-between mb-3">
                                     <p className="text-[10px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-[0.2em] flex items-center gap-2">
