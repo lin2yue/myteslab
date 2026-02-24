@@ -57,13 +57,15 @@ export default async function CreatorProfilePage({
             [id]
         ),
         dbQuery<CreatorWrap>(
-            `SELECT w.id, w.slug, w.name, w.preview_url, w.price_credits, w.download_count
+            `SELECT w.id, w.slug, w.name, w.preview_url,
+                    COALESCE((to_jsonb(w)->>'price_credits')::int, 0) AS price_credits,
+                    COALESCE((to_jsonb(w)->>'download_count')::int, 0) AS download_count
              FROM wraps w
              WHERE w.user_id = $1
                AND w.is_public = true
                AND w.is_active = true
                AND w.deleted_at IS NULL
-             ORDER BY w.download_count DESC`,
+             ORDER BY COALESCE((to_jsonb(w)->>'download_count')::int, 0) DESC`,
             [id]
         ),
     ]);

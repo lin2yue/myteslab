@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from '@/lib/i18n'
 import { trackDownload } from '@/lib/analytics'
 import Button from '@/components/ui/Button'
@@ -31,6 +31,7 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
     const [needCredits, setNeedCredits] = useState<number>(priceCredits)
     const [paidBalance, setPaidBalance] = useState<number>(0)
     const [giftBalance, setGiftBalance] = useState<number>(0)
+    const [alreadyPurchased, setAlreadyPurchased] = useState(false)
 
     const t = useTranslations('Common')
     const router = useRouter()
@@ -46,6 +47,24 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
             // ignore
         }
     }
+
+    const checkAccessStatus = async () => {
+        if (!isLoggedIn || isOwner || priceCredits <= 0) {
+            setAlreadyPurchased(false)
+            return
+        }
+        try {
+            const accessRes = await fetch(`/api/marketplace/access/${wrapId}`, { cache: 'no-store' })
+            const accessData = await accessRes.json().catch(() => ({} as { purchased?: boolean }))
+            setAlreadyPurchased(Boolean(accessRes.ok && accessData?.purchased))
+        } catch {
+            // ignore
+        }
+    }
+
+    useEffect(() => {
+        void checkAccessStatus()
+    }, [isLoggedIn, isOwner, priceCredits, wrapId])
 
     const triggerBrowserDownload = async () => {
         const response = await fetch(`/api/download/${wrapId}`, { method: 'GET' })
@@ -90,12 +109,37 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
             return
         }
 
-        // 付费作品先弹二次确认，不直接扣费
+        // 付费作品：先检查是否已购买，已购则直接下载；未购再弹二次确认
         if (priceCredits > 0 && !isOwner) {
-            setNeedCredits(priceCredits)
-            await fetchCreditsBalance()
-            setShowPayModal(true)
-            return
+            try {
+                const accessRes = await fetch(`/api/marketplace/access/${wrapId}`, { cache: 'no-store' })
+                const accessData = await accessRes.json().catch(() => ({} as {
+                    purchased?: boolean
+                    needCredits?: number
+                    hasPaidBalance?: number
+                    hasGiftBalance?: number
+                }))
+
+                if (accessRes.ok && accessData?.purchased) {
+                    setAlreadyPurchased(true)
+                    // 已购买，直接下载，不再弹窗
+                } else {
+                    setAlreadyPurchased(false)
+                    setNeedCredits(Number(accessData?.needCredits || priceCredits))
+                    setPaidBalance(Number(accessData?.hasPaidBalance || 0))
+                    setGiftBalance(Number(accessData?.hasGiftBalance || 0))
+                    if (!accessRes.ok) {
+                        await fetchCreditsBalance()
+                    }
+                    setShowPayModal(true)
+                    return
+                }
+            } catch {
+                setNeedCredits(priceCredits)
+                await fetchCreditsBalance()
+                setShowPayModal(true)
+                return
+            }
         }
 
         setIsDownloading(true)
@@ -125,6 +169,7 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
             }
 
             setPaidBalance(Number(data?.remainingPaidBalance || 0))
+            setAlreadyPurchased(true)
             setShowPayModal(false)
 
             // 购买成功后自动继续下载
@@ -205,7 +250,9 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                             {priceCredits > 0
-                                ? (locale === 'zh' ? `下载贴图（${priceCredits}积分）` : `Download Texture (${priceCredits} credits)`)
+                                ? (alreadyPurchased
+                                    ? (locale === 'zh' ? '下载贴图（已购买）' : 'Download Texture (Purchased)')
+                                    : (locale === 'zh' ? `下载贴图（${priceCredits}积分）` : `Download Texture (${priceCredits} credits)`))
                                 : t('download')}
                         </>
                     )}
