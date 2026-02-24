@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg'
 import { getDownloadUrl } from '@/lib/oss'
 import { getSessionUser } from '@/lib/auth/session'
 import { db, dbQuery } from '@/lib/db'
-import { ensureCreditRuleTables } from '@/lib/credits/rules'
+import { ensureCreditRewardCampaignTables, normalizeCampaignMilestones } from '@/lib/credits/campaigns'
 import { notifyUserCreditRewardByWechat } from '@/lib/utils/user-reward-notify'
 
 interface DownloadRewardEvent {
@@ -113,7 +113,7 @@ export async function GET(
                          WHERE ud.wrap_id = $1
                      )
                  WHERE id = $1
-                 RETURNING id, user_id, is_public, user_download_count, name`,
+                 RETURNING id, user_id, is_public, created_at, name`,
                 [id]
             );
 
@@ -123,7 +123,7 @@ export async function GET(
                     wrapId: updatedWrap.id,
                     ownerId: updatedWrap.user_id,
                     isPublic: Boolean(updatedWrap.is_public),
-                    userDownloadCount: Number(updatedWrap.user_download_count || 0),
+                    wrapCreatedAt: String(updatedWrap.created_at),
                     wrapName: updatedWrap.name || null,
                 });
             }
@@ -204,53 +204,99 @@ async function applyDownloadMilestoneRewardIfNeeded(
         wrapId: string;
         ownerId: string;
         isPublic: boolean;
-        userDownloadCount: number;
+        wrapCreatedAt: string;
         wrapName: string | null;
     }
 ): Promise<DownloadRewardEvent | null> {
     if (!params.isPublic) return null;
 
-    await ensureCreditRuleTables(client);
-    await client.query(
-        `INSERT INTO credit_reward_rules (
-            id,
-            registration_enabled,
-            registration_credits,
-            download_reward_enabled,
-            download_threshold,
-            download_reward_credits
-        )
-        VALUES (1, TRUE, 30, FALSE, 100, 10)
-        ON CONFLICT (id) DO NOTHING`
+    await ensureCreditRewardCampaignTables(client);
+    const wrapCreatedAt = new Date(params.wrapCreatedAt);
+    if (Number.isNaN(wrapCreatedAt.getTime())) return null;
+
+    const { rows: campaignRows } = await client.query(
+        `SELECT id, name, start_at, end_at, milestones
+         FROM credit_reward_campaigns
+         WHERE status = 'active'
+           AND start_at <= NOW()
+           AND end_at > NOW()
+         ORDER BY start_at ASC`
     );
 
-    const { rows: ruleRows } = await client.query(
-        `SELECT download_reward_enabled, download_threshold, download_reward_credits
-         FROM credit_reward_rules
-         WHERE id = 1
-         LIMIT 1`
-    );
-    const rule = ruleRows[0];
-    if (!rule) return null;
+    type CreatedGrant = {
+        id: string;
+        campaignId: string;
+        campaignName: string;
+        milestone: number;
+        metricValue: number;
+        rewardCredits: number;
+    };
+    const createdGrants: CreatedGrant[] = [];
 
-    const rewardEnabled = Boolean(rule.download_reward_enabled);
-    const threshold = Math.max(1, Number(rule.download_threshold || 1));
-    const rewardCredits = Math.max(0, Number(rule.download_reward_credits || 0));
+    for (const campaignRow of campaignRows) {
+        const campaignStartAt = new Date(String(campaignRow.start_at));
+        const campaignEndAt = new Date(String(campaignRow.end_at));
+        if (Number.isNaN(campaignStartAt.getTime()) || Number.isNaN(campaignEndAt.getTime())) continue;
+        if (wrapCreatedAt < campaignStartAt) continue;
 
-    if (!rewardEnabled || rewardCredits <= 0 || params.userDownloadCount < threshold) return null;
+        const milestoneRules = normalizeCampaignMilestones(campaignRow.milestones);
+        if (milestoneRules.length === 0) continue;
 
-    const milestone = Math.floor(params.userDownloadCount / threshold) * threshold;
-    if (milestone < threshold) return null;
+        const { rows: downloadRows } = await client.query(
+            `SELECT COUNT(DISTINCT user_id)::int AS download_count
+             FROM user_downloads
+             WHERE wrap_id = $1
+               AND downloaded_at >= $2
+               AND downloaded_at < $3`,
+            [params.wrapId, campaignStartAt.toISOString(), campaignEndAt.toISOString()]
+        );
+        const metricValue = Number(downloadRows[0]?.download_count || 0);
+        if (metricValue <= 0) continue;
 
-    const { rows: grantRows } = await client.query(
-        `INSERT INTO wrap_download_reward_grants (wrap_id, user_id, milestone_downloads, reward_credits)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (wrap_id, milestone_downloads) DO NOTHING
-         RETURNING id`,
-        [params.wrapId, params.ownerId, milestone, rewardCredits]
-    );
-    const grant = grantRows[0];
-    if (!grant) return null;
+        const grantsToCreate = milestoneRules.filter((milestoneRule) => (
+            milestoneRule.reward_credits > 0 && metricValue >= milestoneRule.milestone_downloads
+        ));
+        if (grantsToCreate.length === 0) continue;
+
+        for (const milestoneRule of grantsToCreate) {
+            const { rows: grantRows } = await client.query(
+                `INSERT INTO credit_reward_campaign_grants (
+                    campaign_id,
+                    wrap_id,
+                    user_id,
+                    milestone_downloads,
+                    metric_value,
+                    reward_credits
+                )
+                 VALUES ($1, $2, $3, $4, $5, $6)
+                 ON CONFLICT (campaign_id, wrap_id, milestone_downloads) DO NOTHING
+                 RETURNING id`,
+                [
+                    campaignRow.id,
+                    params.wrapId,
+                    params.ownerId,
+                    milestoneRule.milestone_downloads,
+                    metricValue,
+                    milestoneRule.reward_credits,
+                ]
+            );
+
+            if (!grantRows[0]?.id) continue;
+            createdGrants.push({
+                id: String(grantRows[0].id),
+                campaignId: String(campaignRow.id),
+                campaignName: String(campaignRow.name || ''),
+                milestone: milestoneRule.milestone_downloads,
+                metricValue,
+                rewardCredits: milestoneRule.reward_credits,
+            });
+        }
+    }
+
+    if (createdGrants.length === 0) return null;
+
+    const totalRewardCredits = createdGrants.reduce((sum, grant) => sum + grant.rewardCredits, 0);
+    const maxMilestone = createdGrants.reduce((max, grant) => Math.max(max, grant.milestone), 0);
 
     await client.query(
         `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
@@ -260,37 +306,42 @@ async function applyDownloadMilestoneRewardIfNeeded(
             balance = user_credits.balance + $2,
             total_earned = user_credits.total_earned + $2,
             updated_at = NOW()`,
-        [params.ownerId, rewardCredits]
+        [params.ownerId, totalRewardCredits]
     );
 
-    const { rows: ledgerRows } = await client.query(
-        `INSERT INTO credit_ledger (user_id, amount, type, description, metadata, created_at)
-         VALUES ($1, $2, 'system_reward', $3, $4::jsonb, NOW())
-         RETURNING id`,
-        [
-            params.ownerId,
-            rewardCredits,
-            `Wrap download milestone reward (${milestone})`,
-            JSON.stringify({
-                source: 'wrap_download_milestone',
-                wrap_id: params.wrapId,
-                milestone_downloads: milestone,
-                reward_credits: rewardCredits
-            })
-        ]
-    );
+    for (const grant of createdGrants) {
+        const { rows: ledgerRows } = await client.query(
+            `INSERT INTO credit_ledger (user_id, amount, type, description, metadata, created_at)
+             VALUES ($1, $2, 'system_reward', $3, $4::jsonb, NOW())
+             RETURNING id`,
+            [
+                params.ownerId,
+                grant.rewardCredits,
+                `Campaign wrap milestone reward (${grant.campaignName || grant.campaignId}: ${grant.milestone})`,
+                JSON.stringify({
+                    source: 'wrap_download_milestone_campaign',
+                    campaign_id: grant.campaignId,
+                    campaign_name: grant.campaignName,
+                    wrap_id: params.wrapId,
+                    milestone_downloads: grant.milestone,
+                    metric_value: grant.metricValue,
+                    reward_credits: grant.rewardCredits
+                })
+            ]
+        );
 
-    await client.query(
-        `UPDATE wrap_download_reward_grants
-         SET ledger_id = $2
-         WHERE id = $1`,
-        [grant.id, ledgerRows[0]?.id || null]
-    );
+        await client.query(
+            `UPDATE credit_reward_campaign_grants
+             SET ledger_id = $2
+             WHERE id = $1`,
+            [grant.id, ledgerRows[0]?.id || null]
+        );
+    }
 
     return {
         userId: params.ownerId,
-        rewardCredits,
-        milestoneDownloads: milestone,
+        rewardCredits: totalRewardCredits,
+        milestoneDownloads: maxMilestone,
         wrapName: params.wrapName,
     };
 }
