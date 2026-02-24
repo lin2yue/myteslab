@@ -123,32 +123,41 @@ CREATE TABLE IF NOT EXISTS credit_reward_rules (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   registration_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   registration_credits INTEGER NOT NULL DEFAULT 30 CHECK (registration_credits >= 0),
-  download_reward_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  download_threshold INTEGER NOT NULL DEFAULT 100 CHECK (download_threshold >= 1),
-  download_reward_credits INTEGER NOT NULL DEFAULT 10 CHECK (download_reward_credits >= 0),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 INSERT INTO credit_reward_rules (
   id,
   registration_enabled,
-  registration_credits,
-  download_reward_enabled,
-  download_threshold,
-  download_reward_credits
+  registration_credits
 )
-VALUES (1, TRUE, 30, FALSE, 100, 10)
+VALUES (1, TRUE, 30)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE TABLE IF NOT EXISTS wrap_download_reward_grants (
+CREATE TABLE IF NOT EXISTS credit_reward_campaigns (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'paused', 'ended')),
+  start_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  milestones JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CHECK (end_at > start_at)
+);
+
+CREATE TABLE IF NOT EXISTS credit_reward_campaign_grants (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID NOT NULL REFERENCES credit_reward_campaigns(id) ON DELETE CASCADE,
   wrap_id UUID NOT NULL REFERENCES wraps(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   milestone_downloads INTEGER NOT NULL CHECK (milestone_downloads >= 1),
+  metric_value INTEGER NOT NULL CHECK (metric_value >= 0),
   reward_credits INTEGER NOT NULL CHECK (reward_credits >= 0),
   ledger_id UUID REFERENCES credit_ledger(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  UNIQUE (wrap_id, milestone_downloads)
+  UNIQUE (campaign_id, wrap_id, milestone_downloads)
 );
 
 -- 6. 用户下载历史记录
@@ -237,7 +246,9 @@ CREATE INDEX IF NOT EXISTS idx_wraps_prompt_search ON wraps USING gin (prompt gi
 CREATE INDEX IF NOT EXISTS idx_wraps_prompt_plain ON wraps(prompt);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_task_created_at ON credit_ledger(task_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_wrap_download_reward_grants_user_created ON wrap_download_reward_grants(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_credit_reward_campaigns_status_window ON credit_reward_campaigns(status, start_at, end_at);
+CREATE INDEX IF NOT EXISTS idx_credit_reward_campaign_grants_campaign_created ON credit_reward_campaign_grants(campaign_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_credit_reward_campaign_grants_user_created ON credit_reward_campaign_grants(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_idempotency ON generation_tasks(idempotency_key);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_user_status_updated_at ON generation_tasks(user_id, status, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_status_lease_retry ON generation_tasks(status, lease_expires_at, next_retry_at);
@@ -250,6 +261,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_ledger_task_refund_once
   ON credit_ledger(task_id)
   WHERE task_id IS NOT NULL
     AND type = 'refund';
+CREATE INDEX IF NOT EXISTS idx_user_downloads_wrap_downloaded_at ON user_downloads(wrap_id, downloaded_at);
 CREATE INDEX IF NOT EXISTS idx_user_audio_downloads_user_id ON user_audio_downloads(user_id);
 CREATE INDEX IF NOT EXISTS idx_baidu_push_logs_created_at ON baidu_push_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_baidu_push_logs_source_created_at ON baidu_push_logs(source, created_at DESC);

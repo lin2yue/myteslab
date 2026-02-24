@@ -5,21 +5,15 @@ CREATE TABLE IF NOT EXISTS credit_reward_rules (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   registration_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   registration_credits INTEGER NOT NULL DEFAULT 30 CHECK (registration_credits >= 0),
-  download_reward_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  download_threshold INTEGER NOT NULL DEFAULT 100 CHECK (download_threshold >= 1),
-  download_reward_credits INTEGER NOT NULL DEFAULT 10 CHECK (download_reward_credits >= 0),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 INSERT INTO credit_reward_rules (
   id,
   registration_enabled,
-  registration_credits,
-  download_reward_enabled,
-  download_threshold,
-  download_reward_credits
+  registration_credits
 )
-VALUES (1, TRUE, 30, FALSE, 100, 10)
+VALUES (1, TRUE, 30)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
