@@ -152,7 +152,7 @@ export default async function ProfilePage() {
                     <CreditsSection
                         balance={credits?.balance || 0}
                         totalEarned={credits?.total_earned || 0}
-                        giftBalance={credits?.gift_balance || 0}
+                        giftBalance={Number(credits?.gift_balance || 0)}
                         history={pointsHistory}
                     />
                 </div>

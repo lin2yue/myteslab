@@ -20,6 +20,7 @@ interface TrendDay {
 interface WrapEarning {
     name: string | null;
     download_count: number;
+    paid_download_count: number;
     creator_earnings: number;
     price_credits: number;
 }
@@ -61,7 +62,12 @@ export default async function CreatorDashboardPage() {
             [userId]
         ),
         dbQuery<WrapEarning>(
-            `SELECT w.name, w.download_count, w.creator_earnings, w.price_credits
+            `SELECT
+                w.name,
+                COALESCE((to_jsonb(w)->>'download_count')::int, 0) AS download_count,
+                COALESCE((SELECT COUNT(*) FROM wrap_purchases wp WHERE wp.wrap_id = w.id)::int, 0) AS paid_download_count,
+                w.creator_earnings,
+                COALESCE((to_jsonb(w)->>'price_credits')::int, 0) AS price_credits
              FROM wraps w
              WHERE w.user_id = $1
                AND w.is_active = true
@@ -70,10 +76,11 @@ export default async function CreatorDashboardPage() {
              LIMIT 10`,
             [userId]
         ),
-        dbQuery<{ published_count: string; total_downloads: string }>(
+        dbQuery<{ published_count: string; total_downloads: string; total_paid_downloads: string }>(
             `SELECT
                 COUNT(*)::int AS published_count,
-                COALESCE(SUM(COALESCE(w.user_download_count, w.download_count, 0)), 0)::int AS total_downloads
+                COALESCE(SUM(COALESCE((to_jsonb(w)->>'download_count')::int, 0)), 0)::int AS total_downloads,
+                COALESCE((SELECT COUNT(*) FROM wrap_purchases wp JOIN wraps w2 ON w2.id = wp.wrap_id WHERE w2.user_id = $1 AND w2.is_active = true AND w2.deleted_at IS NULL)::int, 0) AS total_paid_downloads
              FROM wraps w
              WHERE w.user_id = $1
                AND w.is_active = true
@@ -101,6 +108,7 @@ export default async function CreatorDashboardPage() {
     const wraps = wrapsRes.rows;
     const publishedCount = Number(totalsRes.rows[0]?.published_count || 0);
     const totalDownloads = Number(totalsRes.rows[0]?.total_downloads || 0);
+    const totalPaidDownloads = Number(totalsRes.rows[0]?.total_paid_downloads || 0);
     const trendData: TrendDay[] = trendRes.rows.map((r) => ({
         day: r.day,
         cnt: Number(r.cnt),
@@ -144,6 +152,7 @@ export default async function CreatorDashboardPage() {
                     totalEarning={totalEarning}
                     publishedCount={publishedCount}
                     totalDownloads={totalDownloads}
+                    totalPaidDownloads={totalPaidDownloads}
                     trendData={trendData}
                     topWraps={wraps}
                 />

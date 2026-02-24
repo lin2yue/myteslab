@@ -31,7 +31,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { id } = await params;
     const { rows } = await dbQuery(
-        `SELECT display_name FROM profiles WHERE id = $1 AND role = 'creator' LIMIT 1`,
+        `SELECT display_name FROM profiles WHERE id = $1 AND role IN ('creator','admin','super_admin') LIMIT 1`,
         [id]
     );
     const profile = rows[0];
@@ -71,7 +71,7 @@ export default async function CreatorProfilePage({
     ]);
 
     const profile = profileRes.rows[0];
-    if (!profile || profile.role !== 'creator') {
+    if (!profile || !['creator', 'admin', 'super_admin'].includes(profile.role)) {
         notFound();
     }
 

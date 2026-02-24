@@ -35,6 +35,7 @@ interface UserProfile {
     created_at: string;
     user_credits?: {
         balance: number;
+        gift_balance?: number;
     };
     wraps_download_count: number;
     audio_download_count: number;
@@ -275,9 +276,14 @@ export default function AdminUsersPage() {
                                                 onChange={(e) => setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })}
                                             />
                                         ) : (
-                                            <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
-                                                {user.user_credits?.balance ?? 0}
-                                            </span>
+                                            <div className="flex flex-col items-center leading-tight">
+                                                <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                                    {user.user_credits?.balance ?? 0}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 dark:text-zinc-500">
+                                                    Gift: {user.user_credits?.gift_balance ?? 0}
+                                                </span>
+                                            </div>
                                         )}
                                     </td>
 

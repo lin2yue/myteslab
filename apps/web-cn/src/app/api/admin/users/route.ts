@@ -36,6 +36,7 @@ export async function GET(request: Request) {
             p.role,
             p.created_at,
             uc.balance,
+            uc.gift_balance,
             (SELECT COUNT(*) FROM user_downloads ud WHERE ud.user_id = p.id) as wraps_download_count,
             ${audioDownloadCountSelect}
             (SELECT COALESCE(SUM(amount), 0) FROM credit_ledger cl WHERE cl.user_id = p.id AND cl.type = 'top-up') as total_top_up
@@ -53,7 +54,8 @@ export async function GET(request: Request) {
         download_count: parseInt(row.wraps_download_count || '0') + parseInt(row.audio_download_count || '0'),
         total_top_up: parseFloat(row.total_top_up || '0'),
         user_credits: {
-            balance: row.balance ?? 0
+            balance: row.balance ?? 0,
+            gift_balance: row.gift_balance ?? 0
         }
     }));
 

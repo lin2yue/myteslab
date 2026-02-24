@@ -21,6 +21,7 @@ interface TrendDay {
 interface WrapEarning {
     name: string | null;
     download_count: number;
+    paid_download_count: number;
     creator_earnings: number;
     price_credits: number;
 }
@@ -30,6 +31,7 @@ interface DashboardClientProps {
     totalEarning: number;
     publishedCount: number;
     totalDownloads: number;
+    totalPaidDownloads: number;
     trendData: TrendDay[];
     topWraps: WrapEarning[];
 }
@@ -39,6 +41,7 @@ export default function DashboardClient({
     totalEarning,
     publishedCount,
     totalDownloads,
+    totalPaidDownloads,
     trendData,
     topWraps,
 }: DashboardClientProps) {
@@ -62,10 +65,11 @@ export default function DashboardClient({
             color: 'text-blue-600 dark:text-blue-400',
         },
         {
-            label: '总下载次数',
-            value: totalDownloads,
+            label: '付费下载次数',
+            value: totalPaidDownloads,
             icon: <Download className="w-5 h-5 text-purple-500" />,
             color: 'text-purple-600 dark:text-purple-400',
+            sub: `总下载 ${totalDownloads}`,
         },
     ];
 
@@ -82,6 +86,9 @@ export default function DashboardClient({
                             <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400">{stat.label}</span>
                         </div>
                         <p className={`text-2xl font-black ${stat.color}`}>{stat.value.toLocaleString()}</p>
+                        {'sub' in stat && stat.sub && (
+                            <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">{stat.sub}</p>
+                        )}
                     </Card>
                 ))}
             </div>
@@ -137,7 +144,7 @@ export default function DashboardClient({
                                 <tr className="border-b border-black/5 dark:border-white/10">
                                     <th className="text-left pb-3 text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">作品名</th>
                                     <th className="text-right pb-3 text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">定价</th>
-                                    <th className="text-right pb-3 text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">下载次数</th>
+                                    <th className="text-right pb-3 text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">付费/总下载</th>
                                     <th className="text-right pb-3 text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">获得积分</th>
                                 </tr>
                             </thead>
@@ -159,7 +166,12 @@ export default function DashboardClient({
                                             )}
                                         </td>
                                         <td className="py-3 text-right font-semibold text-gray-700 dark:text-zinc-300">
-                                            {wrap.download_count}
+                                            {wrap.price_credits > 0 ? (
+                                                <span>
+                                                    <span className="text-purple-600 dark:text-purple-400">{wrap.paid_download_count}</span>
+                                                    <span className="text-gray-400 dark:text-zinc-500 font-normal">/{wrap.download_count}</span>
+                                                </span>
+                                            ) : wrap.download_count}
                                         </td>
                                         <td className="py-3 text-right font-bold text-amber-600 dark:text-amber-400">
                                             {wrap.creator_earnings}

@@ -35,7 +35,7 @@ export default function CheckoutSuccessPage() {
     }, [sessionId, tierName, amount]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-transparent px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4 py-6">
             <div className="max-w-md w-full panel p-8 text-center animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex justify-center mb-6">
                     <div className="p-3 rounded-full bg-green-100/80 text-green-600">
@@ -54,14 +54,14 @@ export default function CheckoutSuccessPage() {
                 <div className="space-y-4">
                     <Link
                         href={fromPaidDownload ? `/wraps/${wrapSlug}?from=all` : '/ai-generate/generate'}
-                        className="block w-full btn-primary h-12"
+                        className="w-full btn-primary h-12 inline-flex items-center justify-center"
                     >
                         {fromPaidDownload ? '返回作品 立即下载' : t('back_to_generator')}
                     </Link>
 
                     <Link
                         href="/profile"
-                        className="block w-full btn-secondary h-12"
+                        className="w-full btn-secondary h-12 inline-flex items-center justify-center"
                     >
                         {t('view_balance')}
                     </Link>
