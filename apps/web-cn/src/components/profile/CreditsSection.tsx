@@ -25,7 +25,7 @@ export default function CreditsSection({ balance, totalEarned, giftBalance = 0, 
 
             <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                    <div className="flex items-baseline flex-wrap gap-x-4 gap-y-1">
                         <span className="text-4xl font-extrabold text-gray-900 dark:text-zinc-100 mr-1">
                             {balance}
                         </span>
