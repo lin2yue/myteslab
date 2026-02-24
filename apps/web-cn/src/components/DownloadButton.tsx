@@ -130,15 +130,47 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
         }
     }
 
+    const handleAlipayTopup = async () => {
+        setIsPurchasing(true)
+        try {
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productId: matchedTopup.productId,
+                    locale,
+                    metadata: {
+                        source: 'paid_wrap_download',
+                        wrapId,
+                        needCredits,
+                        paidBalance,
+                    }
+                }),
+            })
+            const data = await response.json().catch(() => ({} as { url?: string; error?: string }))
+
+            if (data.url) {
+                window.location.href = data.url
+                return
+            }
+
+            throw new Error(data.error || '支付拉起失败，请重试')
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : '支付拉起失败，请重试'
+            window.alert(message)
+            setIsPurchasing(false)
+        }
+    }
+
     const shortByCredits = Math.max(needCredits - paidBalance, 0)
     const topupPackages = [
-        { credits: 30, yuan: 9 },
-        { credits: 60, yuan: 19 },
-        { credits: 120, yuan: 39 },
-        { credits: 240, yuan: 79 },
+        { credits: 30, yuan: 9, productId: 'starter' },
+        { credits: 60, yuan: 19, productId: 'explorer' },
+        { credits: 120, yuan: 39, productId: 'advanced' },
+        { credits: 240, yuan: 79, productId: 'collector' },
     ]
-    const matchedTopup = topupPackages.find(p => p.credits >= shortByCredits)
-    const topupYuan = matchedTopup ? matchedTopup.yuan : Math.ceil((shortByCredits / 120) * 39)
+    const matchedTopup = topupPackages.find(p => p.credits >= shortByCredits) || topupPackages[topupPackages.length - 1]
+    const topupYuan = matchedTopup.yuan
 
     return (
         <div>
@@ -224,10 +256,11 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
                                 ) : (
                                     <button
                                         type="button"
-                                        onClick={() => router.push('/pricing')}
-                                        className="h-9 px-3 rounded-lg text-sm bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+                                        onClick={handleAlipayTopup}
+                                        disabled={isPurchasing}
+                                        className="h-9 px-3 rounded-lg text-sm bg-amber-500 hover:bg-amber-600 text-white font-semibold disabled:opacity-60"
                                     >
-                                        支付宝支付{topupYuan}元购买
+                                        {isPurchasing ? '正在拉起支付宝...' : `支付${topupYuan}元 立即下载`}
                                     </button>
                                 )}
                             </div>
