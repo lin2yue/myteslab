@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle2, Download } from 'lucide-react';
+import { Sparkles, Download } from 'lucide-react';
 import { dbQuery } from '@/lib/db';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 
@@ -99,7 +99,7 @@ export default async function CreatorProfilePage({
                             {profile.display_name || '匿名创作者'}
                         </h1>
                         <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                             <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">认证创作者</span>
                         </div>
                     </div>

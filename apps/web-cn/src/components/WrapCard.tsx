@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import { useLocale } from '@/lib/i18n'
 import Link from 'next/link'
-import { CheckCircle2 } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import type { Wrap } from '@/lib/types'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
@@ -115,7 +115,7 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
                                 <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate group-hover/author:text-amber-600 dark:group-hover/author:text-amber-400 transition-colors">
                                     {wrap.author_name}
                                 </span>
-                                <CheckCircle2 className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                                <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
                             </Link>
                         ) : (
                             <div className="flex items-center gap-2 min-w-0">
