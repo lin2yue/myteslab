@@ -52,7 +52,7 @@ export default async function ProfilePage() {
     const [profileRes, creditsRes, wrapsRes, downloadsRes, modelsRes, ledgerRes] = await Promise.all([
         dbQuery(`SELECT display_name, avatar_url, email FROM profiles WHERE id = $1`, [userId]),
         dbQuery(`SELECT balance, total_earned FROM user_credits WHERE user_id = $1`, [userId]),
-        dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug, download_count, user_download_count,
+        dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug, download_count, user_download_count, price_credits,
                         COALESCE((
                             SELECT COUNT(*)
                             FROM site_analytics sa
