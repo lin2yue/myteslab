@@ -38,10 +38,10 @@ export async function POST(request: Request) {
         );
 
         if (currentCredits.length === 0) {
-            // New user credit record
+            // New user credit record - admin gifts go to gift_balance
             await client.query(
-                `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, updated_at)
-                 VALUES ($1, $2, $2, 0, NOW())`,
+                `INSERT INTO user_credits (user_id, balance, total_earned, total_spent, gift_balance, updated_at)
+                 VALUES ($1, $2, $2, 0, $2, NOW())`,
                 [userId, balance]
             );
             if (balance !== 0) {
@@ -58,17 +58,19 @@ export async function POST(request: Request) {
                 const diff = balance - oldBalance;
                 creditDelta = diff;
 
-                // If diff > 0, it's a gift, so we increment total_earned
+                // If diff > 0, it's a gift, so we increment total_earned and gift_balance
                 // If diff < 0, it's a reduction, we don't touch total_earned (it's cumulative)
                 const earnedIncrement = diff > 0 ? diff : 0;
+                const giftIncrement = diff > 0 ? diff : 0;
 
                 await client.query(
-                    `UPDATE user_credits 
-                     SET balance = $2, 
+                    `UPDATE user_credits
+                     SET balance = $2,
                          total_earned = total_earned + $3,
-                         updated_at = NOW() 
+                         gift_balance = GREATEST(0, gift_balance + $4),
+                         updated_at = NOW()
                      WHERE user_id = $1`,
-                    [userId, balance, earnedIncrement]
+                    [userId, balance, earnedIncrement, giftIncrement]
                 );
 
                 await client.query(

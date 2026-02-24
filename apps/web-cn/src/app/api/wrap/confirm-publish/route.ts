@@ -15,7 +15,11 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { wrapId, ossKey } = body;
+        const { wrapId, ossKey, marketplaceOptions } = body as {
+            wrapId: string;
+            ossKey: string;
+            marketplaceOptions?: { enabled: boolean; priceCredits: number };
+        };
 
         if (!wrapId || !ossKey) {
             return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 });
@@ -34,20 +38,22 @@ export async function POST(request: NextRequest) {
         // - 普通用户: 仅更新自己的 wrap
         // - 管理员: 可跨用户更新，用于后台批量修复预览图
         const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+        const priceCredits = marketplaceOptions?.enabled ? (marketplaceOptions.priceCredits ?? 0) : 0;
+
         const { rows } = isAdmin
             ? await dbQuery(
                 `UPDATE wraps
-                 SET preview_url = $2, is_public = true, updated_at = NOW()
+                 SET preview_url = $2, is_public = true, price_credits = $3, updated_at = NOW()
                  WHERE id = $1
                  RETURNING *`,
-                [wrapId, previewUrl]
+                [wrapId, previewUrl, priceCredits]
             )
             : await dbQuery(
                 `UPDATE wraps
-                 SET preview_url = $3, is_public = true, updated_at = NOW()
+                 SET preview_url = $3, is_public = true, price_credits = $4, updated_at = NOW()
                  WHERE id = $1 AND user_id = $2
                  RETURNING *`,
-                [wrapId, user.id, previewUrl]
+                [wrapId, user.id, previewUrl, priceCredits]
             );
 
         if (!rows || rows.length === 0) {

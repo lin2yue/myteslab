@@ -160,6 +160,7 @@ export default async function ProfilePage() {
                     generatedWraps={generatedWraps || []}
                     downloads={downloads || []}
                     wrapModels={wrapModels}
+                    isCreator={user.role === 'creator'}
                 />
             </main>
         </div>

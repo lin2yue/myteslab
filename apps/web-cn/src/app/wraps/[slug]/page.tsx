@@ -3,6 +3,8 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from '@/lib/i18n'
 import { getSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
+import Image from 'next/image'
+import { CheckCircle2 } from 'lucide-react'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl, ensureCdnUrl } from '@/lib/images'
@@ -13,6 +15,7 @@ import Card from '@/components/ui/Card'
 import { getModelDisplayName } from '@/lib/model-display'
 import WrapDetailViewerPanel from '@/components/wrap/WrapDetailViewerPanel'
 import WrapDetailActionPanel from '@/components/wrap/WrapDetailActionPanel'
+import { dbQuery } from '@/lib/db'
 
 export async function generateMetadata({
     params,
@@ -144,6 +147,16 @@ export default async function WrapDetailPage({
     const backHref = from === 'all' ? '/' : (wrap.model_slug ? `/models/${wrap.model_slug}` : '/')
     const isOwner = !!sessionUser && !!wrap.user_id && sessionUser.id === wrap.user_id
 
+    // 创作者信息（仅认证创作者）
+    let creatorBio: string | null = null;
+    if (wrap.author_role === 'creator' && wrap.user_id) {
+        const { rows: creatorRows } = await dbQuery<{ creator_bio: string | null }>(
+            `SELECT creator_bio FROM profiles WHERE id = $1 LIMIT 1`,
+            [wrap.user_id]
+        );
+        creatorBio = creatorRows[0]?.creator_bio || null;
+    }
+
     // 获取模型名称以增强标题和结构化数据 SEO
     const models = await getModels()
     const model = models.find(m => m.slug === wrap.model_slug)
@@ -238,18 +251,36 @@ export default async function WrapDetailPage({
                                     {name}
                                 </h1>
 
-                                <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-gray-50 shrink-0">
-                                        {wrap.author_avatar_url ? (
-                                            <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs font-bold">
-                                                {(wrap.author_name || 'U').charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
+                                {wrap.author_role === 'creator' && wrap.user_id ? (
+                                    <Link href={`/creator/${wrap.user_id}`} className="flex items-center gap-2 group/author">
+                                        <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-amber-200 dark:ring-amber-800 shrink-0">
+                                            {wrap.author_avatar_url ? (
+                                                <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
+                                                    {(wrap.author_name || 'C').charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover/author:text-amber-600 dark:group-hover/author:text-amber-400 transition-colors">
+                                            @{wrap.author_name || 'Creator'}
+                                        </div>
+                                        <CheckCircle2 className="w-4 h-4 text-amber-500" />
+                                    </Link>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-gray-50 shrink-0">
+                                            {wrap.author_avatar_url ? (
+                                                <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs font-bold">
+                                                    {(wrap.author_name || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">@{wrap.author_name || 'Anonymous'}</div>
                                     </div>
-                                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">@{wrap.author_name || 'Anonymous'}</div>
-                                </div>
+                                )}
                             </div>
 
                             {/* Dynamic SEO Description Section (Hidden for users, visible for SEO) */}
@@ -326,6 +357,46 @@ export default async function WrapDetailPage({
                                 </div>
                             )}
                         </div>
+
+                        {/* 创作者信息卡片 */}
+                        {wrap.author_role === 'creator' && wrap.user_id && (
+                            <div className="pt-6 border-t border-black/5 dark:border-white/10">
+                                <p className="text-[10px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
+                                    <CheckCircle2 className="w-3 h-3 text-amber-500" />
+                                    认证创作者
+                                </p>
+                                <Link href={`/creator/${wrap.user_id}`} className="flex items-center gap-3 p-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/20 hover:border-amber-200 dark:hover:border-amber-800 transition-colors group/creator">
+                                    <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-amber-200 dark:ring-amber-800 flex-shrink-0">
+                                        {wrap.author_avatar_url ? (
+                                            <Image
+                                                src={wrap.author_avatar_url}
+                                                alt={wrap.author_name || '创作者'}
+                                                width={40}
+                                                height={40}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold text-sm">
+                                                {(wrap.author_name || 'C').charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-sm font-bold text-gray-900 dark:text-zinc-100 group-hover/creator:text-amber-600 dark:group-hover/creator:text-amber-400 transition-colors">
+                                                {wrap.author_name || '创作者'}
+                                            </span>
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                        </div>
+                                        {creatorBio && (
+                                            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                                                {creatorBio}
+                                            </p>
+                                        )}
+                                    </div>
+                                </Link>
+                            </div>
+                        )}
 
                         {/* AI 提示词卡片 */}
                         {wrap.category === 'ai_generated' && wrap.prompt && (
