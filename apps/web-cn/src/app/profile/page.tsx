@@ -51,7 +51,7 @@ export default async function ProfilePage() {
     const userId = user.id;
     const [profileRes, creditsRes, wrapsRes, downloadsRes, modelsRes, ledgerRes] = await Promise.all([
         dbQuery(`SELECT display_name, avatar_url, email FROM profiles WHERE id = $1`, [userId]),
-        dbQuery(`SELECT balance, total_earned FROM user_credits WHERE user_id = $1`, [userId]),
+        dbQuery(`SELECT balance, total_earned, gift_balance FROM user_credits WHERE user_id = $1`, [userId]),
         dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug, download_count, user_download_count,
                         COALESCE((to_jsonb(w)->>'price_credits')::int, 0) AS price_credits,
                         COALESCE((
@@ -152,6 +152,7 @@ export default async function ProfilePage() {
                     <CreditsSection
                         balance={credits?.balance || 0}
                         totalEarned={credits?.total_earned || 0}
+                        giftBalance={credits?.gift_balance || 0}
                         history={pointsHistory}
                     />
                 </div>
