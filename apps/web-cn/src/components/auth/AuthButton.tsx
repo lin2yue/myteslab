@@ -134,7 +134,7 @@ export default function AuthButton() {
                                     {tProfile('my_profile')}
                                 </Link>
                                 {/* Only show Admin Dashboard if needed - for now keeping it simple or check roles if available */}
-                                {(['creator', 'admin', 'super_admin'].includes(user.role)) && (
+                                {(['creator', 'admin', 'super_admin'].includes(user.role ?? '')) && (
                                     <Link
                                         href="/creator/dashboard"
                                         className="flex items-center gap-3 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg"

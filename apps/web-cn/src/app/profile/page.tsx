@@ -160,7 +160,7 @@ export default async function ProfilePage() {
                     generatedWraps={generatedWraps || []}
                     downloads={downloads || []}
                     wrapModels={wrapModels}
-                    isCreator={['creator', 'admin', 'super_admin'].includes(user.role)}
+                    isCreator={['creator', 'admin', 'super_admin'].includes(user.role ?? '')}
                 />
             </main>
         </div>

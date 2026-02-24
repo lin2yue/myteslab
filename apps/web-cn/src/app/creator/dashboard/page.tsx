@@ -31,7 +31,7 @@ export default async function CreatorDashboardPage() {
         redirect('/login?next=/creator/dashboard');
     }
 
-    if (!['creator', 'admin', 'super_admin'].includes(user.role)) {
+    if (!['creator', 'admin', 'super_admin'].includes(user.role ?? '')) {
         redirect('/');
     }
 
