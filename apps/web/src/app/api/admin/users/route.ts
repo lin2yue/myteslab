@@ -26,6 +26,10 @@ type LedgerRow = {
     amount: number | null;
 };
 
+type QueryError = {
+    message: string;
+};
+
 function toInt(value: unknown): number {
     const num = Number(value);
     return Number.isFinite(num) ? Math.trunc(num) : 0;
@@ -43,6 +47,11 @@ function chunkArray<T>(input: T[], chunkSize: number): T[][] {
         chunks.push(input.slice(i, i + chunkSize));
     }
     return chunks;
+}
+
+function isMissingGiftBalanceColumn(error: QueryError | null): boolean {
+    if (!error?.message) return false;
+    return error.message.toLowerCase().includes('gift_balance');
 }
 
 async function fetchAllProfiles(role: string): Promise<ProfileRow[]> {
@@ -79,6 +88,61 @@ async function fetchAllProfiles(role: string): Promise<ProfileRow[]> {
     return profiles;
 }
 
+async function fetchCreditsChunk(
+    chunkIds: string[],
+    hasGiftBalanceColumn: boolean
+): Promise<{ rows: CreditRow[]; hasGiftBalanceColumn: boolean; error: QueryError | null }> {
+    const supabase = createAdminClient();
+
+    if (hasGiftBalanceColumn) {
+        const withGiftRes = await supabase
+            .from('user_credits')
+            .select('user_id, balance, gift_balance')
+            .in('user_id', chunkIds);
+
+        if (!withGiftRes.error) {
+            return {
+                rows: (withGiftRes.data || []) as CreditRow[],
+                hasGiftBalanceColumn: true,
+                error: null,
+            };
+        }
+
+        if (!isMissingGiftBalanceColumn(withGiftRes.error)) {
+            return {
+                rows: [],
+                hasGiftBalanceColumn: true,
+                error: { message: withGiftRes.error.message },
+            };
+        }
+    }
+
+    const withoutGiftRes = await supabase
+        .from('user_credits')
+        .select('user_id, balance')
+        .in('user_id', chunkIds);
+
+    if (withoutGiftRes.error) {
+        return {
+            rows: [],
+            hasGiftBalanceColumn: false,
+            error: { message: withoutGiftRes.error.message },
+        };
+    }
+
+    const rows = ((withoutGiftRes.data || []) as Array<{ user_id: string; balance: number | null }>).map((row) => ({
+        user_id: row.user_id,
+        balance: row.balance,
+        gift_balance: 0,
+    }));
+
+    return {
+        rows,
+        hasGiftBalanceColumn: false,
+        error: null,
+    };
+}
+
 export async function GET(request: Request) {
     const admin = await requireAdmin();
     if (!admin) {
@@ -108,6 +172,7 @@ export async function GET(request: Request) {
     const topupRows: LedgerRow[] = [];
     const audioRows: DownloadRow[] = [];
     let hasAudioDownloadsTable = true;
+    let hasGiftBalanceColumn = true;
 
     const userIdChunks = chunkArray(userIds, 200);
     for (const chunkIds of userIdChunks) {
@@ -115,11 +180,8 @@ export async function GET(request: Request) {
             ? supabase.from('user_audio_downloads').select('user_id').in('user_id', chunkIds)
             : Promise.resolve({ data: [], error: null } as { data: DownloadRow[]; error: null });
 
-        const [creditsRes, downloadsRes, topupsRes, audioRes] = await Promise.all([
-            supabase
-                .from('user_credits')
-                .select('user_id, balance, gift_balance')
-                .in('user_id', chunkIds),
+        const creditsChunkRes = await fetchCreditsChunk(chunkIds, hasGiftBalanceColumn);
+        const [downloadsRes, topupsRes, audioRes] = await Promise.all([
             supabase
                 .from('user_downloads')
                 .select('user_id')
@@ -132,8 +194,8 @@ export async function GET(request: Request) {
             audioPromise,
         ]);
 
-        if (creditsRes.error) {
-            return NextResponse.json({ success: false, error: creditsRes.error.message }, { status: 500 });
+        if (creditsChunkRes.error) {
+            return NextResponse.json({ success: false, error: creditsChunkRes.error.message }, { status: 500 });
         }
         if (downloadsRes.error) {
             return NextResponse.json({ success: false, error: downloadsRes.error.message }, { status: 500 });
@@ -142,7 +204,8 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: topupsRes.error.message }, { status: 500 });
         }
 
-        creditsRows.push(...((creditsRes.data || []) as CreditRow[]));
+        hasGiftBalanceColumn = creditsChunkRes.hasGiftBalanceColumn;
+        creditsRows.push(...creditsChunkRes.rows);
         downloadRows.push(...((downloadsRes.data || []) as DownloadRow[]));
         topupRows.push(...((topupsRes.data || []) as LedgerRow[]));
 
