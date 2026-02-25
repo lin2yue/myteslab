@@ -91,9 +91,6 @@ export default function robots(): MetadataRoute.Robots {
                 ],
             },
         ],
-        sitemap: [
-            `${baseUrl}/sitemap.xml`,
-            `${baseUrl}/sitemap-google.xml`,
-        ],
+        sitemap: `${baseUrl}/sitemap.xml`,
     }
 }
