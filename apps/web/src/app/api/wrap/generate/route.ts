@@ -7,7 +7,7 @@
 
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, imageUrlToBase64, generateBilingualMetadata } from '@/lib/ai/gemini-image';
+import { generateWrapTexture, imageUrlToBase64, generateBilingualMetadata, optimizePromptForPolicyRetry } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions } from '@/lib/ai/mask-config';
 import { createClient } from '@/utils/supabase/server';
@@ -211,9 +211,9 @@ export async function POST(request: NextRequest) {
 
         // reuse currentModelSlug from validation step
         let maskImageBase64: string | null = null;
+        const maskUrl = getMaskUrl(currentModelSlug, request.nextUrl.origin);
         try {
             console.log(`[AI-GEN] Fetching mask for ${currentModelSlug}...`);
-            const maskUrl = getMaskUrl(currentModelSlug, request.nextUrl.origin);
             console.log(`[AI-GEN] Mask URL: ${maskUrl}`);
             const maskResponse = await fetch(maskUrl);
 
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
         // PROMPT OPTIMIZATION LOOP
         // ------------------------------------------------------------------
         // Import optimization function (make sure to import it at top of file)
-        const { optimizePromptForPolicyRetry } = await import('@/lib/ai/gemini-image');
+        // optimizePromptForPolicyRetry is now statically imported at the top of this file
 
         let currentPrompt = prompt;
         let attemptCount = 0;
@@ -329,7 +329,9 @@ export async function POST(request: NextRequest) {
                 modelSlug,
                 modelName,
                 prompt: currentPrompt,
+                maskImageUrl: maskUrl,
                 maskImageBase64: maskImageBase64 || undefined,
+                referenceImageUrls: undefined, // web project currently uses inline base64 references only
                 referenceImagesBase64: referenceImagesBase64.length > 0 ? referenceImagesBase64 : undefined,
             });
 

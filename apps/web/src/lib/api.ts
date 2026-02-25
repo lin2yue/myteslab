@@ -122,7 +122,7 @@ function normalizeWrap(w: any): Wrap {
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
         download_count: w.download_count || 0,
-        user_download_count: w.user_download_count ?? w.download_count ?? 0,
+        user_download_count: w.user_download_count ?? w.download_count ?? 0, // user_download_count may not exist in this DB
         created_at: w.created_at || new Date().toISOString(),
         reference_images: Array.isArray(w.reference_images)
             ? w.reference_images.map((img: any) => typeof img === 'string' ? ensureCdnUrl(img) : null).filter(Boolean)
@@ -287,7 +287,6 @@ async function fetchWrapsInternal(
             model_slug, 
             user_id, 
             download_count, 
-            user_download_count,
             is_public, 
             is_active, 
             created_at, 
