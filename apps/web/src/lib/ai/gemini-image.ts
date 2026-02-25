@@ -78,6 +78,7 @@ const DEFAULT_IMAGE_FALLBACK_MODELS = ['gemini-2.5-flash-image'];
 const REFERENCE_IMAGE_MAX_SIDE = readEnvInt('GEMINI_REFERENCE_MAX_SIDE', 1024);
 const REFERENCE_IMAGE_JPEG_QUALITY = Math.max(40, Math.min(95, readEnvInt('GEMINI_REFERENCE_JPEG_QUALITY', 78)));
 const REFERENCE_IMAGE_TARGET_BYTES = readEnvInt('GEMINI_REFERENCE_TARGET_BYTES', 900 * 1024);
+const ASSET_FETCH_REFERER = 'https://myteslab.com';
 
 export interface GenerateWrapParams {
     modelSlug: string;
@@ -801,37 +802,85 @@ export async function generateWrapTexture(
                                     success: false,
                                     error: parsedError.error,
                                     errorCode: parsedError.errorCode,
-                                    finalPrompt: textPrompt,
-                                    finishReasons: parsedError.finishReasons,
-                                    finishMessages: parsedError.finishMessages,
-                                    promptBlockReason: parsedError.promptBlockReason,
-                                    responseId: parsedError.responseId,
-                                    modelVersion: parsedError.modelVersion
+                                    promptBlockReason: parsedError.promptBlockReason || null,
+                                    finishReasons: parsedError.finishReasons || [],
+                                    finishMessages: parsedError.finishMessages || [],
+                                    responseId: parsedError.responseId || null,
+                                    modelVersion: parsedError.modelVersion || null,
+                                    finalPrompt: promptToUse
                                 });
                             }
-                            break; // Retry loop (fetchWithRetry handles HTTP retries, loop handles model/prompt switch)
+                            break;
                         }
 
                         const content = await response.json();
-                        const parsedResult = parseGeminiImageResponse(content, textPrompt);
-
-                        if (parsedResult.ok && parsedResult.result) {
-                            return withRequestDebug(parsedResult.result);
+                        const parsed = parseGeminiImageResponse(content, promptToUse);
+                        if (parsed.ok && parsed.result) {
+                            console.log(`[AI-GEN] [${VERSION}] Gemini image success with model ${model}`);
+                            return withRequestDebug(parsed.result);
                         }
 
-                        lastFailure = parsedResult.error || 'Unknown Error';
-                        lastErrorCode = parsedResult.errorCode || 'unknown';
-                        lastFinishReasons = parsedResult.finishReasons || [];
-                        lastFinishMessages = parsedResult.finishMessages || [];
-                        lastPromptBlockReason = parsedResult.promptBlockReason || null;
-                        lastResponseId = parsedResult.responseId || null;
-                        lastModelVersion = parsedResult.modelVersion || null;
+                        lastFailure = parsed.error || 'No image found in response';
+                        lastErrorCode = parsed.errorCode || 'no_image_payload';
+                        lastFinishReasons = parsed.finishReasons || [];
+                        lastFinishMessages = parsed.finishMessages || [];
+                        lastPromptBlockReason = parsed.promptBlockReason || null;
+                        lastResponseId = parsed.responseId || null;
+                        lastModelVersion = parsed.modelVersion || null;
 
-                        if (!parsedResult.retryable) {
+                        const shouldFallbackInline = mode === 'uri'
+                            && !triedInlineFallback
+                            && hasInlineInputs
+                            && likelyUrlFetchFailure(parsed.error, parsed.finishMessages || []);
+                        if (shouldFallbackInline) {
+                            triedInlineFallback = true;
+                            mode = 'inline';
+                            console.warn(`[AI-GEN] [${VERSION}] file_uri response indicates fetch failure, retrying with inline fallback.`);
+                            continue;
+                        }
+
+                        if (!parsed.retryable) {
                             return withRequestDebug({
                                 success: false,
                                 error: lastFailure,
-                                errorCode: lastErrorCode,
+                                errorCode: parsed.errorCode || 'no_image_payload',
+                                promptBlockReason: parsed.promptBlockReason || null,
+                                finishReasons: parsed.finishReasons || [],
+                                finishMessages: parsed.finishMessages || [],
+                                responseId: parsed.responseId || null,
+                                modelVersion: parsed.modelVersion || null,
+                                finalPrompt: promptToUse
+                            });
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (lastErrorCode === 'no_image_payload' && noImageRetryRounds > 0) {
+                for (let round = 0; round < noImageRetryRounds; round += 1) {
+                    if (Date.now() - generationStartedAt > maxTotalMs) {
+                        return withRequestDebug({
+                            success: false,
+                            error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
+                            errorCode: 'timeout',
+                            finalPrompt: textPrompt,
+                            finishReasons: lastFinishReasons,
+                            finishMessages: lastFinishMessages,
+                            promptBlockReason: lastPromptBlockReason,
+                            responseId: lastResponseId,
+                            modelVersion: lastModelVersion
+                        });
+                    }
+                    await sleep(700 * (round + 1));
+                    const rescuePrompt = buildRetryPrompt('rescue');
+                    console.warn(`[AI-GEN] [${VERSION}] No-image rescue round ${round + 1}/${noImageRetryRounds}`);
+                    for (const model of modelCandidates) {
+                        if (Date.now() - generationStartedAt > maxTotalMs) {
+                            return withRequestDebug({
+                                success: false,
+                                error: `AI 生成超时（>${Math.round(maxTotalMs / 1000)}s），请重试`,
+                                errorCode: 'timeout',
                                 finalPrompt: textPrompt,
                                 finishReasons: lastFinishReasons,
                                 finishMessages: lastFinishMessages,
@@ -840,35 +889,75 @@ export async function generateWrapTexture(
                                 modelVersion: lastModelVersion
                             });
                         }
+                        const rescueUrl = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent`;
+                        console.log(`[AI-GEN] [${VERSION}] Rescue attempt model=${model}`);
+                        const rescuePayload = await buildRequestPayload(rescuePrompt, hasUriInputs ? 'uri' : 'inline');
+                        lastRequestAttempt += 1;
+                        lastRequestPayload = sanitizeGeminiRequestPayload(rescuePayload);
+                        lastRequestModel = model;
+                        lastRequestMode = hasUriInputs ? 'uri' : 'inline';
+                        lastRequestApiUrl = rescueUrl;
+                        const rescueResponse = await fetchWithRetry(`${rescueUrl}?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                            },
+                            body: JSON.stringify(rescuePayload),
+                            timeoutMs: imageTimeoutMs,
+                            maxRetries: imageMaxRetries,
+                            retryBaseMs,
+                            retryMaxMs,
+                            logPrefix: '[AI-GEN]'
+                        } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
 
-                        console.warn(`[AI-GEN] [${VERSION}] Gemini payload issue: ${lastFailure}`);
-                        break; // Try next prompt/model
+                        if (!rescueResponse.ok) {
+                            const errorText = await rescueResponse.text();
+                            const parsedError = parseGeminiHttpError(rescueResponse.status, errorText);
+                            lastFailure = parsedError.error;
+                            lastErrorCode = parsedError.errorCode;
+                            lastFinishReasons = parsedError.finishReasons || [];
+                            lastFinishMessages = parsedError.finishMessages || [];
+                            lastPromptBlockReason = parsedError.promptBlockReason || null;
+                            lastResponseId = parsedError.responseId || null;
+                            lastModelVersion = parsedError.modelVersion || null;
+                            if (!parsedError.retryable) {
+                                continue;
+                            }
+                            continue;
+                        }
+
+                        const rescueContent = await rescueResponse.json();
+                        const rescueParsed = parseGeminiImageResponse(rescueContent, rescuePrompt);
+                        if (rescueParsed.ok && rescueParsed.result) {
+                            console.log(`[AI-GEN] [${VERSION}] Gemini image success in rescue mode with model ${model}`);
+                            return withRequestDebug(rescueParsed.result);
+                        }
+
+                        lastFailure = rescueParsed.error || 'No image found in response';
+                        lastErrorCode = rescueParsed.errorCode || 'no_image_payload';
+                        lastFinishReasons = rescueParsed.finishReasons || [];
+                        lastFinishMessages = rescueParsed.finishMessages || [];
+                        lastPromptBlockReason = rescueParsed.promptBlockReason || null;
+                        lastResponseId = rescueParsed.responseId || null;
+                        lastModelVersion = rescueParsed.modelVersion || null;
                     }
                 }
             }
 
             return withRequestDebug({
                 success: false,
-                error: lastFailure || 'All attempts failed',
-                errorCode: lastErrorCode || 'exhausted',
-                finalPrompt: textPrompt,
+                error: lastFailure || 'No image found in response',
+                errorCode: lastErrorCode || 'no_image_payload',
                 finishReasons: lastFinishReasons,
                 finishMessages: lastFinishMessages,
                 promptBlockReason: lastPromptBlockReason,
                 responseId: lastResponseId,
-                modelVersion: lastModelVersion
+                modelVersion: lastModelVersion,
+                finalPrompt: textPrompt
             });
 
         } catch (error: any) {
-
-            if (error.name === 'AbortError') {
-                return withRequestDebug({
-                    success: false,
-                    error: `AI 生成超时 (超过 ${Math.round(imageTimeoutMs / 1000)}s)`,
-                    errorCode: 'timeout',
-                    finalPrompt: textPrompt
-                });
-            }
             throw error;
         }
 
@@ -877,7 +966,7 @@ export async function generateWrapTexture(
         return withRequestDebug({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            errorCode: 'internal',
+            errorCode: 'unknown_error',
             finalPrompt: textPrompt
         });
     }
@@ -888,7 +977,11 @@ export async function generateWrapTexture(
  */
 export async function imageUrlToBase64(url: string): Promise<string | null> {
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                Referer: ASSET_FETCH_REFERER
+            }
+        });
         if (!response.ok) {
             console.error('Failed to fetch image:', url);
             return null;
@@ -939,73 +1032,133 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
 export async function optimizePromptForPolicyRetry(params: {
     userPrompt: string;
     modelName: string;
-    failureSignal: PromptRetryFailureSignal;
+    failureSignal?: PromptRetryFailureSignal;
 }): Promise<PromptOptimizationResult> {
-    const { userPrompt, modelName, failureSignal } = params;
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return { success: false, changed: false, optimizedPrompt: userPrompt, error: 'NO_API_KEY' };
-
-    const reason = failureSignal.promptBlockReason || (failureSignal.finishReasons || []).join(',') || 'UNKNOWN';
-    const detail = (failureSignal.finishMessages || []).join(' ');
-
-    const systemInstruction = `You are a prompt engineering expert for automotive design AI.
-The previous generation attempt failed due to Safety/Policy Violation or Logic Check.
-Reason: "${reason}". Detail: "${detail}".
-Original Prompt: "${userPrompt}".
-Vehicle: ${modelName}.
-
-Your goal is to REWRITE the prompt to be safer, simpler, and compliant, while keeping the core visual intent.
-- Remove any violence, gore, explicit, political, or copyright-sensitive keywords.
-- Simplify complex descriptions that might trigger "complex logic" blocks.
-- Focus on visual aesthetics (color, texture, style).
-- If the prompt was blocked for "Safety", make it abstract and benign.
-- Output ONLY the rewritten English prompt. Do not output JSON or markdown.`;
-
-    const MODEL = 'gemini-1.5-flash'; // Use fast model
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: `Please rewrite this prompt to pass safety checks: ${userPrompt}` }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            })
-        });
-
-        if (!response.ok) throw new Error(`Optimizer failed: ${response.status}`);
-        const content = await response.json();
-        const newPrompt = content.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!newPrompt || newPrompt.trim() === userPrompt.trim()) {
-            return {
-                success: true,
-                changed: false,
-                optimizedPrompt: userPrompt,
-                responseId: content.responseId,
-                modelVersion: content.modelVersion,
-                reason: 'optimizer_returned_same_prompt'
-            };
-        }
-
-        return {
-            success: true,
-            changed: true,
-            optimizedPrompt: newPrompt.trim(),
-            responseId: content.responseId,
-            modelVersion: content.modelVersion,
-            reason: 'rewritten_for_safety'
-        };
-
-    } catch (err: any) {
-        console.error('[AI-GEN] Prompt optimization failed:', err);
+    const originalPrompt = (params.userPrompt || '').trim();
+    if (!originalPrompt) {
         return {
             success: false,
             changed: false,
-            optimizedPrompt: userPrompt,
-            error: err.message
+            optimizedPrompt: originalPrompt,
+            error: 'Empty prompt'
         };
+    }
+
+    try {
+        const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+        if (!apiKey) throw new Error('GEMINI_API_KEY missing');
+
+        const model = (process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash').trim();
+        if (!model) throw new Error('GEMINI_TEXT_MODEL is empty');
+
+        const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
+        const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const timeoutMs = readEnvInt('GEMINI_PROMPT_OPTIMIZE_TIMEOUT_MS', 20000);
+        const maxRetries = readEnvInt('GEMINI_PROMPT_OPTIMIZE_RETRIES', 1);
+        const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
+        const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
+
+        const signal = params.failureSignal || {};
+        const signalText = JSON.stringify({
+            errorCode: signal.errorCode || '',
+            promptBlockReason: signal.promptBlockReason || '',
+            finishReasons: signal.finishReasons || [],
+            finishMessages: signal.finishMessages || []
+        });
+
+        const systemInstruction = `You optimize a failed automotive wrap prompt with MINIMAL edits.
+Rules:
+1) Preserve user intent, style, colors and mood as much as possible.
+2) If explicit copyrighted character names, trademarks, logos, or franchise titles appear, replace them with generic style descriptions.
+3) Do not add new themes unrelated to the original prompt.
+4) Keep final prompt within 120 Chinese characters or 220 English characters.
+Return JSON only with keys: optimized_prompt, changed, reason.`;
+
+        const userInput = `Model: ${params.modelName}
+Original prompt: ${originalPrompt}
+Last failure signal: ${signalText}`;
+
+        const response = await fetchWithRetry(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: userInput }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    responseMimeType: 'application/json'
+                }
+            }),
+            timeoutMs,
+            maxRetries,
+            retryBaseMs,
+            retryMaxMs,
+            logPrefix: '[AI-GEN]'
+        } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
+
+        if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            throw new Error(`Prompt optimization failed: HTTP ${response.status}${body ? ` ${body.slice(0, 200)}` : ''}`);
+        }
+
+        const payload = await response.json();
+        const responseId = typeof payload?.responseId === 'string' ? payload.responseId : null;
+        const modelVersion = typeof payload?.modelVersion === 'string' ? payload.modelVersion : null;
+        const rawText = extractTextPart(payload) || '';
+        const parsed = parseJsonObjectFromText(rawText);
+
+        const optimizedPromptRaw = typeof parsed?.optimized_prompt === 'string'
+            ? parsed.optimized_prompt.trim()
+            : '';
+        const reason = typeof parsed?.reason === 'string' ? parsed.reason.trim() : '';
+
+        let optimizedPrompt = optimizedPromptRaw || originalPrompt;
+        optimizedPrompt = optimizedPrompt.replace(/\s+/g, ' ').trim();
+        if (optimizedPrompt.length > 400) {
+            optimizedPrompt = optimizedPrompt.slice(0, 400).trim();
+        }
+
+        const changedByContent = optimizedPrompt !== originalPrompt;
+        const changed = typeof parsed?.changed === 'boolean' ? parsed.changed : changedByContent;
+
+        return {
+            success: true,
+            changed,
+            optimizedPrompt,
+            reason,
+            responseId,
+            modelVersion
+        };
+    } catch (error: any) {
+        return {
+            success: false,
+            changed: false,
+            optimizedPrompt: originalPrompt,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
+}
+
+function parseJsonObjectFromText(raw: string): any | null {
+    const trimmed = (raw || '').trim();
+    if (!trimmed) return null;
+    try {
+        return JSON.parse(trimmed);
+    } catch {
+        const start = trimmed.indexOf('{');
+        const end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            const slice = trimmed.slice(start, end + 1);
+            try {
+                return JSON.parse(slice);
+            } catch {
+                return null;
+            }
+        }
+        return null;
     }
 }
 
@@ -1038,13 +1191,16 @@ export async function generateBilingualMetadata(userPrompt: string, modelName: s
     description: string;
     description_en: string;
 }> {
+    const VERSION = "V1.1.1";
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = (process.env.GEMINI_API_KEY || '').trim();
         if (!apiKey) throw new Error('GEMINI_API_KEY missing');
 
-        // Note: Using flash-latest for fast and cheap text generation
-        const MODEL = 'gemini-1.5-flash';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+        // Note: Use configurable text model for compatibility with proxy/model availability
+        const MODEL = (process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash').trim();
+        if (!MODEL) throw new Error('GEMINI_TEXT_MODEL is empty');
+        const apiBaseUrl = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
+        const url = `${apiBaseUrl.replace(/\/$/, '')}/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
 
         const systemInstruction = `You are a professional automotive wrap titler. 
 Based on the user's prompt (which could be in Chinese, English, or any other language), generate a creative title and a short description for the car wrap in BOTH Chinese and English. 
@@ -1053,25 +1209,44 @@ Based on the user's prompt (which could be in Chinese, English, or any other lan
 Return ONLY a JSON object with keys: name, name_en, description, description_en. 
 Keep titles under 15 characters and descriptions under 50 characters.`;
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: `User Prompt: ${userPrompt}\nModel: ${modelName}` }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                }
-            })
-        });
+        console.log(`[AI-GEN] Requesting Gemini Metadata: ${apiBaseUrl.replace(/https?:\/\//, '')}/...`);
 
-        if (!response.ok) throw new Error(`Metadata AI failed: ${response.status}`);
+        const textTimeoutMs = readEnvInt('GEMINI_TEXT_TIMEOUT_MS', 60000);
+        const textMaxRetries = readEnvInt('GEMINI_TEXT_RETRIES', 1);
+        const retryBaseMs = readEnvInt('GEMINI_RETRY_BASE_MS', 800);
+        const retryMaxMs = readEnvInt('GEMINI_RETRY_MAX_MS', 5000);
 
-        const content = await response.json();
-        const text = content.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error('No text in metadata response');
+        try {
+            const response = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `User Prompt: ${userPrompt}\nModel: ${modelName}` }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                    }
+                }),
+                timeoutMs: textTimeoutMs,
+                maxRetries: textMaxRetries,
+                retryBaseMs,
+                retryMaxMs,
+                logPrefix: '[AI-GEN]'
+            } as RequestInit & { timeoutMs: number; maxRetries: number; retryBaseMs: number; retryMaxMs: number; logPrefix?: string });
 
-        return JSON.parse(text);
+            if (!response.ok) throw new Error(`Metadata AI failed: ${response.status}`);
+
+            const content = await response.json();
+            const text = content.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) throw new Error('No text in metadata response');
+
+            return JSON.parse(text);
+        } catch (error: any) {
+            throw error;
+        }
     } catch (err) {
         console.error('Failed to generate bilingual metadata:', err);
         // Fallback

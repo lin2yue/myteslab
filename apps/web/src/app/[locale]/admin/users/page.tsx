@@ -1,8 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Users,
     Search,
@@ -11,11 +9,8 @@ import {
     Calendar,
     Shield,
     Wallet,
-    MoreHorizontal,
-    ArrowUpDown,
     Check,
     X,
-    Filter,
     Edit3
 } from 'lucide-react';
 import { useAlert } from '@/components/alert/AlertProvider';
@@ -29,22 +24,28 @@ function cn(...inputs: ClassValue[]) {
 
 interface UserProfile {
     id: string;
-    email: string;
+    email: string | null;
     display_name: string | null;
     avatar_url: string | null;
-    role: 'user' | 'admin' | 'super_admin';
+    role: 'user' | 'creator' | 'admin' | 'super_admin';
     created_at: string;
     user_credits?: {
         balance: number;
+        gift_balance?: number;
     };
-    // Helper fields for display
+    wraps_download_count: number;
+    audio_download_count: number;
     download_count: number;
     total_top_up: number;
 }
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) return error.message;
+    return fallback;
+};
+
 export default function AdminUsersPage() {
     const alert = useAlert();
-    const supabase = createClient();
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -52,64 +53,28 @@ export default function AdminUsersPage() {
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<{ role: string; balance: number }>({ role: 'user', balance: 0 });
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
-        // We fetch profiles and join with user_credits, user_downloads, credit_ledger
-        let query = supabase
-            .from('profiles')
-            .select(`
-                *,
-                user_credits (
-                    balance
-                ),
-                user_downloads (
-                    count
-                ),
-                credit_ledger (
-                    amount,
-                    type
-                )
-            `)
-            .order('created_at', { ascending: false });
-
-        if (roleFilter !== 'all') {
-            query = query.eq('role', roleFilter);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-            alert.error(error.message);
-        } else {
-            // Process the data to calculate counts and sums
-            const processedUsers = (data || []).map((user: any) => ({
-                ...user,
-                // user_downloads is returned as array of objects if aggregation is used
-                // But specifically for count, PostgREST might return [{count: N}]
-                // We'll safely access it.
-                download_count: user.user_downloads?.[0]?.count || 0,
-
-                // credit_ledger returns array of rows
-                total_top_up: (user.credit_ledger || [])
-                    .filter((t: any) => t.type === 'top-up')
-                    .reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-            }));
-            setUsers(processedUsers);
+        try {
+            const params = new URLSearchParams({ role: roleFilter });
+            const res = await fetch(`/api/admin/users?${params.toString()}`);
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to load users');
+            }
+            setUsers(data.users || []);
+        } catch (err: unknown) {
+            alert.error(getErrorMessage(err, 'Failed to load users'));
         }
         setLoading(false);
-    };
+    }, [alert, roleFilter]);
 
     useEffect(() => {
         fetchUsers();
-    }, [roleFilter]);
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Since we have all users (or limited by role), we can filter client-side for simple search
-    };
+    }, [fetchUsers]);
 
     const filteredUsers = users.filter(user =>
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (user.display_name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
 
@@ -123,27 +88,24 @@ export default function AdminUsersPage() {
 
     const saveEdit = async (userId: string) => {
         // 1. Update Profile Role
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ role: editForm.role })
-            .eq('id', userId);
-
-        if (profileError) {
-            alert.error(`Failed to update role: ${profileError.message}`);
-            return;
-        }
-
-        // 2. Update Credits Balance
-        const { error: creditError } = await supabase
-            .from('user_credits')
-            .update({ balance: editForm.balance })
-            .eq('user_id', userId);
-
-        if (creditError) {
-            alert.error(`Failed to update balance: ${creditError.message}`);
-        } else {
+        try {
+            const res = await fetch('/api/admin/users/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    role: editForm.role,
+                    balance: editForm.balance
+                })
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to update user');
+            }
             alert.success('User updated successfully');
             fetchUsers();
+        } catch (err: unknown) {
+            alert.error(`Failed to update user: ${getErrorMessage(err, 'Unknown error')}`);
         }
         setEditingUserId(null);
     };
@@ -154,6 +116,8 @@ export default function AdminUsersPage() {
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 rounded-full border border-purple-200 uppercase tracking-tighter">Super Admin</span>;
             case 'admin':
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full border border-blue-200 uppercase tracking-tighter">Admin</span>;
+            case 'creator':
+                return <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-tighter">Creator</span>;
             default:
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-600 rounded-full border border-gray-200 uppercase tracking-tighter">User</span>;
         }
@@ -190,6 +154,7 @@ export default function AdminUsersPage() {
                     >
                         <option value="all">All Roles</option>
                         <option value="user">Users</option>
+                        <option value="creator">Creators</option>
                         <option value="admin">Admins</option>
                         <option value="super_admin">Super Admins</option>
                     </select>
@@ -218,33 +183,49 @@ export default function AdminUsersPage() {
             {/* Main Table Area */}
             <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-gray-50/50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
-                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">User Details</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest sticky left-0 bg-gray-50/50 dark:bg-zinc-800/50">User Details</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Role</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Balance</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Top Up</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Downloads</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Wraps DL</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Audio DL</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Joined</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right sticky right-0 bg-gray-50/50 dark:bg-zinc-800/50">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">Fetching user data...</td>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 italic">Fetching user data...</td>
                                 </tr>
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">No users found matching your criteria.</td>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 italic">No users found matching your criteria.</td>
                                 </tr>
-                            ) : filteredUsers.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors group">
+                            ) : filteredUsers.map((user) => {
+                                const isTopUpUser = user.total_top_up > 0;
+                                return (
+                                <tr
+                                    key={user.id}
+                                    className={cn(
+                                        "transition-colors group",
+                                        isTopUpUser
+                                            ? "bg-amber-50/60 hover:bg-amber-50 dark:bg-amber-900/10 dark:hover:bg-amber-900/20"
+                                            : "hover:bg-gray-50/50 dark:hover:bg-zinc-800/20"
+                                    )}
+                                >
                                     {/* User Details */}
-                                    <td className="px-6 py-4">
+                                    <td className={cn(
+                                        "px-6 py-4 sticky left-0",
+                                        isTopUpUser
+                                            ? "bg-amber-50/60 group-hover:bg-amber-50 dark:bg-amber-900/10 dark:group-hover:bg-amber-900/20"
+                                            : "bg-white dark:bg-zinc-900 group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/20"
+                                    )}>
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-zinc-700">
+                                            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-zinc-700 shrink-0">
                                                 {user.avatar_url ? (
                                                     <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                                                 ) : (
@@ -252,10 +233,10 @@ export default function AdminUsersPage() {
                                                 )}
                                             </div>
                                             <div className="flex flex-col min-w-0">
-                                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[120px]">
                                                     {user.display_name || 'No Name'}
                                                 </span>
-                                                <span className="text-xs text-gray-400 truncate flex items-center gap-1">
+                                                <span className="text-xs text-gray-400 truncate flex items-center gap-1 max-w-[120px]">
                                                     <Mail size={10} /> {user.email}
                                                 </span>
                                             </div>
@@ -268,9 +249,10 @@ export default function AdminUsersPage() {
                                             <select
                                                 className="text-xs p-1 rounded border border-gray-300 dark:bg-zinc-800 outline-none focus:ring-1 focus:ring-blue-500"
                                                 value={editForm.role}
-                                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+                                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserProfile['role'] })}
                                             >
                                                 <option value="user">User</option>
+                                                <option value="creator">Creator</option>
                                                 <option value="admin">Admin</option>
                                                 <option value="super_admin">SuperAdmin</option>
                                             </select>
@@ -289,9 +271,14 @@ export default function AdminUsersPage() {
                                                 onChange={(e) => setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })}
                                             />
                                         ) : (
-                                            <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
-                                                {user.user_credits?.balance ?? 0}
-                                            </span>
+                                            <div className="flex flex-col items-center leading-tight">
+                                                <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                                    {user.user_credits?.balance ?? 0}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 dark:text-zinc-500">
+                                                    Gift: {user.user_credits?.gift_balance ?? 0}
+                                                </span>
+                                            </div>
                                         )}
                                     </td>
 
@@ -305,25 +292,40 @@ export default function AdminUsersPage() {
                                         </span>
                                     </td>
 
-                                    {/* Downloads */}
+                                    {/* Wrap Downloads */}
                                     <td className="px-6 py-4 text-center">
                                         <span className={cn(
                                             "text-sm font-mono font-medium",
-                                            user.download_count > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
+                                            user.wraps_download_count > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
                                         )}>
-                                            {user.download_count > 0 ? user.download_count : '-'}
+                                            {user.wraps_download_count > 0 ? user.wraps_download_count : '-'}
+                                        </span>
+                                    </td>
+
+                                    {/* Audio Downloads */}
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={cn(
+                                            "text-sm font-mono font-medium",
+                                            user.audio_download_count > 0 ? "text-cyan-600 dark:text-cyan-400" : "text-gray-400"
+                                        )}>
+                                            {user.audio_download_count > 0 ? user.audio_download_count : '-'}
                                         </span>
                                     </td>
 
                                     {/* Joined */}
                                     <td className="px-6 py-4 text-center whitespace-nowrap">
                                         <span className="text-xs text-gray-500 flex items-center justify-center gap-1">
-                                            <Calendar size={12} /> {format(new Date(user.created_at), 'yyyy-MM-dd')}
+                                            <Calendar size={12} /> {format(new Date(user.created_at), 'yyyy-MM-dd HH:mm:ss')}
                                         </span>
                                     </td>
 
                                     {/* Actions */}
-                                    <td className="px-6 py-4 text-right">
+                                    <td className={cn(
+                                        "px-6 py-4 text-right sticky right-0",
+                                        isTopUpUser
+                                            ? "bg-amber-50/60 group-hover:bg-amber-50 dark:bg-amber-900/10 dark:group-hover:bg-amber-900/20"
+                                            : "bg-white dark:bg-zinc-900 group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/20"
+                                    )}>
                                         <div className="flex items-center justify-end gap-2">
                                             {editingUserId === user.id ? (
                                                 <>
@@ -354,7 +356,8 @@ export default function AdminUsersPage() {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

@@ -2,6 +2,7 @@ import { dbQuery } from '../db';
 
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const GEMINI_API_BASE_URL = (process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').trim();
+const ASSET_FETCH_REFERER = 'https://tewan.club';
 
 export interface GeminiFileResponse {
     file: {
@@ -22,12 +23,11 @@ export interface GeminiFileResponse {
  * Fetch an asset (Mask or Reference Image) with required Referer to bypass CDN protection.
  */
 async function fetchAssetWithReferer(url: string): Promise<Buffer> {
-    const referer = 'https://myteslab.com'; // Use the domain allowed in CDN settings
     console.log(`[GEMINI-FILES] Fetching asset with Referer: ${url}`);
 
     const response = await fetch(url, {
         headers: {
-            'Referer': referer,
+            Referer: ASSET_FETCH_REFERER,
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
     });

@@ -6,6 +6,15 @@ export type EffectiveTheme = 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_CHANGE_EVENT = 'theme-change';
 
+function isSystemDarkMode(): boolean {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    try {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+        return false;
+    }
+}
+
 export function getStoredThemeMode(): ThemeMode {
     if (typeof window === 'undefined') return 'system';
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -14,8 +23,7 @@ export function getStoredThemeMode(): ThemeMode {
 }
 
 export function getSystemTheme(): EffectiveTheme {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return isSystemDarkMode() ? 'dark' : 'light';
 }
 
 export function getEffectiveThemeFromMode(mode: ThemeMode, systemDark?: boolean): EffectiveTheme {
@@ -34,7 +42,7 @@ export function getEffectiveTheme(): EffectiveTheme {
 
 export function applyThemeMode(mode: ThemeMode, options?: { emit?: boolean }): EffectiveTheme {
     if (typeof document === 'undefined') return 'light';
-    const systemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const systemDark = isSystemDarkMode();
     const effective = getEffectiveThemeFromMode(mode, systemDark);
     const root = document.documentElement;
     root.classList.toggle('dark', effective === 'dark');
@@ -63,14 +71,22 @@ export function useThemeMode() {
         setEffective(initialEffective);
         setMounted(true);
 
-        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const media = typeof window.matchMedia === 'function'
+            ? window.matchMedia('(prefers-color-scheme: dark)')
+            : null;
         const handleMedia = () => {
             if (modeRef.current === 'system') {
                 const nextEffective = applyThemeMode('system');
                 setEffective(nextEffective);
             }
         };
-        media.addEventListener('change', handleMedia);
+        if (media) {
+            if (typeof media.addEventListener === 'function') {
+                media.addEventListener('change', handleMedia);
+            } else if (typeof media.addListener === 'function') {
+                media.addListener(handleMedia);
+            }
+        }
 
         const handleThemeEvent = (event: Event) => {
             const detail = (event as CustomEvent).detail as { mode?: ThemeMode; effective?: EffectiveTheme } | undefined;
@@ -82,7 +98,13 @@ export function useThemeMode() {
         window.addEventListener(THEME_CHANGE_EVENT, handleThemeEvent as EventListener);
 
         return () => {
-            media.removeEventListener('change', handleMedia);
+            if (media) {
+                if (typeof media.removeEventListener === 'function') {
+                    media.removeEventListener('change', handleMedia);
+                } else if (typeof media.removeListener === 'function') {
+                    media.removeListener(handleMedia);
+                }
+            }
             window.removeEventListener(THEME_CHANGE_EVENT, handleThemeEvent as EventListener);
         };
     }, []);

@@ -35,6 +35,7 @@ const ENABLE_SUBMIT_ONLY = (process.env.WRAP_GEN_V2_SUBMIT ?? '0').trim() === '1
 const ENABLE_WORKER = (process.env.WRAP_GEN_V2_WORKER ?? '1').trim() !== '0';
 const ENABLE_SUBMIT_WORKER_PATH = ENABLE_SUBMIT_ONLY && ENABLE_WORKER;
 const RETRY_AFTER_SECONDS = Number(process.env.WRAP_TASK_RETRY_AFTER_SECONDS ?? 5);
+const ASSET_FETCH_REFERER = 'https://tewan.club';
 
 const userRateMap = new Map<string, { count: number; windowStart: number }>();
 const ipRateMap = new Map<string, { count: number; windowStart: number }>();
@@ -663,7 +664,7 @@ export async function processGenerationTask(params: {
         // Mask Hybrid Task
         assetPromises.push((async () => {
             try {
-                const maskResponse = await fetch(maskUrl, { headers: { 'Referer': 'https://myteslab.com' } });
+                const maskResponse = await fetch(maskUrl, { headers: { Referer: ASSET_FETCH_REFERER } });
                 if (maskResponse.ok) {
                     const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
                     maskImageBase64 = maskBuffer.toString('base64');
@@ -682,7 +683,7 @@ export async function processGenerationTask(params: {
             if (ref.startsWith('http')) {
                 assetPromises.push((async () => {
                     try {
-                        const res = await fetch(ref, { headers: { 'Referer': 'https://myteslab.com' } });
+                        const res = await fetch(ref, { headers: { Referer: ASSET_FETCH_REFERER } });
                         if (res.ok) {
                             const buffer = Buffer.from(await res.arrayBuffer());
                             const payload = buffer.toString('base64');
