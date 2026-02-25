@@ -14,6 +14,7 @@ type ProfileRow = {
 type CreditRow = {
     user_id: string;
     balance: number | null;
+    gift_balance: number | null;
 };
 
 type DownloadRow = {
@@ -35,6 +36,49 @@ function toFloat(value: unknown): number {
     return Number.isFinite(num) ? num : 0;
 }
 
+function chunkArray<T>(input: T[], chunkSize: number): T[][] {
+    if (input.length === 0) return [];
+    const chunks: T[][] = [];
+    for (let i = 0; i < input.length; i += chunkSize) {
+        chunks.push(input.slice(i, i + chunkSize));
+    }
+    return chunks;
+}
+
+async function fetchAllProfiles(role: string): Promise<ProfileRow[]> {
+    const supabase = createAdminClient();
+    const pageSize = 1000;
+    let from = 0;
+    const profiles: ProfileRow[] = [];
+
+    while (true) {
+        let query = supabase
+            .from('profiles')
+            .select('id, email, display_name, avatar_url, role, created_at')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+
+        if (role !== 'all') {
+            query = query.eq('role', role);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        const rows = (data || []) as ProfileRow[];
+        profiles.push(...rows);
+
+        if (rows.length < pageSize) {
+            break;
+        }
+        from += pageSize;
+    }
+
+    return profiles;
+}
+
 export async function GET(request: Request) {
     const admin = await requireAdmin();
     if (!admin) {
@@ -44,57 +88,77 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = (searchParams.get('role') || 'all').trim();
 
-    const supabase = createAdminClient();
-
-    let profilesQuery = supabase
-        .from('profiles')
-        .select('id, email, display_name, avatar_url, role, created_at')
-        .order('created_at', { ascending: false })
-        .limit(500);
-
-    if (role !== 'all') {
-        profilesQuery = profilesQuery.eq('role', role);
+    let profiles: ProfileRow[] = [];
+    try {
+        profiles = await fetchAllProfiles(role);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to query profiles';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 
-    const { data: profileRows, error: profilesError } = await profilesQuery;
-    if (profilesError) {
-        return NextResponse.json({ success: false, error: profilesError.message }, { status: 500 });
-    }
-
-    const profiles = (profileRows || []) as ProfileRow[];
     const userIds = profiles.map((item) => item.id).filter(Boolean);
 
     if (userIds.length === 0) {
         return NextResponse.json({ success: true, users: [] });
     }
 
-    const [creditsRes, downloadsRes, topupsRes, audioRes] = await Promise.all([
-        supabase
-            .from('user_credits')
-            .select('user_id, balance')
-            .in('user_id', userIds),
-        supabase
-            .from('user_downloads')
-            .select('user_id')
-            .in('user_id', userIds),
-        supabase
-            .from('credit_ledger')
-            .select('user_id, amount')
-            .eq('type', 'top-up')
-            .in('user_id', userIds),
-        supabase
-            .from('user_audio_downloads')
-            .select('user_id')
-            .in('user_id', userIds)
-    ]);
+    const supabase = createAdminClient();
+    const creditsRows: CreditRow[] = [];
+    const downloadRows: DownloadRow[] = [];
+    const topupRows: LedgerRow[] = [];
+    const audioRows: DownloadRow[] = [];
+    let hasAudioDownloadsTable = true;
 
-    const creditsRows = ((creditsRes.data || []) as CreditRow[]);
-    const downloadRows = ((downloadsRes.data || []) as DownloadRow[]);
-    const topupRows = ((topupsRes.data || []) as LedgerRow[]);
+    const userIdChunks = chunkArray(userIds, 200);
+    for (const chunkIds of userIdChunks) {
+        const audioPromise = hasAudioDownloadsTable
+            ? supabase.from('user_audio_downloads').select('user_id').in('user_id', chunkIds)
+            : Promise.resolve({ data: [], error: null } as { data: DownloadRow[]; error: null });
 
-    const creditMap = new Map<string, number>();
+        const [creditsRes, downloadsRes, topupsRes, audioRes] = await Promise.all([
+            supabase
+                .from('user_credits')
+                .select('user_id, balance, gift_balance')
+                .in('user_id', chunkIds),
+            supabase
+                .from('user_downloads')
+                .select('user_id')
+                .in('user_id', chunkIds),
+            supabase
+                .from('credit_ledger')
+                .select('user_id, amount')
+                .eq('type', 'top-up')
+                .in('user_id', chunkIds),
+            audioPromise,
+        ]);
+
+        if (creditsRes.error) {
+            return NextResponse.json({ success: false, error: creditsRes.error.message }, { status: 500 });
+        }
+        if (downloadsRes.error) {
+            return NextResponse.json({ success: false, error: downloadsRes.error.message }, { status: 500 });
+        }
+        if (topupsRes.error) {
+            return NextResponse.json({ success: false, error: topupsRes.error.message }, { status: 500 });
+        }
+
+        creditsRows.push(...((creditsRes.data || []) as CreditRow[]));
+        downloadRows.push(...((downloadsRes.data || []) as DownloadRow[]));
+        topupRows.push(...((topupsRes.data || []) as LedgerRow[]));
+
+        if (audioRes.error) {
+            hasAudioDownloadsTable = false;
+        } else {
+            audioRows.push(...((audioRes.data || []) as DownloadRow[]));
+        }
+    }
+
+    const creditMap = new Map<string, { balance: number; gift_balance: number }>();
     creditsRows.forEach((row) => {
-        creditMap.set(row.user_id, toInt(row.balance));
+        creditMap.set(row.user_id, {
+            balance: toInt(row.balance),
+            gift_balance: toInt(row.gift_balance),
+        });
     });
 
     const wrapDownloadCount = new Map<string, number>();
@@ -103,12 +167,9 @@ export async function GET(request: Request) {
     });
 
     const audioDownloadCount = new Map<string, number>();
-    if (!audioRes.error) {
-        const audioRows = (audioRes.data || []) as DownloadRow[];
-        audioRows.forEach((row) => {
-            audioDownloadCount.set(row.user_id, (audioDownloadCount.get(row.user_id) || 0) + 1);
-        });
-    }
+    audioRows.forEach((row) => {
+        audioDownloadCount.set(row.user_id, (audioDownloadCount.get(row.user_id) || 0) + 1);
+    });
 
     const topupMap = new Map<string, number>();
     topupRows.forEach((row) => {
@@ -127,8 +188,8 @@ export async function GET(request: Request) {
             download_count: wrapsDownloadCount + audioCount,
             total_top_up: topupMap.get(row.id) || 0,
             user_credits: {
-                balance: creditMap.get(row.id) || 0,
-                gift_balance: 0,
+                balance: creditMap.get(row.id)?.balance || 0,
+                gift_balance: creditMap.get(row.id)?.gift_balance || 0,
             },
         };
     });

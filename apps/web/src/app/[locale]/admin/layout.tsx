@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, History, Wallet, RefreshCcw, ShieldCheck, Users, BarChart } from 'lucide-react';
+import { LayoutDashboard, History, Wallet, ShieldCheck, Users, BarChart } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -91,7 +91,6 @@ export default function AdminLayout({
         { name: 'AI Tasks', href: `/${locale}/admin/tasks`, icon: History },
         { name: 'Works', href: `/${locale}/admin/wraps`, icon: LayoutDashboard },
         { name: 'Credit Ledger', href: `/${locale}/admin/credits`, icon: Wallet },
-        { name: 'Batch Refresh', href: `/${locale}/admin/batch-refresh`, icon: RefreshCcw },
     ];
 
     return (
