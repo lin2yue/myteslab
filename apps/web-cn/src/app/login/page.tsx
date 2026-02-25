@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import LoginForm from './LoginForm';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
@@ -25,7 +26,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
     return (
         <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-transparent py-12 px-4 sm:px-6 lg:px-8">
-            <LoginForm />
+            <Suspense fallback={<div className="w-full max-w-md p-8 panel animate-pulse h-80 rounded-2xl" />}>
+                <LoginForm />
+            </Suspense>
         </div>
     );
 }
