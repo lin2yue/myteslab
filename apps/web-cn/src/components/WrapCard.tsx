@@ -1,6 +1,10 @@
+'use client'
+
 import Image from 'next/image'
 import { useLocale } from '@/lib/i18n'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import VerifiedCreatorBadge from '@/components/VerifiedCreatorBadge'
 import type { Wrap } from '@/lib/types'
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage'
 
@@ -11,6 +15,7 @@ interface WrapCardProps {
 
 export function WrapCard({ wrap, source }: WrapCardProps) {
     const locale = useLocale()
+    const router = useRouter()
     const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0;
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name;
     const modelDisplay = locale === 'en'
@@ -53,6 +58,15 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
                         </span>
                     </div>
 
+                    {/* 付费角标 */}
+                    {Number(wrap.price_credits || 0) > 0 && (
+                        <div className="absolute top-3 right-3">
+                            <span className="px-2.5 py-1 bg-amber-500/95 backdrop-blur-md text-white text-[10px] font-bold rounded-full border border-amber-300/40">
+                                {wrap.price_credits}积分
+                            </span>
+                        </div>
+                    )}
+
                     {/* 悬浮遮罩 - 增强质感 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -80,27 +94,68 @@ export function WrapCard({ wrap, source }: WrapCardProps) {
 
                     <div className="mt-auto flex items-center justify-between gap-3">
                         {/* 作者信息 */}
-                        <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-gray-100">
-                                {wrap.author_avatar_url ? (
-                                    <Image
-                                        src={wrap.author_avatar_url}
-                                        alt={wrap.author_name || 'User'}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                                        <span className="text-[10px] text-gray-500 font-bold">
-                                            {(wrap.author_name || 'U').charAt(0).toUpperCase()}
-                                        </span>
-                                    </div>
-                                )}
+                        {wrap.author_role === 'creator' && wrap.user_id ? (
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                className="flex items-center gap-2 min-w-0 group/author cursor-pointer"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    router.push(`/creator/${wrap.user_id}`)
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        router.push(`/creator/${wrap.user_id}`)
+                                    }
+                                }}
+                            >
+                                <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-amber-300 dark:ring-amber-700">
+                                    {wrap.author_avatar_url ? (
+                                        <Image
+                                            src={wrap.author_avatar_url}
+                                            alt={wrap.author_name || 'Creator'}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-200 to-amber-300">
+                                            <span className="text-[10px] text-amber-700 font-bold">
+                                                {(wrap.author_name || 'C').charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate group-hover/author:text-amber-600 dark:group-hover/author:text-amber-400 transition-colors">
+                                    {wrap.author_name}
+                                </span>
+                                <VerifiedCreatorBadge size={14} className="flex-shrink-0" />
                             </div>
-                            <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate">
-                                {wrap.author_name}
-                            </span>
-                        </div>
+                        ) : (
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 relative overflow-hidden ring-1 ring-gray-100">
+                                    {wrap.author_avatar_url ? (
+                                        <Image
+                                            src={wrap.author_avatar_url}
+                                            alt={wrap.author_name || 'User'}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                                            <span className="text-[10px] text-gray-500 font-bold">
+                                                {(wrap.author_name || 'U').charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-xs text-gray-600 dark:text-zinc-400 font-medium truncate">
+                                    {wrap.author_name}
+                                </span>
+                            </div>
+                        )}
 
                         {/* 下载量统计 */}
                         <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md">

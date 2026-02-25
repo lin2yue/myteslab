@@ -137,7 +137,9 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 flex flex-col`}
             >
                 <GoogleAnalytics />
-                <BaiduAnalytics />
+                <Suspense fallback={null}>
+                    <BaiduAnalytics />
+                </Suspense>
                 <BaiduPush />
                 <AlertProvider>
                     <CreditsProvider>

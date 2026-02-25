@@ -31,10 +31,11 @@ interface UserProfile {
     email: string | null;
     display_name: string | null;
     avatar_url: string | null;
-    role: 'user' | 'admin' | 'super_admin';
+    role: 'user' | 'creator' | 'admin' | 'super_admin';
     created_at: string;
     user_credits?: {
         balance: number;
+        gift_balance?: number;
     };
     wraps_download_count: number;
     audio_download_count: number;
@@ -120,6 +121,8 @@ export default function AdminUsersPage() {
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 rounded-full border border-purple-200 uppercase tracking-tighter">Super Admin</span>;
             case 'admin':
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full border border-blue-200 uppercase tracking-tighter">Admin</span>;
+            case 'creator':
+                return <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-tighter">Creator</span>;
             default:
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-600 rounded-full border border-gray-200 uppercase tracking-tighter">User</span>;
         }
@@ -156,6 +159,7 @@ export default function AdminUsersPage() {
                     >
                         <option value="all">All Roles</option>
                         <option value="user">Users</option>
+                        <option value="creator">Creators</option>
                         <option value="admin">Admins</option>
                         <option value="super_admin">Super Admins</option>
                     </select>
@@ -253,6 +257,7 @@ export default function AdminUsersPage() {
                                                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
                                             >
                                                 <option value="user">User</option>
+                                                <option value="creator">Creator</option>
                                                 <option value="admin">Admin</option>
                                                 <option value="super_admin">SuperAdmin</option>
                                             </select>
@@ -271,9 +276,14 @@ export default function AdminUsersPage() {
                                                 onChange={(e) => setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })}
                                             />
                                         ) : (
-                                            <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
-                                                {user.user_credits?.balance ?? 0}
-                                            </span>
+                                            <div className="flex flex-col items-center leading-tight">
+                                                <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                                    {user.user_credits?.balance ?? 0}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 dark:text-zinc-500">
+                                                    Gift: {user.user_credits?.gift_balance ?? 0}
+                                                </span>
+                                            </div>
                                         )}
                                     </td>
 

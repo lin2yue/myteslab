@@ -120,12 +120,13 @@ export async function POST(request: Request) {
                 // Actually, standard PG "INSERT ... ON CONFLICT" is best.
                 // Assuming user_id is PK or Unique.
                 await dbQuery(
-                    `INSERT INTO user_credits (user_id, balance, total_earned, updated_at)
-                     VALUES ($1, $2, $2, NOW())
-                     ON CONFLICT (user_id) 
-                     DO UPDATE SET 
+                    `INSERT INTO user_credits (user_id, balance, total_earned, paid_balance, updated_at)
+                     VALUES ($1, $2, $2, $2, NOW())
+                     ON CONFLICT (user_id)
+                     DO UPDATE SET
                         balance = user_credits.balance + $2,
                         total_earned = user_credits.total_earned + $2,
+                        paid_balance = user_credits.paid_balance + $2,
                         updated_at = NOW()`,
                     [userId, creditsToAdd]
                 );

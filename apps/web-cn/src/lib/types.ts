@@ -34,9 +34,11 @@ export interface Wrap {
     user_id?: string       // 所属用户ID (Tesla Studio ID 为全零)
     author_name?: string   // 从关联表计算出的名称
     author_avatar_url?: string // 从关联表计算出的头像
+    author_role?: string   // 作者角色 (creator/admin 等)
 
     download_count: number
     user_download_count?: number
+    price_credits?: number
     is_public: boolean
     is_active: boolean
     created_at: string

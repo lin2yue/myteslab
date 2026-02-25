@@ -423,7 +423,7 @@ async function settleTaskCredits(taskId: string, reason: string) {
 
         const userId = task.user_id as string;
         const { rows: creditRows } = await client.query(
-            `SELECT balance
+            `SELECT balance, gift_balance, paid_balance
              FROM user_credits
              WHERE user_id = $1
              FOR UPDATE`,
@@ -440,13 +440,20 @@ async function settleTaskCredits(taskId: string, reason: string) {
             return { success: false, error: 'Insufficient balance at settlement' };
         }
 
+        // Deduct from gift_balance first, then paid_balance
+        const giftBalance = Number(creditRows[0].gift_balance || 0);
+        const giftDeduct = Math.min(giftBalance, credits);
+        const paidDeduct = credits - giftDeduct;
+
         await client.query(
             `UPDATE user_credits
              SET balance = balance - $2,
                  total_spent = total_spent + $2,
+                 gift_balance = gift_balance - $3,
+                 paid_balance = paid_balance - $4,
                  updated_at = NOW()
              WHERE user_id = $1`,
-            [userId, credits]
+            [userId, credits, giftDeduct, paidDeduct]
         );
 
         await client.query(

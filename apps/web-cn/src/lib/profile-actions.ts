@@ -35,6 +35,33 @@ export async function updateWrapVisibility(wrapId: string, isPublic: boolean) {
     )
 
     revalidatePath('/profile', 'page')
+    revalidateTag('wraps', 'default')
+}
+
+export async function updateWrapPrice(wrapId: string, priceCredits: number) {
+    const user = await getSessionUser()
+    if (!user) {
+        throw new Error('Unauthorized')
+    }
+
+    const allowed = [0, 30, 60, 120]
+    if (!allowed.includes(priceCredits)) {
+        throw new Error('Invalid price')
+    }
+
+    const { rowCount } = await dbQuery(
+        `UPDATE wraps
+         SET price_credits = $3, updated_at = NOW()
+         WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+        [wrapId, user.id, priceCredits]
+    )
+
+    if (!rowCount) {
+        throw new Error('Wrap not found')
+    }
+
+    revalidatePath('/profile', 'page')
+    revalidateTag('wraps', 'default')
 }
 
 export async function updateWrapTitle(wrapId: string, title: string) {

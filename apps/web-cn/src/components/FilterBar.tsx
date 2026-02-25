@@ -157,9 +157,9 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
                         {locale === 'zh' ? '全部车型' : 'All Models'}
                     </button>
 
-                    {sortedModels.map((model) => (
+                    {sortedModels.map((model, index) => (
                         <button
-                            key={model.id}
+                            key={`${model.slug || 'model'}-${model.id || 'noid'}-${index}`}
                             onClick={() => handleModelChange(model.slug)}
                             className={`
                                 px-4 py-2 rounded-full border text-sm font-semibold whitespace-nowrap transition-all duration-200

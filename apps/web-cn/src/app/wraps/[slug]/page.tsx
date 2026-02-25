@@ -3,6 +3,8 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getTranslations } from '@/lib/i18n'
 import { getSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
+import Image from 'next/image'
+import VerifiedCreatorBadge from '@/components/VerifiedCreatorBadge'
 import { DownloadButton } from '@/components/DownloadButton'
 import { getWrap, getModels } from '@/lib/api'
 import { getOptimizedImageUrl, ensureCdnUrl } from '@/lib/images'
@@ -13,6 +15,7 @@ import Card from '@/components/ui/Card'
 import { getModelDisplayName } from '@/lib/model-display'
 import WrapDetailViewerPanel from '@/components/wrap/WrapDetailViewerPanel'
 import WrapDetailActionPanel from '@/components/wrap/WrapDetailActionPanel'
+import { dbQuery } from '@/lib/db'
 
 export async function generateMetadata({
     params,
@@ -141,8 +144,10 @@ export default async function WrapDetailPage({
     const name = locale === 'en' ? wrap.name_en || wrap.name : wrap.name
     const description = locale === 'en' ? wrap.description_en || wrap.description : wrap.description
     const displayDownloadCount = wrap.user_download_count ?? wrap.download_count ?? 0
+    const priceCredits = Number(wrap.price_credits || 0)
     const backHref = from === 'all' ? '/' : (wrap.model_slug ? `/models/${wrap.model_slug}` : '/')
     const isOwner = !!sessionUser && !!wrap.user_id && sessionUser.id === wrap.user_id
+
 
     // 获取模型名称以增强标题和结构化数据 SEO
     const models = await getModels()
@@ -224,8 +229,14 @@ export default async function WrapDetailPage({
                         <div className="flex flex-col gap-6">
                             {/* 标题，标签与作者 */}
                             <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <CategoryBadge category={wrap.category} />
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {priceCredits > 0 ? (
+                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50">
+                                            付费作品
+                                        </span>
+                                    ) : (
+                                        <CategoryBadge category={wrap.category} />
+                                    )}
                                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full border border-black/5 dark:border-white/10">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -238,18 +249,39 @@ export default async function WrapDetailPage({
                                     {name}
                                 </h1>
 
-                                <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-gray-50 shrink-0">
-                                        {wrap.author_avatar_url ? (
-                                            <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs font-bold">
-                                                {(wrap.author_name || 'U').charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
+                                {wrap.author_role === 'creator' && wrap.user_id ? (
+                                    <Link href={`/creator/${wrap.user_id}`} className="flex items-center gap-2 group/author">
+                                        <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-amber-200 dark:ring-amber-800 shrink-0">
+                                            {wrap.author_avatar_url ? (
+                                                <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
+                                                    {(wrap.author_name || 'C').charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover/author:text-amber-600 dark:group-hover/author:text-amber-400 transition-colors">
+                                            {wrap.author_name || 'Creator'}
+                                        </div>
+                                        <VerifiedCreatorBadge size={16} />
+                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50">
+                                            认证创作者
+                                        </span>
+                                    </Link>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden ring-2 ring-gray-50 shrink-0">
+                                            {wrap.author_avatar_url ? (
+                                                <img src={wrap.author_avatar_url} alt={wrap.author_name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs font-bold">
+                                                    {(wrap.author_name || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{wrap.author_name || 'Anonymous'}</div>
                                     </div>
-                                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">@{wrap.author_name || 'Anonymous'}</div>
-                                </div>
+                                )}
                             </div>
 
                             {/* Dynamic SEO Description Section (Hidden for users, visible for SEO) */}
@@ -298,6 +330,8 @@ export default async function WrapDetailPage({
                                     wrapSlug={wrap.slug || wrap.id}
                                     locale={locale}
                                     isLoggedIn={isLoggedIn}
+                                    isOwner={isOwner}
+                                    priceCredits={priceCredits}
                                 />
                             </div>
 
@@ -328,7 +362,7 @@ export default async function WrapDetailPage({
                         </div>
 
                         {/* AI 提示词卡片 */}
-                        {wrap.category === 'ai_generated' && wrap.prompt && (
+                        {priceCredits === 0 && wrap.category === 'ai_generated' && wrap.prompt && (
                             <div className="pt-6 border-t border-black/5 dark:border-white/10">
                                 <div className="flex items-center justify-between mb-3">
                                     <p className="text-[10px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-[0.2em] flex items-center gap-2">

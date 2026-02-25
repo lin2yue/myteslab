@@ -76,6 +76,7 @@ function normalizeWrap(w: any): Wrap {
     const profile = w.profiles || {
         display_name: w.profile_display_name || null,
         avatar_url: w.profile_avatar_url || null,
+        role: w.profile_role || null,
     };
     const normalizedTextureUrl = ensureCdnUrl(w.texture_url || w.preview_url || '');
     const normalizedPreviewUrl = ensureCdnUrl(w.preview_url || w.texture_url || '');
@@ -98,6 +99,7 @@ function normalizeWrap(w: any): Wrap {
         author_name: profile?.display_name || w.author_name || (w.category === 'official' ? '特玩' : 'Anonymous'),
         author_avatar_url: profile?.avatar_url,
         author_username: profile?.display_name,
+        author_role: profile?.role || w.author_role || null,
         download_count: w.download_count || 0,
         user_download_count: w.user_download_count ?? w.download_count ?? 0,
         created_at: w.created_at || new Date().toISOString(),
@@ -254,11 +256,13 @@ async function fetchWrapsInternal(
                 w.user_id,
                 w.download_count,
                 w.user_download_count,
+                w.price_credits,
                 w.is_public,
                 w.is_active,
                 w.created_at,
                 p.display_name AS profile_display_name,
-                p.avatar_url AS profile_avatar_url
+                p.avatar_url AS profile_avatar_url,
+                p.role AS profile_role
             FROM wraps w
             LEFT JOIN profiles p ON p.id = w.user_id
             WHERE ${where}
@@ -309,6 +313,7 @@ export async function getWrap(slugOrId: string): Promise<Wrap | null> {
                 w.deleted_at,
                 w.download_count,
                 w.user_download_count,
+                w.price_credits,
                 w.created_at,
                 w.reference_images,
                 w.tags,
@@ -320,7 +325,8 @@ export async function getWrap(slugOrId: string): Promise<Wrap | null> {
                 w.thumbnail_url,
                 w.deleted_at,
                 p.display_name AS profile_display_name,
-                p.avatar_url AS profile_avatar_url
+                p.avatar_url AS profile_avatar_url,
+                p.role AS profile_role
             FROM wraps w
             LEFT JOIN profiles p ON p.id = w.user_id
             WHERE %CONDITION%

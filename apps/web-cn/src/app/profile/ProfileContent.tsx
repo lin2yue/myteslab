@@ -2,11 +2,11 @@
 
 import { useState, useEffect, type KeyboardEvent } from 'react';
 import { useTranslations } from '@/lib/i18n';
-import { deleteGeneratedWrap, updateWrapVisibility, updateWrapTitle } from '@/lib/profile-actions';
+import { deleteGeneratedWrap, updateWrapVisibility, updateWrapTitle, updateWrapPrice } from '@/lib/profile-actions';
 import { deleteUserAccount } from '@/lib/auth-actions';
 import ResponsiveOSSImage from '@/components/image/ResponsiveOSSImage';
 import { useAlert } from '@/components/alert/AlertProvider';
-import PublishModal from '@/components/publish/PublishModal';
+import PublishModal, { type MarketplaceOptions } from '@/components/publish/PublishModal';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -26,6 +26,7 @@ interface Wrap {
     browse_count?: number | null;
     download_count?: number | null;
     user_download_count?: number | null;
+    price_credits?: number | null;
 }
 
 interface ModelConfig {
@@ -48,11 +49,12 @@ interface ProfileContentProps {
     generatedWraps: Wrap[];
     downloads: DownloadItem[];
     wrapModels: ModelConfig[]; // Added wrapModels
+    isCreator?: boolean;
 }
 
 const MAX_WRAP_TITLE_LENGTH = 200;
 
-export default function ProfileContent({ generatedWraps, downloads, wrapModels }: ProfileContentProps) {
+export default function ProfileContent({ generatedWraps, downloads, wrapModels, isCreator = false }: ProfileContentProps) {
     const t = useTranslations('Profile');
     const tCommon = useTranslations('Common');
     const alert = useAlert();
@@ -70,6 +72,11 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [activePublishWrap, setActivePublishWrap] = useState<Wrap | null>(null);
     const [isPublishing, setIsPublishing] = useState(false);
+
+    // Pricing Modal State
+    const [pricingWrap, setPricingWrap] = useState<Wrap | null>(null);
+    const [pendingPrice, setPendingPrice] = useState<number>(30);
+    const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
 
     const getModelUrl = (slug: string) => {
         return wrapModels.find(m => m.slug === slug)?.model_3d_url || '';
@@ -173,7 +180,23 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
         }
     };
 
-    const confirmPublish = async (previewImageBase64: string) => {
+    const handleUpdatePrice = async () => {
+        if (!pricingWrap) return;
+        setIsUpdatingPrice(true);
+        try {
+            await updateWrapPrice(pricingWrap.id, pendingPrice);
+            setWraps(wraps.map(w => w.id === pricingWrap.id ? { ...w, price_credits: pendingPrice } : w));
+            alert.success(pendingPrice === 0 ? '已设为免费下载' : `定价已更新为 ${pendingPrice} 积分`);
+            setPricingWrap(null);
+        } catch (e) {
+            console.error(e);
+            alert.error('定价更新失败，请重试');
+        } finally {
+            setIsUpdatingPrice(false);
+        }
+    };
+
+    const confirmPublish = async (previewImageBase64: string, marketplaceOptions?: MarketplaceOptions) => {
         if (!activePublishWrap) return;
 
         setIsPublishing(true);
@@ -213,7 +236,8 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     wrapId: activePublishWrap.id,
-                    ossKey: ossKey
+                    ossKey: ossKey,
+                    marketplaceOptions
                 })
             });
 
@@ -306,8 +330,15 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                             </div>
                                                         )}
                                                         {wrap.is_public && (
-                                                            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded z-10 uppercase tracking-wider">
-                                                                {t('published')}
+                                                            <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10">
+                                                                <div className="bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                                    {t('published')}
+                                                                </div>
+                                                                {(wrap.price_credits ?? 0) > 0 && (
+                                                                    <div className="bg-amber-500/95 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                                                        {wrap.price_credits}积分下载
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -351,7 +382,14 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                 <div className="flex justify-between items-center">
                                                     {wrap.is_public ? (
                                                         <div className="text-[11px] text-gray-500 space-y-1">
-                                                            <div className="font-semibold text-green-700 dark:text-green-400">{t('published')}</div>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <div className="font-semibold text-green-700 dark:text-green-400">{t('published')}</div>
+                                                                {(wrap.price_credits ?? 0) > 0 && (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold">
+                                                                        {wrap.price_credits}积分下载
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="inline-flex items-center gap-1"><Eye size={12} /> {wrap.browse_count ?? 0}</span>
                                                                 <span className="inline-flex items-center gap-1"><Download size={12} /> {wrap.user_download_count ?? wrap.download_count ?? 0}</span>
@@ -388,6 +426,19 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                                                 >
                                                                     {wrap.is_public ? t('unpublish') : t('publish')}
                                                                 </button>
+                                                                {isCreator && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenMenuId(null);
+                                                                            setPendingPrice(wrap.price_credits ?? 0);
+                                                                            setPricingWrap(wrap);
+                                                                        }}
+                                                                        disabled={loadingId === wrap.id}
+                                                                        className="w-full text-left px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50"
+                                                                    >
+                                                                        修改定价
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     onClick={() => {
                                                                         setOpenMenuId(null);
@@ -502,6 +553,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                     wheelUrl={getWheelUrl(activePublishWrap.model_slug)}
                     textureUrl={activePublishWrap.texture_url}
                     isPublishing={isPublishing}
+                    isCreator={isCreator}
                 />
             )}
 
@@ -557,6 +609,75 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels }
                                     className="btn-primary h-9 px-3 rounded-lg text-sm disabled:opacity-50"
                                 >
                                     {isUpdatingTitle ? t('saving_title') : t('save')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Portal>
+            )}
+
+            {/* 修改定价弹窗 */}
+            {pricingWrap && (
+                <Portal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !isUpdatingPrice && setPricingWrap(null)} />
+                        <div className="relative w-full max-w-sm bg-white/90 dark:bg-zinc-900/80 rounded-2xl border border-black/5 dark:border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.35)] p-6 backdrop-blur">
+                            <button
+                                onClick={() => setPricingWrap(null)}
+                                disabled={isUpdatingPrice}
+                                className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-black/5 disabled:opacity-50"
+                            >
+                                <X className="w-4 h-4 text-gray-400" />
+                            </button>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">修改定价</h3>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-5 leading-relaxed">
+                                设置后，新用户下载需消耗充值积分，你获得 <span className="text-amber-600 dark:text-amber-400 font-semibold">70%</span> 收益
+                            </p>
+                            <div className="grid grid-cols-4 gap-2">
+                                {([
+                                    { label: '免费', value: 0, desc: '0 积分' },
+                                    { label: '30 积分', value: 30, desc: '¥9' },
+                                    { label: '60 积分', value: 60, desc: '¥19' },
+                                    { label: '120 积分', value: 120, desc: '¥39' },
+                                ] as const).map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setPendingPrice(opt.value)}
+                                        className={`flex flex-col items-start p-3 rounded-xl border-2 transition-all text-left ${
+                                            pendingPrice === opt.value
+                                                ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                                                : 'border-black/10 dark:border-white/10 hover:border-black/20 bg-white/50 dark:bg-zinc-800/50'
+                                        }`}
+                                    >
+                                        <span className={`text-sm font-bold ${pendingPrice === opt.value ? 'text-amber-700 dark:text-amber-400' : 'text-gray-900 dark:text-zinc-100'}`}>
+                                            {opt.label}
+                                        </span>
+                                        <span className="text-[11px] text-gray-400 dark:text-zinc-500 mt-0.5">{opt.desc}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {pendingPrice > 0 && (
+                                <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                    你将获得 {Math.floor(pendingPrice * 0.7)} 积分 / 次下载
+                                </p>
+                            )}
+                            <div className="mt-5 flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setPricingWrap(null)}
+                                    disabled={isUpdatingPrice}
+                                    className="btn-secondary h-9 px-3 rounded-lg text-sm"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleUpdatePrice}
+                                    disabled={isUpdatingPrice}
+                                    className="btn-primary h-9 px-3 rounded-lg text-sm disabled:opacity-50"
+                                >
+                                    {isUpdatingPrice ? '保存中…' : '确认'}
                                 </button>
                             </div>
                         </div>

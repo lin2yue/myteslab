@@ -11,9 +11,16 @@ export async function GET() {
     }
 
     try {
-        const { rows } = await dbQuery<{ balance: number; reserved: number }>(
+        const { rows } = await dbQuery<{
+            balance: number;
+            paid_balance: number;
+            gift_balance: number;
+            reserved: number;
+        }>(
             `SELECT 
                 c.balance,
+                c.paid_balance,
+                c.gift_balance,
                 COALESCE((
                     SELECT SUM(credits_spent) 
                     FROM generation_tasks 
@@ -26,11 +33,19 @@ export async function GET() {
             [user.id]
         );
 
-        const balance = rows[0]?.balance ?? 0;
-        const reserved = rows[0]?.reserved ?? 0;
+        const balance = Number(rows[0]?.balance ?? 0);
+        const paidBalance = Number(rows[0]?.paid_balance ?? 0);
+        const giftBalanceRaw = Number(rows[0]?.gift_balance ?? 0);
+        const giftBalance = giftBalanceRaw > 0 ? giftBalanceRaw : Math.max(balance - paidBalance, 0);
+        const reserved = Number(rows[0]?.reserved ?? 0);
 
-        // Return Available Balance = Total Balance - In-flight Reserved
-        return NextResponse.json({ balance: Math.max(balance - reserved, 0) });
+        // 保持向后兼容：balance 仍然返回可用总余额
+        return NextResponse.json({
+            balance: Math.max(balance - reserved, 0),
+            paid_balance: Math.max(paidBalance, 0),
+            gift_balance: Math.max(giftBalance, 0),
+            reserved: Math.max(reserved, 0),
+        });
     } catch (error) {
         console.error('[credits/balance] error', error);
         return NextResponse.json({ balance: 0 });

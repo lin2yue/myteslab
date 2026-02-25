@@ -13,6 +13,9 @@ export default function CheckoutSuccessPage() {
     const sessionId = searchParams.get('session_id');
     const tierName = searchParams.get('tier_name');
     const amount = searchParams.get('amount');
+    const source = searchParams.get('source');
+    const wrapSlug = searchParams.get('wrapSlug') || searchParams.get('wrapId');
+    const fromPaidDownload = source === 'paid_wrap_download' && !!wrapSlug;
     const hasTracked = useRef(false);
 
     useEffect(() => {
@@ -32,7 +35,7 @@ export default function CheckoutSuccessPage() {
     }, [sessionId, tierName, amount]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-transparent px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4 py-6">
             <div className="max-w-md w-full panel p-8 text-center animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex justify-center mb-6">
                     <div className="p-3 rounded-full bg-green-100/80 text-green-600">
@@ -45,20 +48,20 @@ export default function CheckoutSuccessPage() {
                 </h1>
 
                 <p className="text-gray-600 mb-8 leading-relaxed">
-                    {t('success_desc')}
+                    {fromPaidDownload ? '支付成功，返回作品页面后可继续下载。' : t('success_desc')}
                 </p>
 
                 <div className="space-y-4">
                     <Link
-                        href="/ai-generate/generate"
-                        className="block w-full btn-primary h-12"
+                        href={fromPaidDownload ? `/wraps/${wrapSlug}?from=all` : '/ai-generate/generate'}
+                        className="w-full btn-primary h-12 inline-flex items-center justify-center"
                     >
-                        {t('back_to_generator')}
+                        {fromPaidDownload ? '返回作品 立即下载' : t('back_to_generator')}
                     </Link>
 
                     <Link
                         href="/profile"
-                        className="block w-full btn-secondary h-12"
+                        className="w-full btn-secondary h-12 inline-flex items-center justify-center"
                     >
                         {t('view_balance')}
                     </Link>

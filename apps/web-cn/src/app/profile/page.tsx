@@ -51,8 +51,9 @@ export default async function ProfilePage() {
     const userId = user.id;
     const [profileRes, creditsRes, wrapsRes, downloadsRes, modelsRes, ledgerRes] = await Promise.all([
         dbQuery(`SELECT display_name, avatar_url, email FROM profiles WHERE id = $1`, [userId]),
-        dbQuery(`SELECT balance, total_earned FROM user_credits WHERE user_id = $1`, [userId]),
+        dbQuery(`SELECT balance, total_earned, gift_balance FROM user_credits WHERE user_id = $1`, [userId]),
         dbQuery(`SELECT id, name, prompt, slug, texture_url, preview_url, is_public, created_at, model_slug, download_count, user_download_count,
+                        COALESCE((to_jsonb(w)->>'price_credits')::int, 0) AS price_credits,
                         COALESCE((
                             SELECT COUNT(*)
                             FROM site_analytics sa
@@ -60,8 +61,7 @@ export default async function ProfilePage() {
                         ), 0) AS browse_count
                  FROM wraps w
                  WHERE w.user_id = $1 AND w.deleted_at IS NULL
-                 ORDER BY w.created_at DESC
-                 LIMIT 24`, [userId]),
+                 ORDER BY w.created_at DESC`, [userId]),
         dbQuery(`SELECT d.id, d.downloaded_at, w.id AS wrap_id, w.name, w.preview_url, w.texture_url
                  FROM user_downloads d
                  LEFT JOIN wraps w ON w.id = d.wrap_id
@@ -152,6 +152,7 @@ export default async function ProfilePage() {
                     <CreditsSection
                         balance={credits?.balance || 0}
                         totalEarned={credits?.total_earned || 0}
+                        giftBalance={Number(credits?.gift_balance || 0)}
                         history={pointsHistory}
                     />
                 </div>
@@ -160,6 +161,7 @@ export default async function ProfilePage() {
                     generatedWraps={generatedWraps || []}
                     downloads={downloads || []}
                     wrapModels={wrapModels}
+                    isCreator={['creator', 'admin', 'super_admin'].includes(user.role ?? '')}
                 />
             </main>
         </div>

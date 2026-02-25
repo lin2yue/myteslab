@@ -10,10 +10,11 @@ import Card from '@/components/ui/Card';
 interface CreditsSectionProps {
     balance: number;
     totalEarned: number;
+    giftBalance?: number;
     history: CreditTransaction[];
 }
 
-export default function CreditsSection({ balance, totalEarned, history }: CreditsSectionProps) {
+export default function CreditsSection({ balance, totalEarned, giftBalance = 0, history }: CreditsSectionProps) {
     const t = useTranslations('Profile');
     const [isPricingOpen, setIsPricingOpen] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -24,11 +25,12 @@ export default function CreditsSection({ balance, totalEarned, history }: Credit
 
             <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-baseline">
-                        <span className="text-4xl font-extrabold text-gray-900 dark:text-zinc-100 mr-2">
+                    <div className="flex items-baseline flex-wrap gap-x-4 gap-y-1">
+                        <span className="text-4xl font-extrabold text-gray-900 dark:text-zinc-100 mr-1">
                             {balance}
                         </span>
                         <span className="text-gray-500 dark:text-zinc-400 text-sm font-medium">{t('available_credits')}</span>
+                        <span className="text-xs text-gray-400 dark:text-zinc-500">系统赠送积分{giftBalance}</span>
                     </div>
                     <button
                         onClick={() => setIsPricingOpen(true)}
