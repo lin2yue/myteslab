@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useAlert } from '@/components/alert/AlertProvider';
 import PricingModal from '@/components/pricing/PricingModal';
-import { Zap, Palette } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { useCredits } from '@/components/credits/CreditsProvider';
 
 type SessionUser = {
@@ -140,7 +140,6 @@ export default function AuthButton() {
                                         className="flex items-center gap-3 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg"
                                         onClick={() => setIsMenuOpen(false)}
                                     >
-                                        <Palette className="w-4 h-4 mr-2" />
                                         创作者中心
                                     </Link>
                                 )}
