@@ -3,6 +3,8 @@ import { WrapList } from '@/components/WrapList'
 import { FilterBarWrapper } from '@/components/FilterBarWrapper'
 import { getWraps, getModels, getWrapKeywordSuggestions, type WrapSortBy } from '@/lib/api'
 import { getModelDisplayName } from '@/lib/model-display'
+import { HomeOperationModal } from '@/components/operations/HomeOperationModal'
+import { HomeOperationBanner } from '@/components/operations/HomeOperationBanner'
 
 export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提升首页响应速度
 
@@ -43,11 +45,13 @@ export default async function HomePage({
                         {t('welcome_desc')}
                     </p>
                 </section>
+                <HomeOperationBanner />
 
                 <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
                     <WrapList initialWraps={wraps} model={model} locale="zh" sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
             </main>
+            <HomeOperationModal />
 
             {/* Structured Data */}
             <script

@@ -2,7 +2,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat python3 make g++
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm install -g pnpm@8.15.0
 
 # Use pnpm store to speed up / stabilize installs
 ENV PNPM_HOME="/pnpm"
