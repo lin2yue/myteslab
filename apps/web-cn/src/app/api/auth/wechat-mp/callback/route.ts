@@ -147,7 +147,7 @@ function buildFastReplyByIntent(text: string): string | null {
             '1) 把 tewan 下载的贴膜 PNG 放进 U 盘根目录的 Wraps 文件夹（没有就新建，注意大小写）。',
             '2) U 盘建议 exFAT，单张图片建议不超过 1MB。',
             '3) 插入车辆后，在车机打开：玩具箱 > 喷漆车间 > 贴膜（Wraps）。',
-            '4) 选择对应贴膜并应用；若看不到文件，优先检查 PNG 格式、Wraps 文件夹名和 U 盘格式。'
+            '4) 选择对应贴膜并应用；若看不到文件，优先检查 PNG 格式、Wraps 文件夹名、U 盘格式，以及 Wraps 内文件是否超过 10 个（超出不会显示）。'
         ].join('\n');
     }
     if (isLockSoundInstallIntent(text)) {
@@ -174,7 +174,7 @@ function buildFastReplyByIntent(text: string): string | null {
             '下载/导入失败可以按这个顺序排查：',
             '1) 车膜必须是 PNG，且放在 U 盘根目录 Wraps 文件夹。',
             '2) U 盘优先 exFAT，文件夹名必须是 Wraps（大小写一致）。',
-            '3) 车机里走：玩具箱 > 喷漆车间 > 贴膜（Wraps）重新读取。',
+            '3) Wraps 文件夹内最多保留 10 个文件，超出不会显示。',
             '4) 还不行就换一个 U 盘再试（部分 U 盘兼容性较差）。'
         ].join('\n');
     }
