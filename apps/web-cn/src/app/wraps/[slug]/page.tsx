@@ -50,8 +50,12 @@ export async function generateMetadata({
     })
 
     const title = modelName
-        ? (locale === 'en' ? `${name} Tesla ${modelName} Wrap Design - Free Download | 特玩` : `${name} - 特斯拉 ${modelName} 车身贴膜设计免费下载 | 特玩`)
-        : (locale === 'en' ? `${name} Tesla Wrap Design - Free Download | 特玩` : `${name} - 特斯拉车身贴膜设计免费下载 | 特玩`)
+        ? (locale === 'en'
+            ? `${name} Tesla ${modelName} Wrap Design - Free Download | 特玩`
+            : `${name} - 特斯拉${modelName}贴膜免费下载 | 特玩`)
+        : (locale === 'en'
+            ? `${name} Tesla Wrap Design - Free Download | 特玩`
+            : `${name} - 特斯拉贴膜免费下载 | 特玩`)
 
     // 动态生成语意化描述以增强 SEO
     const getDynamicDescription = () => {

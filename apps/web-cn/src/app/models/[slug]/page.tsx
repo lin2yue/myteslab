@@ -27,7 +27,7 @@ export async function generateMetadata({
     const modelName = locale === 'en' ? model.name_en || model.name : model.name
     const title = locale === 'en'
         ? `${modelName} Free Tesla Wrap Designs & Download | 3D Visualization | 特玩`
-        : `特斯拉 ${modelName} 车身贴膜设计免费下载与 3D 预览 | 特玩`
+        : `特斯拉${modelName}贴膜免费下载 - AI设计与3D预览 | 特玩`
 
     const descriptionFallback = locale === 'en'
         ? `Browse and download the best free custom wrap designs for Tesla ${modelName}. Preview 3D wraps and find inspiration for your next look.`
@@ -110,10 +110,10 @@ export default async function ModelPage({
                     <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
                         {locale === 'en'
                             ? `Free Tesla ${currentModel.name_en || currentModel.name} Wrap Designs`
-                            : `特斯拉 ${currentModel.name} 改色贴膜与涂装设计库`}
+                            : `特斯拉${currentModel.name}贴膜免费下载与涂装设计库`}
                     </h1>
                     <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
-                        {modelDescription}
+                        {locale === 'en' ? modelDescription : `${modelDescription} 支持免费下载并导入特斯拉车机。`}
                     </p>
                 </section>
 
