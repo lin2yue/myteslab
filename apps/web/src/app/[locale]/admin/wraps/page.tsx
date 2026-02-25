@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { useLocale, useTranslations } from 'next-intl';
 import {
     Search,
@@ -51,7 +50,6 @@ interface ModelConfig {
 export default function AdminWrapsPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
-    const supabase = createClient();
     const locale = useLocale();
 
     const [wraps, setWraps] = useState<WrapRecord[]>([]);
@@ -62,6 +60,8 @@ export default function AdminWrapsPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'hidden'>('all');
     const [publicFilter, setPublicFilter] = useState<'all' | 'public' | 'private'>('all');
     const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 12;
     const getModelName = useMemo(() => createModelNameResolver(models, locale), [models, locale]);
@@ -77,56 +77,25 @@ export default function AdminWrapsPage() {
 
     const fetchWraps = async () => {
         setLoading(true);
-        let query = supabase
-            .from('wraps')
-            .select(`
-                id,
-                name,
-                model_slug,
-                category,
-                preview_url,
-                is_active,
-                is_public,
-                created_at,
-                profiles (
-                    display_name,
-                    email
-                )
-            `)
-            .order('created_at', { ascending: false });
-
-        if (debouncedSearch) {
-            query = query.or(`name.ilike.%${debouncedSearch}%,model_slug.ilike.%${debouncedSearch}%`);
-        }
-
-        if (categoryFilter !== 'all') {
-            query = query.eq('category', categoryFilter);
-        }
-
-        if (statusFilter === 'active') {
-            query = query.eq('is_active', true);
-        } else if (statusFilter === 'hidden') {
-            query = query.eq('is_active', false);
-        }
-
-        if (publicFilter === 'public') {
-            query = query.eq('is_public', true);
-        } else if (publicFilter === 'private') {
-            query = query.eq('is_public', false);
-        }
-
-        const { data, error, count } = await query
-            .range((page - 1) * pageSize, page * pageSize - 1);
-
-        if (error) {
-            alert.error(error.message);
-        } else {
-            // Fix: handle possible array return for single relationship if types mismatch
-            const formattedData = (data as any[]).map(w => ({
-                ...w,
-                profiles: Array.isArray(w.profiles) ? w.profiles[0] : w.profiles
-            }));
-            setWraps(formattedData);
+        try {
+            const params = new URLSearchParams({
+                page: String(page),
+                pageSize: String(pageSize),
+                search: debouncedSearch,
+                category: categoryFilter,
+                status: statusFilter,
+                public: publicFilter
+            });
+            const res = await fetch(`/api/admin/wraps?${params.toString()}`);
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to load works');
+            }
+            setWraps(data.wraps || []);
+            setTotal(Number(data.total || 0));
+            setHasMore(Boolean(data.hasMore));
+        } catch (err: any) {
+            alert.error(err.message || 'Failed to load works');
         }
         setLoading(false);
     };
@@ -138,21 +107,21 @@ export default function AdminWrapsPage() {
     useEffect(() => {
         let isMounted = true;
         const fetchModels = async () => {
-            const { data, error } = await supabase
-                .from('wrap_models')
-                .select('slug, name, name_en')
-                .eq('is_active', true)
-                .order('sort_order', { ascending: true });
-            if (!isMounted) return;
-            if (error) {
-                console.error('[AdminWraps] fetch models failed:', error);
-                return;
+            try {
+                const res = await fetch('/api/admin/models');
+                const data = await res.json();
+                if (!isMounted) return;
+                if (!res.ok || !data?.success) {
+                    throw new Error(data?.error || 'Failed to load models');
+                }
+                setModels(data.models || []);
+            } catch (err) {
+                console.error('[AdminWraps] fetch models failed:', err);
             }
-            setModels(data || []);
         };
         fetchModels();
         return () => { isMounted = false; };
-    }, [supabase]);
+    }, []);
 
     const toggleStatus = async (wrapId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus;
@@ -160,19 +129,22 @@ export default function AdminWrapsPage() {
         // 1. Optimistically update local state
         setWraps(current => current.map(w => w.id === wrapId ? { ...w, is_active: newStatus } : w));
 
-        const { error } = await supabase
-            .from('wraps')
-            .update({ is_active: newStatus })
-            .eq('id', wrapId);
-
-        if (error) {
-            // 2. Revert on error
-            setWraps(current => current.map(w => w.id === wrapId ? { ...w, is_active: currentStatus } : w));
-            alert.error(t('update_failed'));
-        } else {
-            // 3. Revalidate in background
+        try {
+            const res = await fetch('/api/admin/wraps/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wrapId, is_active: newStatus })
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || t('update_failed'));
+            }
             alert.success(t('update_success'));
             revalidateWraps();
+        } catch (err: any) {
+            // 2. Revert on error
+            setWraps(current => current.map(w => w.id === wrapId ? { ...w, is_active: currentStatus } : w));
+            alert.error(err.message || t('update_failed'));
         }
     };
 
@@ -352,7 +324,7 @@ export default function AdminWrapsPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between pt-8 border-t border-gray-100 dark:border-zinc-800">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">
-                    Page {page}
+                    Page {page} · Total {total}
                 </span>
                 <div className="flex gap-2">
                     <button
@@ -364,7 +336,7 @@ export default function AdminWrapsPage() {
                     </button>
                     <button
                         onClick={() => setPage(p => p + 1)}
-                        disabled={wraps.length < pageSize}
+                        disabled={!hasMore}
                         className="p-2.5 rounded-xl border border-gray-100 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-30 transition-all shadow-sm"
                     >
                         <ChevronRight size={16} />

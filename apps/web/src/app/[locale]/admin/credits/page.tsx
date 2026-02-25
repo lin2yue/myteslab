@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { useTranslations } from 'next-intl';
 import {
     Download,
@@ -39,29 +38,21 @@ interface CreditLog {
 export default function AdminCreditsPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
-    const supabase = createClient();
     const [logs, setLogs] = useState<CreditLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
 
     const fetchLogs = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('credit_ledger')
-            .select(`
-                *,
-                profiles (
-                    display_name,
-                    email
-                )
-            `)
-            .order('created_at', { ascending: false })
-            .limit(100);
-
-        if (error) {
-            alert.error(error.message);
-        } else {
-            setLogs(data || []);
+        try {
+            const res = await fetch('/api/admin/credits?limit=100');
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to load credits');
+            }
+            setLogs(data.logs || []);
+        } catch (err: any) {
+            alert.error(err.message || 'Failed to load credits');
         }
         setLoading(false);
     };
@@ -72,7 +63,7 @@ export default function AdminCreditsPage() {
 
     const filteredLogs = logs.filter(log =>
         log.user_id.toLowerCase().includes(search.toLowerCase()) ||
-        log.profiles?.email.toLowerCase().includes(search.toLowerCase()) ||
+        (log.profiles?.email || '').toLowerCase().includes(search.toLowerCase()) ||
         log.profiles?.display_name?.toLowerCase().includes(search.toLowerCase()) ||
         log.description.toLowerCase().includes(search.toLowerCase())
     );

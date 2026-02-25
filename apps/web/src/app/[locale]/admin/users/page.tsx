@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { useTranslations } from 'next-intl';
 import {
     Users,
@@ -32,10 +31,11 @@ interface UserProfile {
     email: string;
     display_name: string | null;
     avatar_url: string | null;
-    role: 'user' | 'admin' | 'super_admin';
+    role: 'user' | 'creator' | 'admin' | 'super_admin';
     created_at: string;
     user_credits?: {
         balance: number;
+        gift_balance?: number;
     };
     // Helper fields for display
     download_count: number;
@@ -44,7 +44,6 @@ interface UserProfile {
 
 export default function AdminUsersPage() {
     const alert = useAlert();
-    const supabase = createClient();
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -54,47 +53,16 @@ export default function AdminUsersPage() {
 
     const fetchUsers = async () => {
         setLoading(true);
-        // We fetch profiles and join with user_credits, user_downloads, credit_ledger
-        let query = supabase
-            .from('profiles')
-            .select(`
-                *,
-                user_credits (
-                    balance
-                ),
-                user_downloads (
-                    count
-                ),
-                credit_ledger (
-                    amount,
-                    type
-                )
-            `)
-            .order('created_at', { ascending: false });
-
-        if (roleFilter !== 'all') {
-            query = query.eq('role', roleFilter);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-            alert.error(error.message);
-        } else {
-            // Process the data to calculate counts and sums
-            const processedUsers = (data || []).map((user: any) => ({
-                ...user,
-                // user_downloads is returned as array of objects if aggregation is used
-                // But specifically for count, PostgREST might return [{count: N}]
-                // We'll safely access it.
-                download_count: user.user_downloads?.[0]?.count || 0,
-
-                // credit_ledger returns array of rows
-                total_top_up: (user.credit_ledger || [])
-                    .filter((t: any) => t.type === 'top-up')
-                    .reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-            }));
-            setUsers(processedUsers);
+        try {
+            const params = new URLSearchParams({ role: roleFilter });
+            const res = await fetch(`/api/admin/users?${params.toString()}`);
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to load users');
+            }
+            setUsers(data.users || []);
+        } catch (err: any) {
+            alert.error(err.message || 'Failed to load users');
         }
         setLoading(false);
     };
@@ -122,28 +90,24 @@ export default function AdminUsersPage() {
     };
 
     const saveEdit = async (userId: string) => {
-        // 1. Update Profile Role
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ role: editForm.role })
-            .eq('id', userId);
-
-        if (profileError) {
-            alert.error(`Failed to update role: ${profileError.message}`);
-            return;
-        }
-
-        // 2. Update Credits Balance
-        const { error: creditError } = await supabase
-            .from('user_credits')
-            .update({ balance: editForm.balance })
-            .eq('user_id', userId);
-
-        if (creditError) {
-            alert.error(`Failed to update balance: ${creditError.message}`);
-        } else {
+        try {
+            const res = await fetch('/api/admin/users/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    role: editForm.role,
+                    balance: editForm.balance
+                })
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to update user');
+            }
             alert.success('User updated successfully');
             fetchUsers();
+        } catch (err: any) {
+            alert.error(`Failed to update user: ${err.message}`);
         }
         setEditingUserId(null);
     };
@@ -154,6 +118,8 @@ export default function AdminUsersPage() {
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 rounded-full border border-purple-200 uppercase tracking-tighter">Super Admin</span>;
             case 'admin':
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full border border-blue-200 uppercase tracking-tighter">Admin</span>;
+            case 'creator':
+                return <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-tighter">Creator</span>;
             default:
                 return <span className="px-2 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-600 rounded-full border border-gray-200 uppercase tracking-tighter">User</span>;
         }
@@ -190,6 +156,7 @@ export default function AdminUsersPage() {
                     >
                         <option value="all">All Roles</option>
                         <option value="user">Users</option>
+                        <option value="creator">Creators</option>
                         <option value="admin">Admins</option>
                         <option value="super_admin">Super Admins</option>
                     </select>
@@ -271,6 +238,7 @@ export default function AdminUsersPage() {
                                                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
                                             >
                                                 <option value="user">User</option>
+                                                <option value="creator">Creator</option>
                                                 <option value="admin">Admin</option>
                                                 <option value="super_admin">SuperAdmin</option>
                                             </select>
@@ -289,9 +257,14 @@ export default function AdminUsersPage() {
                                                 onChange={(e) => setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })}
                                             />
                                         ) : (
-                                            <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
-                                                {user.user_credits?.balance ?? 0}
-                                            </span>
+                                            <div className="flex flex-col items-center leading-tight">
+                                                <span className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                                    {user.user_credits?.balance ?? 0}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 dark:text-zinc-500">
+                                                    Gift: {user.user_credits?.gift_balance ?? 0}
+                                                </span>
+                                            </div>
                                         )}
                                     </td>
 

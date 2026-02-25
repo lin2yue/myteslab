@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { useTranslations } from 'next-intl';
 import {
     Clock,
@@ -48,103 +47,62 @@ interface GenerationTask {
 export default function AdminTasksPage() {
     const t = useTranslations('Admin');
     const alert = useAlert();
-    const supabase = createClient();
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
     const [refundingId, setRefundingId] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
+    const pageSize = 50;
 
     const fetchTasks = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('generation_tasks')
-            .select(`
-                *,
-                profiles (
-                    display_name,
-                    email
-                )
-            `)
-            .order('created_at', { ascending: false })
-            .limit(50);
-
-        if (error) {
-            alert.error(error.message);
-        } else {
-            setTasks(data || []);
+        try {
+            const params = new URLSearchParams({
+                page: String(page),
+                pageSize: String(pageSize),
+            });
+            const res = await fetch(`/api/admin/tasks?${params.toString()}`);
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Failed to load tasks');
+            }
+            setTasks(data.tasks || []);
+            setTotal(Number(data.total || 0));
+            setHasMore(Boolean(data.hasMore));
+        } catch (err: any) {
+            alert.error(err.message || 'Failed to load tasks');
         }
         setLoading(false);
     };
 
     useEffect(() => {
         fetchTasks();
-
-        // Realtime subscription
-        const channel = supabase
-            .channel('admin-tasks-realtime')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'generation_tasks'
-                },
-                async (payload) => {
-                    console.log('Realtime Event:', payload);
-
-                    if (payload.eventType === 'INSERT') {
-                        // New task: Fetch full details including profile
-                        const { data: newTask, error } = await supabase
-                            .from('generation_tasks')
-                            .select(`
-                                *,
-                                profiles (
-                                    display_name,
-                                    email
-                                )
-                            `)
-                            .eq('id', payload.new.id)
-                            .single();
-
-                        if (!error && newTask) {
-                            setTasks((prev) => [newTask as GenerationTask, ...prev]);
-                            // Optional: Alert or sound?
-                        }
-                    } else if (payload.eventType === 'UPDATE') {
-                        // Update existing task
-                        setTasks((prev) =>
-                            prev.map((task) =>
-                                task.id === payload.new.id
-                                    ? { ...task, ...payload.new }
-                                    : task
-                            )
-                        );
-                    }
-                }
-            )
-            .subscribe();
-
+        const timer = setInterval(fetchTasks, 15000);
         return () => {
-            supabase.removeChannel(channel);
+            clearInterval(timer);
         };
-    }, []);
+    }, [page]);
 
     const handleRefund = async (taskId: string) => {
         if (!confirm(t('refund_confirm'))) return;
 
         setRefundingId(taskId);
-        const { data, error } = await supabase.rpc('refund_task_credits', {
-            p_task_id: taskId,
-            p_reason: 'Manual admin refund'
-        });
-
-        if (error) {
-            alert.error(error.message);
-        } else if (data?.[0]?.success) {
+        try {
+            const res = await fetch('/api/admin/tasks/refund', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ taskId, reason: 'Manual admin refund' })
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || t('refund_failed'));
+            }
             alert.success(t('refund_success'));
             fetchTasks();
-        } else {
-            alert.error(data?.[0]?.error_msg || t('refund_failed'));
+        } catch (err: any) {
+            alert.error(err.message || t('refund_failed'));
         }
         setRefundingId(null);
     };
@@ -432,10 +390,24 @@ export default function AdminTasksPage() {
             </div>
 
             <div className="flex items-center justify-between px-2">
-                <p className="text-xs text-gray-400 font-medium">System showing real-time updates for latest 50 requests.</p>
-                <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-2" />
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Feed Active</span>
+                <p className="text-xs text-gray-400 font-medium">
+                    Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total} tasks.
+                </p>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                        disabled={page === 1}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-zinc-700 disabled:opacity-40"
+                    >
+                        Prev
+                    </button>
+                    <button
+                        onClick={() => setPage((prev) => prev + 1)}
+                        disabled={!hasMore}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-zinc-700 disabled:opacity-40"
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </div>
