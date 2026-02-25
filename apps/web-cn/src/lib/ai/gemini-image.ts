@@ -77,6 +77,7 @@ const DEFAULT_IMAGE_FALLBACK_MODELS = ['gemini-2.5-flash-image'];
 const REFERENCE_IMAGE_MAX_SIDE = readEnvInt('GEMINI_REFERENCE_MAX_SIDE', 1024);
 const REFERENCE_IMAGE_JPEG_QUALITY = Math.max(40, Math.min(95, readEnvInt('GEMINI_REFERENCE_JPEG_QUALITY', 78)));
 const REFERENCE_IMAGE_TARGET_BYTES = readEnvInt('GEMINI_REFERENCE_TARGET_BYTES', 900 * 1024);
+const ASSET_FETCH_REFERER = 'https://tewan.club';
 
 interface GenerateWrapParams {
     modelSlug: string;
@@ -977,7 +978,11 @@ export async function generateWrapTexture(
  */
 export async function imageUrlToBase64(url: string): Promise<string | null> {
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                Referer: ASSET_FETCH_REFERER
+            }
+        });
         if (!response.ok) {
             console.error('Failed to fetch image:', url);
             return null;

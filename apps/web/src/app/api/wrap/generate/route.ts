@@ -27,6 +27,7 @@ export const maxDuration = 300;
 
 const MAX_REFERENCE_IMAGES = 3;
 const MAX_REFERENCE_IMAGE_BYTES = 1.5 * 1024 * 1024;
+const ASSET_FETCH_REFERER = 'https://myteslab.com';
 
 const allowedReferenceHosts = new Set(
     [
@@ -215,7 +216,7 @@ export async function POST(request: NextRequest) {
         try {
             console.log(`[AI-GEN] Fetching mask for ${currentModelSlug}...`);
             console.log(`[AI-GEN] Mask URL: ${maskUrl}`);
-            const maskResponse = await fetch(maskUrl);
+            const maskResponse = await fetch(maskUrl, { headers: { Referer: ASSET_FETCH_REFERER } });
 
             if (maskResponse.ok) {
                 const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
