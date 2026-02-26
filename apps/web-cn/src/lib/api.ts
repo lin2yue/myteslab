@@ -5,6 +5,9 @@ import { dbQuery } from '@/lib/db'
 import { getSessionUser } from '@/lib/auth/session'
 
 export type WrapSortBy = 'recommended' | 'popular' | 'latest'
+const RECOMMENDED_POPULAR_WEIGHT = 0.55
+const RECOMMENDED_FRESH_WEIGHT = 0.45
+const RECOMMENDED_FRESH_DECAY_HOURS = 168
 
 /**
  * 注入车型信息到作品对象中
@@ -191,7 +194,7 @@ export async function getWraps(
 
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
-            ['wraps-v9', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
+            ['wraps-v10', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -225,9 +228,9 @@ async function fetchWrapsInternal(
         const orderBy = sortBy === 'recommended'
             ? `
                 (
-                    0.7 * LN(1 + COALESCE(w.user_download_count, w.download_count, 0))
-                    + 0.3 * EXP(
-                        -GREATEST(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600.0, 0) / 72.0
+                    ${RECOMMENDED_POPULAR_WEIGHT} * LN(1 + COALESCE(w.user_download_count, w.download_count, 0))
+                    + ${RECOMMENDED_FRESH_WEIGHT} * EXP(
+                        -GREATEST(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600.0, 0) / ${RECOMMENDED_FRESH_DECAY_HOURS}
                     )
                 ) DESC,
                 COALESCE(w.user_download_count, w.download_count, 0) DESC,
