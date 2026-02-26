@@ -16,10 +16,57 @@ type ModelRow = {
   slug: string
 }
 
+type ExistsRow = {
+  exists: boolean
+}
+
+type ColumnRow = {
+  column_name: string
+}
+
+const MODEL_TABLE_CANDIDATES = ['wrap_models', 'car_models', 'models'] as const
+
 function toIsoDate(dateValue: string | null): string {
   const parsed = dateValue ? new Date(dateValue) : new Date()
   if (Number.isNaN(parsed.getTime())) return new Date().toISOString()
   return parsed.toISOString()
+}
+
+async function fetchActiveModelRows(): Promise<ModelRow[]> {
+  for (const tableName of MODEL_TABLE_CANDIDATES) {
+    const { rows: existsRows } = await dbQuery<ExistsRow>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = 'public'
+           AND table_name = $1
+       ) AS exists`,
+      [tableName]
+    )
+    if (!existsRows[0]?.exists) continue
+
+    const { rows: columnRows } = await dbQuery<ColumnRow>(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = $1`,
+      [tableName]
+    )
+    const columnSet = new Set(columnRows.map(column => column.column_name))
+    if (!columnSet.has('slug')) continue
+
+    const hasIsActive = columnSet.has('is_active')
+    const hasSortOrder = columnSet.has('sort_order')
+    const whereClause = hasIsActive ? 'WHERE is_active = true' : ''
+    const orderClause = hasSortOrder ? 'ORDER BY sort_order ASC, slug ASC' : 'ORDER BY slug ASC'
+
+    const { rows: modelRows } = await dbQuery<ModelRow>(
+      `SELECT slug FROM ${tableName} ${whereClause} ${orderClause}`
+    )
+    return modelRows
+  }
+
+  return []
 }
 
 export async function GET() {
@@ -39,9 +86,7 @@ export async function GET() {
   if (hasDatabase) {
     // Model pages
     try {
-      const { rows: modelRows } = await dbQuery<ModelRow>(
-        `SELECT slug FROM car_models WHERE is_active = true ORDER BY sort_order ASC, slug ASC`
-      )
+      const modelRows = await fetchActiveModelRows()
       for (const model of modelRows) {
         const url = `${baseUrl}/models/${encodeURIComponent(model.slug)}`
         xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </url>\n`
