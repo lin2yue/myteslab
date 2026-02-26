@@ -8,6 +8,9 @@ export type WrapSortBy = 'recommended' | 'popular' | 'latest'
 const RECOMMENDED_POPULAR_WEIGHT = 0.55
 const RECOMMENDED_FRESH_WEIGHT = 0.45
 const RECOMMENDED_FRESH_DECAY_HOURS = 168
+const RECOMMENDED_HEAD_FRESH_HOURS = 72
+const RECOMMENDED_HEAD_MIN_HEAT = 1
+const RECOMMENDED_HEAD_MAX_HEAT = 12
 
 /**
  * 注入车型信息到作品对象中
@@ -194,7 +197,7 @@ export async function getWraps(
 
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
-            ['wraps-v10', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
+            ['wraps-v11', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -225,8 +228,20 @@ async function fetchWrapsInternal(
             const searchParam = `$${params.length}`
             where += ` AND (w.name ILIKE ${searchParam} OR COALESCE(w.name_en, '') ILIKE ${searchParam} OR COALESCE(w.prompt, '') ILIKE ${searchParam})`
         }
+        const recommendedHeadCondition = `
+            GREATEST(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600.0, 0) <= ${RECOMMENDED_HEAD_FRESH_HOURS}
+            AND COALESCE(w.user_download_count, w.download_count, 0) BETWEEN ${RECOMMENDED_HEAD_MIN_HEAT} AND ${RECOMMENDED_HEAD_MAX_HEAT}
+        `
         const orderBy = sortBy === 'recommended'
             ? `
+                CASE
+                    WHEN ${recommendedHeadCondition}
+                    THEN 1 ELSE 0
+                END DESC,
+                CASE
+                    WHEN ${recommendedHeadCondition}
+                    THEN w.created_at ELSE NULL
+                END DESC,
                 (
                     ${RECOMMENDED_POPULAR_WEIGHT} * LN(1 + COALESCE(w.user_download_count, w.download_count, 0))
                     + ${RECOMMENDED_FRESH_WEIGHT} * EXP(

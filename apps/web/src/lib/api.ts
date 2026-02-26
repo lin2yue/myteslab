@@ -12,6 +12,9 @@ const RECOMMENDED_POOL_MULTIPLIER = 8
 const RECOMMENDED_POPULAR_WEIGHT = 0.55
 const RECOMMENDED_FRESH_WEIGHT = 0.45
 const RECOMMENDED_FRESH_DECAY_HOURS = 168
+const RECOMMENDED_HEAD_FRESH_HOURS = 72
+const RECOMMENDED_HEAD_MIN_HEAT = 1
+const RECOMMENDED_HEAD_MAX_HEAT = 12
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -166,6 +169,12 @@ function getRecommendedScore(row: any): number {
     return (RECOMMENDED_POPULAR_WEIGHT * popularPart) + (RECOMMENDED_FRESH_WEIGHT * freshPart)
 }
 
+function isHeadFreshCandidate(row: any): boolean {
+    const heat = getWrapBaseHeat(row)
+    if (heat < RECOMMENDED_HEAD_MIN_HEAT || heat > RECOMMENDED_HEAD_MAX_HEAT) return false
+    return getWrapAgeHours(row) <= RECOMMENDED_HEAD_FRESH_HOURS
+}
+
 function dedupeWrapRows(rows: any[]): any[] {
     const deduped = new Map<string, any>()
     for (const row of rows) {
@@ -254,7 +263,7 @@ export async function getWraps(
 
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
-            ['wraps-v11', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
+            ['wraps-v12', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -328,6 +337,14 @@ async function fetchWrapsInternal(
 
             const merged = dedupeWrapRows([...(popularResult.data || []), ...(latestResult.data || [])])
             merged.sort((a, b) => {
+                const headFreshDiff = Number(isHeadFreshCandidate(b)) - Number(isHeadFreshCandidate(a))
+                if (headFreshDiff !== 0) return headFreshDiff
+
+                if (isHeadFreshCandidate(a) && isHeadFreshCandidate(b)) {
+                    const freshCreatedAtDiff = getWrapCreatedAtMs(b) - getWrapCreatedAtMs(a)
+                    if (freshCreatedAtDiff !== 0) return freshCreatedAtDiff
+                }
+
                 const scoreDiff = getRecommendedScore(b) - getRecommendedScore(a)
                 if (Math.abs(scoreDiff) > Number.EPSILON) return scoreDiff
 
