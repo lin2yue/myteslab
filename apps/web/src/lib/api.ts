@@ -9,9 +9,9 @@ export type WrapSortBy = 'recommended' | 'popular' | 'latest'
 const RECOMMENDED_MIN_POOL_SIZE = 180
 const RECOMMENDED_MAX_POOL_SIZE = 720
 const RECOMMENDED_POOL_MULTIPLIER = 8
-const RECOMMENDED_POPULAR_WEIGHT = 0.7
-const RECOMMENDED_FRESH_WEIGHT = 0.3
-const RECOMMENDED_FRESH_DECAY_HOURS = 72
+const RECOMMENDED_POPULAR_WEIGHT = 0.55
+const RECOMMENDED_FRESH_WEIGHT = 0.45
+const RECOMMENDED_FRESH_DECAY_HOURS = 168
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -254,7 +254,7 @@ export async function getWraps(
 
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
-            ['wraps-v10', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
+            ['wraps-v11', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
