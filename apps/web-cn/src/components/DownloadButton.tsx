@@ -6,6 +6,7 @@ import { trackDownload } from '@/lib/analytics'
 import Button from '@/components/ui/Button'
 import { useRouter } from 'next/navigation'
 import Portal from '@/components/Portal'
+import { getCurrentPathWithSearch, rememberAuthRedirectNext } from '@/lib/auth/client-redirect'
 
 interface DownloadButtonProps {
     wrapId: string
@@ -101,10 +102,8 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
 
     const handleDownload = async () => {
         if (!isLoggedIn) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
+            const currentUrl = getCurrentPathWithSearch('/')
+            rememberAuthRedirectNext(currentUrl)
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }

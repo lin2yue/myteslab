@@ -14,6 +14,46 @@ interface FilterBarProps {
     recommendedKeywords?: string[]
 }
 
+function safeSessionGet(key: string): string | null {
+    try {
+        return sessionStorage.getItem(key)
+    } catch {
+        return null
+    }
+}
+
+function safeSessionSet(key: string, value: string) {
+    try {
+        sessionStorage.setItem(key, value)
+    } catch {
+        // ignore storage write failures (private mode / restricted WebView)
+    }
+}
+
+function safeLocalGet(key: string): string | null {
+    try {
+        return localStorage.getItem(key)
+    } catch {
+        return null
+    }
+}
+
+function safeLocalSet(key: string, value: string) {
+    try {
+        localStorage.setItem(key, value)
+    } catch {
+        // ignore storage write failures (private mode / restricted WebView)
+    }
+}
+
+function safeLocalRemove(key: string) {
+    try {
+        localStorage.removeItem(key)
+    } catch {
+        // ignore storage write failures (private mode / restricted WebView)
+    }
+}
+
 export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }: FilterBarProps) {
     const locale = useLocale()
     const t = useTranslations('Index')
@@ -41,17 +81,17 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
         if (typeof window === 'undefined') return
 
         // Check if we already handled hydration in this session
-        const hasRestored = sessionStorage.getItem(hydrationKey)
+        const hasRestored = safeSessionGet(hydrationKey)
         if (hasRestored) return
 
         if (actualModel) {
-            sessionStorage.setItem(hydrationKey, 'true')
+            safeSessionSet(hydrationKey, 'true')
             return
         }
 
-        const savedModel = localStorage.getItem(modelMemoryKey)
+        const savedModel = safeLocalGet(modelMemoryKey)
         if (!savedModel || !sortedModels.some(model => model.slug === savedModel)) {
-            sessionStorage.setItem(hydrationKey, 'true')
+            safeSessionSet(hydrationKey, 'true')
             return
         }
 
@@ -60,7 +100,7 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
         const suffix = queryString ? `?${queryString}` : ''
 
         // Mark as restored BEFORE redirect to prevent infinite loops if something fails
-        sessionStorage.setItem(hydrationKey, 'true')
+        safeSessionSet(hydrationKey, 'true')
         router.replace(`/models/${savedModel}${suffix}`)
     }, [actualModel, sortedModels, searchParams, router])
 
@@ -69,10 +109,10 @@ export function FilterBar({ models, onLoadingChange, recommendedKeywords = [] }:
         if (typeof window === 'undefined') return
 
         if (actualModel) {
-            localStorage.setItem(modelMemoryKey, actualModel)
+            safeLocalSet(modelMemoryKey, actualModel)
             return
         }
-        localStorage.removeItem(modelMemoryKey)
+        safeLocalRemove(modelMemoryKey)
     }, [actualModel])
 
     // Notify parent of loading state

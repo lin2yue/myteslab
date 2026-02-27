@@ -17,9 +17,13 @@ function isSystemDarkMode(): boolean {
 
 export function getStoredThemeMode(): ThemeMode {
     if (typeof window === 'undefined') return 'system';
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
-    return 'system';
+    try {
+        const stored = localStorage.getItem(THEME_STORAGE_KEY);
+        if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+        return 'system';
+    } catch {
+        return 'system';
+    }
 }
 
 export function getSystemTheme(): EffectiveTheme {
@@ -111,7 +115,11 @@ export function useThemeMode() {
 
     const setMode = (nextMode: ThemeMode) => {
         modeRef.current = nextMode;
-        localStorage.setItem(THEME_STORAGE_KEY, nextMode);
+        try {
+            localStorage.setItem(THEME_STORAGE_KEY, nextMode);
+        } catch {
+            // ignore storage write failures (private mode / restricted WebView)
+        }
         const nextEffective = applyThemeMode(nextMode);
         setModeState(nextMode);
         setEffective(nextEffective);

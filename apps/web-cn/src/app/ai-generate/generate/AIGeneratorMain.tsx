@@ -22,6 +22,7 @@ import { createModelNameResolver } from '@/lib/model-display'
 import { sortModelsByPreferredOrder } from '@/lib/model-order'
 import { getMaskDimensions } from '@/lib/ai/mask-config'
 import { getEffectiveTheme, THEME_CHANGE_EVENT } from '@/utils/theme'
+import { getCurrentPathWithSearch, rememberAuthRedirectNext } from '@/lib/auth/client-redirect'
 
 interface GenerationHistory {
     id: string
@@ -352,6 +353,11 @@ export default function AIGeneratorMain({
 
     const aiThemeStorageKey = 'ai_viewer_theme'
     const modelPreferenceStorageKey = 'ai_generator_last_model'
+    const redirectToLogin = useCallback(() => {
+        const currentUrl = getCurrentPathWithSearch('/')
+        rememberAuthRedirectNext(currentUrl)
+        router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+    }, [router])
 
     const resolveRegenTargetModel = useCallback(() => {
         if (typeof window === 'undefined') return null
@@ -916,11 +922,7 @@ export default function AIGeneratorMain({
         const usedReferenceImages = options?.referenceImagesOverride ?? (options?.clearRefs ? [] : referenceImages)
 
         if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            redirectToLogin()
             return false
         }
         if (!promptValue || isBusy) return false
@@ -1074,11 +1076,7 @@ export default function AIGeneratorMain({
 
     const handleDownload = async () => {
         if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            redirectToLogin()
             return
         }
 
@@ -1116,11 +1114,7 @@ export default function AIGeneratorMain({
 
     const handleSaveDiy = async (dataUrl: string) => {
         if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            redirectToLogin()
             return null
         }
         setIsSaving(true);
@@ -1172,11 +1166,7 @@ export default function AIGeneratorMain({
 
     const handlePublish = async () => {
         if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            redirectToLogin()
             return
         }
         if (!viewerRef.current) {
@@ -1287,11 +1277,7 @@ export default function AIGeneratorMain({
 
     const processFiles = async (files: FileList | File[]) => {
         if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            redirectToLogin()
             return
         }
 
@@ -1414,9 +1400,7 @@ export default function AIGeneratorMain({
         if (!sortedModels.some(m => m.slug === targetModel)) return
 
         if (!isLoggedInInternal) {
-            const currentUrl = window.location.pathname + window.location.search
-            localStorage.setItem('auth_redirect_next', currentUrl)
-            router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+            redirectToLogin()
             return
         }
 
@@ -1490,7 +1474,7 @@ export default function AIGeneratorMain({
                 alert.error(error instanceof Error ? `${fallback}: ${error.message}` : fallback)
             }
         })()
-    }, [isLoggedInInternal, sortedModels, router, getModelName, _locale, alert, submitGeneration, modelPreferenceStorageKey])
+    }, [isLoggedInInternal, sortedModels, redirectToLogin, getModelName, _locale, alert, submitGeneration, modelPreferenceStorageKey])
 
     const handlePaste = async (e: React.ClipboardEvent) => {
         const items = e.clipboardData?.items
@@ -1793,11 +1777,7 @@ export default function AIGeneratorMain({
                                                     <button
                                                         onClick={() => {
                                                             if (!isLoggedInInternal) {
-                                                                const currentUrl = window.location.pathname + window.location.search
-                                                                if (typeof window !== 'undefined') {
-                                                                    localStorage.setItem('auth_redirect_next', currentUrl)
-                                                                }
-                                                                router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+                                                                redirectToLogin()
                                                                 return
                                                             }
                                                             fileInputRef.current?.click()
