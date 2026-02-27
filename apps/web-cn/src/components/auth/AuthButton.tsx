@@ -9,6 +9,7 @@ import { useAlert } from '@/components/alert/AlertProvider';
 import PricingModal from '@/components/pricing/PricingModal';
 import { Zap } from 'lucide-react';
 import { useCredits } from '@/components/credits/CreditsProvider';
+import { getCurrentPathWithSearch, rememberAuthRedirectNext } from '@/lib/auth/client-redirect';
 
 type SessionUser = {
     id: string;
@@ -50,7 +51,11 @@ export default function AuthButton() {
     const handleSignOut = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         if (typeof window !== 'undefined') {
-            localStorage.removeItem('wrap_gallery_last_model');
+            try {
+                localStorage.removeItem('wrap_gallery_last_model');
+            } catch {
+                // ignore storage remove failures (private mode / restricted WebView)
+            }
         }
         setUser(null);
         setAvatarUrl(null);
@@ -172,8 +177,8 @@ export default function AuthButton() {
             ) : (
                 <button
                     onClick={() => {
-                        const currentUrl = window.location.pathname + window.location.search;
-                        localStorage.setItem('auth_redirect_next', currentUrl);
+                        const currentUrl = getCurrentPathWithSearch('/');
+                        rememberAuthRedirectNext(currentUrl);
                         window.location.href = `/login?next=${encodeURIComponent(currentUrl)}`;
                     }}
                     className="h-10 px-4 text-sm font-semibold text-white bg-black rounded-xl hover:bg-zinc-800 transition-colors shadow-[0_8px_18px_rgba(0,0,0,0.18)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)]"

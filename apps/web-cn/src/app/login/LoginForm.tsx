@@ -9,7 +9,7 @@ import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff, QrCode } from 'lucide-re
 import { useAlert } from '@/components/alert/AlertProvider';
 import WechatScan from '@/components/auth/WechatScan';
 import { ShieldCheck } from 'lucide-react';
-import { normalizeNextPath } from '@/lib/auth/redirect';
+import { consumeAuthRedirectNext } from '@/lib/auth/client-redirect';
 
 type AuthMode = 'LOGIN' | 'SIGNUP';
 
@@ -33,20 +33,7 @@ export default function LoginForm() {
     const [error, setError] = useState<string | null>(searchParams.get('error'));
     const [isPending, startTransition] = useTransition();
 
-    const getNext = () => {
-        const queryNext = searchParams.get('next');
-
-        if (queryNext) {
-            return normalizeNextPath(queryNext, '/');
-        }
-
-        if (typeof window !== 'undefined') {
-            const storedNext = localStorage.getItem('auth_redirect_next');
-            return normalizeNextPath(storedNext, '/');
-        }
-
-        return '/';
-    };
+    const getNext = () => consumeAuthRedirectNext(searchParams.get('next'), '/');
 
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -91,7 +78,6 @@ export default function LoginForm() {
 
             const next = getNext();
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('auth_redirect_next');
                 window.location.href = next;
             }
         });
@@ -117,7 +103,6 @@ export default function LoginForm() {
     const handleWechatSuccess = () => {
         const next = getNext();
         if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_redirect_next');
             window.location.href = next;
         }
     };

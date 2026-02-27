@@ -8,6 +8,7 @@ import { getAudioPlayableUrl } from '@/lib/audio'
 import { LockAudioCard } from '@/components/audio/LockAudioCard'
 import { LockAlbumCard } from '@/components/audio/LockAlbumCard'
 import { useRouter } from 'next/navigation'
+import { getCurrentPathWithSearch, rememberAuthRedirectNext } from '@/lib/auth/client-redirect'
 
 type SortBy = 'latest' | 'hot'
 type ViewMode = 'audios' | 'albums'
@@ -248,10 +249,8 @@ export default function LockSoundsClient() {
         }
 
         if (!isLoggedIn) {
-            const currentUrl = window.location.pathname + window.location.search
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('auth_redirect_next', currentUrl)
-            }
+            const currentUrl = getCurrentPathWithSearch('/')
+            rememberAuthRedirectNext(currentUrl)
             router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
             return
         }

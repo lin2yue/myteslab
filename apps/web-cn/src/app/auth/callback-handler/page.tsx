@@ -1,33 +1,25 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { consumeAuthRedirectNext } from '@/lib/auth/client-redirect';
 
 export default function AuthCallbackHandler() {
-    const router = useRouter();
-
     useEffect(() => {
         const handleRedirect = () => {
             console.log('[AuthCallbackHandler] Handling OAuth redirect');
 
-            // Try to get the redirect URL from localStorage
-            const next = localStorage.getItem('auth_redirect_next');
-            console.log('[AuthCallbackHandler] next from localStorage:', next);
+            const queryNext = new URLSearchParams(window.location.search).get('next');
+            const next = consumeAuthRedirectNext(queryNext, '/');
+            console.log('[AuthCallbackHandler] resolved next:', next);
 
-            if (next) {
-                console.log('[AuthCallbackHandler] Redirecting to:', next);
-                localStorage.removeItem('auth_redirect_next');
-                // Use replace to force a full page reload and ensure auth state is updated
-                window.location.replace(next);
-            } else {
-                console.log('[AuthCallbackHandler] No redirect URL, going to home');
-                window.location.replace('/');
-            }
+            console.log('[AuthCallbackHandler] Redirecting to:', next);
+            // Use replace to force a full page reload and ensure auth state is updated
+            window.location.replace(next);
         };
 
         // Small delay to ensure session is established
         setTimeout(handleRedirect, 100);
-    }, [router]);
+    }, []);
 
     return (
         <div className="flex min-h-screen items-center justify-center">
