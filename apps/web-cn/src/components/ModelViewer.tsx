@@ -105,19 +105,23 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     viewer.setAttribute('field-of-view', STANDARD_FOV);
                     viewer.setAttribute('exposure', STANDARD_EXPOSURE);
                     viewer.style.backgroundColor = STANDARD_BG;
-
-                    if (typeof viewer.jumpCameraToGoal === 'function') {
-                        viewer.jumpCameraToGoal();
-                    }
+                    // NOTE: jumpCameraToGoal is intentionally called AFTER updateComplete below,
+                    // so that LitElement has time to compute the 'auto' camera-target before snapping.
                 }
 
-                // Wait for renderer to settle:
-                // Use a smart frame-loop instead of fixed timeout.
-                // 5 frames ensures that the render loop has fully committed changes
-                // including shadow maps and post-processing on slower devices.
+                // Wait for LitElement to process attribute changes (especially camera-target: 'auto')
                 if (viewer.requestUpdate) viewer.requestUpdate();
                 if (viewer.updateComplete) await viewer.updateComplete;
-                for (let i = 0; i < 5; i++) {
+
+                // Jump AFTER updateComplete so the 'auto' target has been computed
+                if (useStandardView && typeof viewer.jumpCameraToGoal === 'function') {
+                    viewer.jumpCameraToGoal();
+                }
+
+                // Wait for renderer to stabilize: increased from 5 to 20 frames to handle
+                // slower GPUs where shadow maps, texture uploads, and progressive quality
+                // ramp-up need more render cycles to complete.
+                for (let i = 0; i < 20; i++) {
                     await new Promise(resolve => requestAnimationFrame(resolve));
                 }
 
@@ -568,8 +572,16 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
     // Effect 1: Handle model element creation and modelUrl changes
     useEffect(() => {
-        import('@google/model-viewer')
-        if (!containerRef.current) return
+        import('@google/model-viewer').then(() => {
+            // Set src AFTER element upgrade so attributeChangedCallback fires on a fully-initialized instance.
+            // Setting src before upgrade causes model-viewer to silently skip loading.
+            if (viewer.isConnected) {
+                viewer.setAttribute('src', modelUrl);
+            }
+        }).catch(() => {});
+        if (!containerRef.current) {
+            return
+        }
 
         setLoading(true)
         setError(null)
@@ -586,7 +598,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             ...(modelSlug && (viewerConfig.models as any)[modelSlug] ? (viewerConfig.models as any)[modelSlug] : {})
         }
 
-        viewer.setAttribute('src', modelUrl)
+        viewer.setAttribute('loading', 'eager')
         viewer.setAttribute('crossorigin', 'anonymous')
         if (cameraControls) {
             viewer.setAttribute('camera-controls', 'true')
