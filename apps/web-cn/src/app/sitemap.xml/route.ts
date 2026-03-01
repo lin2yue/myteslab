@@ -74,10 +74,11 @@ export async function GET() {
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
   // Static pages
+  const staticLastmod = '2026-02-01T00:00:00.000Z'
   const staticPages = ['', 'terms', 'privacy', 'refund', 'pricing', 'ai-generate/generate']
   for (const page of staticPages) {
     const url = `${baseUrl}${page ? `/${page}` : ''}`
-    xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </url>\n`
+    xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${staticLastmod}</lastmod>\n  </url>\n`
   }
 
   // Build-time / CI 可能没有数据库连接，避免直接失败
@@ -89,7 +90,7 @@ export async function GET() {
       const modelRows = await fetchActiveModelRows()
       for (const model of modelRows) {
         const url = `${baseUrl}/models/${encodeURIComponent(model.slug)}`
-        xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </url>\n`
+        xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${staticLastmod}</lastmod>\n  </url>\n`
       }
     } catch (error) {
       console.error('[sitemap.xml] model query failed, skip model urls:', error)
