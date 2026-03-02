@@ -21,7 +21,7 @@ interface ModelViewerProps {
 }
 
 export interface ModelViewerRef {
-    takeHighResScreenshot: (options?: { zoomOut?: boolean, useStandardView?: boolean }) => Promise<string | null>;
+    takeHighResScreenshot: (options?: { zoomOut?: boolean, useStandardView?: boolean, preserveAspect?: boolean }) => Promise<string | null>;
     waitForReady: (timeout?: number) => Promise<boolean>;
 }
 
@@ -56,6 +56,102 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const textureAppliedRef = useRef(false)
     const viewerInitializedRef = useRef(false)
 
+    const getViewerCanvas = (viewer: any): HTMLCanvasElement | null => {
+        const shadowCanvas = viewer?.shadowRoot?.querySelector?.('canvas')
+        if (shadowCanvas instanceof HTMLCanvasElement) return shadowCanvas
+
+        const lightCanvas = viewer?.querySelector?.('canvas')
+        if (lightCanvas instanceof HTMLCanvasElement) return lightCanvas
+
+        return null
+    }
+
+    const createRenderFingerprint = (canvas: HTMLCanvasElement) => {
+        if (canvas.width < 64 || canvas.height < 48) return null
+
+        const probe = document.createElement('canvas')
+        probe.width = 32
+        probe.height = 24
+        const ctx = probe.getContext('2d', { willReadFrequently: true })
+        if (!ctx) return null
+
+        ctx.drawImage(canvas, 0, 0, probe.width, probe.height)
+        const { data } = ctx.getImageData(0, 0, probe.width, probe.height)
+
+        let hash = 2166136261 >>> 0
+        let visiblePixels = 0
+        const totalPixels = probe.width * probe.height
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i]
+            const g = data[i + 1]
+            const b = data[i + 2]
+            const a = data[i + 3]
+            const luminance = ((r * 3) + (g * 4) + b) >> 3
+
+            hash ^= luminance + a
+            hash = Math.imul(hash, 16777619) >>> 0
+
+            if (a > 8 && (Math.abs(r - 31) + Math.abs(g - 31) + Math.abs(b - 31)) > 24) {
+                visiblePixels += 1
+            }
+        }
+
+        return {
+            width: canvas.width,
+            height: canvas.height,
+            hash,
+            visibleRatio: visiblePixels / totalPixels
+        }
+    }
+
+    const waitForStableRender = async (viewer: any, timeout = 1800) => {
+        const start = Date.now()
+        let previous: ReturnType<typeof createRenderFingerprint> = null
+        let stableMatches = 0
+
+        while (Date.now() - start < timeout) {
+            if (viewer.requestUpdate) viewer.requestUpdate()
+            if (viewer.updateComplete) await viewer.updateComplete
+            if (typeof viewer.requestRender === 'function') viewer.requestRender()
+
+            await new Promise(resolve => requestAnimationFrame(resolve))
+            await new Promise(resolve => requestAnimationFrame(resolve))
+
+            const canvas = getViewerCanvas(viewer)
+            const fingerprint = canvas ? createRenderFingerprint(canvas) : null
+
+            if (!fingerprint || fingerprint.visibleRatio < 0.04) {
+                stableMatches = 0
+                previous = fingerprint
+                await new Promise(resolve => setTimeout(resolve, 80))
+                continue
+            }
+
+            if (
+                previous
+                && previous.width === fingerprint.width
+                && previous.height === fingerprint.height
+                && Math.abs(previous.hash - fingerprint.hash) < 1500000
+                && Math.abs(previous.visibleRatio - fingerprint.visibleRatio) < 0.015
+            ) {
+                stableMatches += 1
+            } else {
+                stableMatches = 0
+            }
+
+            previous = fingerprint
+
+            if (stableMatches >= 1) {
+                return true
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 80))
+        }
+
+        return false
+    }
+
     useImperativeHandle(ref, () => ({
         waitForReady: async (timeout = 10000) => {
             const start = Date.now()
@@ -89,12 +185,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             const originalMinRenderScale = viewer.getAttribute('min-render-scale');
             const originalFOV = viewer.getAttribute('field-of-view');
             const originalOrbit = viewer.getAttribute('camera-orbit');
+            const originalTarget = viewer.getAttribute('camera-target');
             const originalExposure = viewer.getAttribute('exposure');
             const originalBG = viewer.style.backgroundColor;
-            const originalWidth = viewer.style.width;
-            const originalHeight = viewer.style.height;
-            const originalParent = viewer.parentElement;
-            const nextSibling = viewer.nextSibling;
 
             try {
                 // Temporarily boost quality
@@ -103,19 +196,23 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 if (options?.useStandardView) {
                     viewer.removeAttribute('auto-rotate');
                     viewer.setAttribute('camera-orbit', targetOrbit);
+                    viewer.setAttribute('camera-target', 'auto auto auto');
                     viewer.setAttribute('field-of-view', STANDARD_FOV);
                     viewer.setAttribute('exposure', STANDARD_EXPOSURE);
                     viewer.style.backgroundColor = STANDARD_BG;
-
-                    if (typeof viewer.jumpCameraToGoal === 'function') {
-                        viewer.jumpCameraToGoal();
-                    }
                 }
 
-                // Wait for renderer to settle
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await new Promise(resolve => setTimeout(resolve, 300));
+                if (viewer.requestUpdate) viewer.requestUpdate();
+                if (viewer.updateComplete) await viewer.updateComplete;
+
+                if (options?.useStandardView && typeof viewer.jumpCameraToGoal === 'function') {
+                    viewer.jumpCameraToGoal();
+                }
+
+                const settled = await waitForStableRender(viewer)
+                if (!settled) {
+                    console.warn('[ModelViewer] Capture render did not fully stabilize before timeout; proceeding with best-effort snapshot.')
+                }
 
                 // Capture screenshot
                 const blob = await viewer.toBlob({
@@ -147,9 +244,20 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         ctx.fillStyle = STANDARD_BG;
                         ctx.fillRect(0, 0, 1024, 768);
 
-                        // Draw model image
-                        console.log(`[ModelViewer-Debug] Drawing image to canvas: ${img.width}x${img.height} -> 1024x768`);
-                        ctx.drawImage(img, 0, 0, 1024, 768);
+                        if (options?.preserveAspect) {
+                            const srcW = img.width || 1;
+                            const srcH = img.height || 1;
+                            const scale = Math.min(canvas.width / srcW, canvas.height / srcH);
+                            const drawW = Math.round(srcW * scale);
+                            const drawH = Math.round(srcH * scale);
+                            const offsetX = Math.round((canvas.width - drawW) / 2);
+                            const offsetY = Math.round((canvas.height - drawH) / 2);
+                            console.log(`[ModelViewer-Debug] Drawing image to canvas (contain): ${img.width}x${img.height} -> ${drawW}x${drawH} @ (${offsetX}, ${offsetY})`);
+                            ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                        } else {
+                            console.log(`[ModelViewer-Debug] Drawing image to canvas: ${img.width}x${img.height} -> 1024x768`);
+                            ctx.drawImage(img, 0, 0, 1024, 768);
+                        }
 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
                         resolve(dataUrl);
@@ -172,7 +280,11 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 if (originalOrbit) viewer.setAttribute('camera-orbit', originalOrbit);
                 else viewer.removeAttribute('camera-orbit');
 
+                if (originalTarget) viewer.setAttribute('camera-target', originalTarget);
+                else viewer.removeAttribute('camera-target');
+
                 if (originalExposure) viewer.setAttribute('exposure', originalExposure);
+                else viewer.removeAttribute('exposure');
                 // Force model-viewer to recalculate bounds
                 if ((viewer as any).updateFraming) {
                     (viewer as any).updateFraming()
