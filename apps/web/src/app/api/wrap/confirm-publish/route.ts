@@ -39,11 +39,20 @@ export async function POST(request: NextRequest) {
             .single();
         const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
+        // 先查询当前 first_published_at 值，以判断是否首次发布
+        const { data: existing } = await supabase
+            .from('wraps')
+            .select('first_published_at')
+            .eq('id', wrapId)
+            .single();
+
         const updateQuery = supabase
             .from('wraps')
             .update({
                 preview_url: previewUrl,
-                is_public: true
+                is_public: true,
+                // 仅在首次发布时设置，后续重新发布不覆盖
+                ...(existing?.first_published_at ? {} : { first_published_at: new Date().toISOString() })
             })
             .eq('id', wrapId);
 

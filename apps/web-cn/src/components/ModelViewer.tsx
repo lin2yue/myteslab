@@ -56,6 +56,102 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const textureAppliedRef = useRef(false)
     const viewerInitializedRef = useRef(false)
 
+    const getViewerCanvas = (viewer: any): HTMLCanvasElement | null => {
+        const shadowCanvas = viewer?.shadowRoot?.querySelector?.('canvas')
+        if (shadowCanvas instanceof HTMLCanvasElement) return shadowCanvas
+
+        const lightCanvas = viewer?.querySelector?.('canvas')
+        if (lightCanvas instanceof HTMLCanvasElement) return lightCanvas
+
+        return null
+    }
+
+    const createRenderFingerprint = (canvas: HTMLCanvasElement) => {
+        if (canvas.width < 64 || canvas.height < 48) return null
+
+        const probe = document.createElement('canvas')
+        probe.width = 32
+        probe.height = 24
+        const ctx = probe.getContext('2d', { willReadFrequently: true })
+        if (!ctx) return null
+
+        ctx.drawImage(canvas, 0, 0, probe.width, probe.height)
+        const { data } = ctx.getImageData(0, 0, probe.width, probe.height)
+
+        let hash = 2166136261 >>> 0
+        let visiblePixels = 0
+        const totalPixels = probe.width * probe.height
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i]
+            const g = data[i + 1]
+            const b = data[i + 2]
+            const a = data[i + 3]
+            const luminance = ((r * 3) + (g * 4) + b) >> 3
+
+            hash ^= luminance + a
+            hash = Math.imul(hash, 16777619) >>> 0
+
+            if (a > 8 && (Math.abs(r - 31) + Math.abs(g - 31) + Math.abs(b - 31)) > 24) {
+                visiblePixels += 1
+            }
+        }
+
+        return {
+            width: canvas.width,
+            height: canvas.height,
+            hash,
+            visibleRatio: visiblePixels / totalPixels
+        }
+    }
+
+    const waitForStableRender = async (viewer: any, timeout = 1800) => {
+        const start = Date.now()
+        let previous: ReturnType<typeof createRenderFingerprint> = null
+        let stableMatches = 0
+
+        while (Date.now() - start < timeout) {
+            if (viewer.requestUpdate) viewer.requestUpdate()
+            if (viewer.updateComplete) await viewer.updateComplete
+            if (typeof viewer.requestRender === 'function') viewer.requestRender()
+
+            await new Promise(resolve => requestAnimationFrame(resolve))
+            await new Promise(resolve => requestAnimationFrame(resolve))
+
+            const canvas = getViewerCanvas(viewer)
+            const fingerprint = canvas ? createRenderFingerprint(canvas) : null
+
+            if (!fingerprint || fingerprint.visibleRatio < 0.04) {
+                stableMatches = 0
+                previous = fingerprint
+                await new Promise(resolve => setTimeout(resolve, 80))
+                continue
+            }
+
+            if (
+                previous
+                && previous.width === fingerprint.width
+                && previous.height === fingerprint.height
+                && Math.abs(previous.hash - fingerprint.hash) < 1500000
+                && Math.abs(previous.visibleRatio - fingerprint.visibleRatio) < 0.015
+            ) {
+                stableMatches += 1
+            } else {
+                stableMatches = 0
+            }
+
+            previous = fingerprint
+
+            if (stableMatches >= 1) {
+                return true
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 80))
+        }
+
+        return false
+    }
+
     useImperativeHandle(ref, () => ({
         waitForReady: async (timeout = 10000) => {
             const start = Date.now()
@@ -118,11 +214,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     viewer.jumpCameraToGoal();
                 }
 
-                // Wait for renderer to stabilize: increased from 5 to 20 frames to handle
-                // slower GPUs where shadow maps, texture uploads, and progressive quality
-                // ramp-up need more render cycles to complete.
-                for (let i = 0; i < 20; i++) {
-                    await new Promise(resolve => requestAnimationFrame(resolve));
+                const settled = await waitForStableRender(viewer)
+                if (!settled) {
+                    console.warn('[ModelViewer] Capture render did not fully stabilize before timeout; proceeding with best-effort snapshot.')
                 }
 
                 // Capture screenshot

@@ -43,14 +43,16 @@ export async function POST(request: NextRequest) {
         const { rows } = isAdmin
             ? await dbQuery(
                 `UPDATE wraps
-                 SET preview_url = $2, is_public = true, price_credits = $3, updated_at = NOW()
+                 SET preview_url = $2, is_public = true, price_credits = $3, updated_at = NOW(),
+                     first_published_at = COALESCE(first_published_at, NOW())
                  WHERE id = $1
                  RETURNING *`,
                 [wrapId, previewUrl, priceCredits]
             )
             : await dbQuery(
                 `UPDATE wraps
-                 SET preview_url = $3, is_public = true, price_credits = $4, updated_at = NOW()
+                 SET preview_url = $3, is_public = true, price_credits = $4, updated_at = NOW(),
+                     first_published_at = COALESCE(first_published_at, NOW())
                  WHERE id = $1 AND user_id = $2
                  RETURNING *`,
                 [wrapId, user.id, previewUrl, priceCredits]

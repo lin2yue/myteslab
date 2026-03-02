@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS wraps (
   reference_images TEXT[],                -- AI 参考图列表
   generation_task_id UUID REFERENCES generation_tasks(id), -- [NEW] 关联生成任务
   deleted_at TIMESTAMP WITH TIME ZONE,    -- 软删除标记
+  first_published_at TIMESTAMP WITH TIME ZONE, -- 首次发布时间（列表"最新"排序依据）
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
