@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
+import viewerConfig from '@/config/viewer-config.json'
 import { X, Loader2, Globe, ShieldCheck, DownloadCloud } from 'lucide-react'
 import Portal from '../Portal'
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface PublishModalProps {
     isOpen: boolean
@@ -31,105 +33,51 @@ export default function PublishModal({
     const tGen = useTranslations('Generator')
     const [agree, setAgree] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
-    const [previewImage, setPreviewImage] = useState<string | null>(null)
-    const [previewError, setPreviewError] = useState<string | null>(null)
-    const [isGeneratingPreview, setIsGeneratingPreview] = useState(false)
-    const [renderAttempt, setRenderAttempt] = useState(0)
-    const hiddenViewerRef = useRef<ModelViewerRef>(null)
+    const alert = useAlert()
+    const viewerRef = useRef<ModelViewerRef>(null)
 
+    const modelPreviewConfig = modelSlug ? (viewerConfig.models as Record<string, { cameraOrbit?: string; fieldOfView?: string }>)[modelSlug] : undefined
     const previewParams = {
-        cameraOrbit: '225deg 75deg 85%',
-        fieldOfView: '30deg',
-        backgroundColor: '#FFFFFF',
-        exposure: 1.0,
-        environmentImage: 'neutral',
-        shadowIntensity: 1,
-        shadowSoftness: 1
+        cameraOrbit: modelPreviewConfig?.cameraOrbit || '225deg 75deg 85%',
+        fieldOfView: modelPreviewConfig?.fieldOfView || '30deg',
     }
 
-    useEffect(() => {
-        if (!isOpen) {
-            setPreviewImage(null)
-            setPreviewError(null)
-            setIsGeneratingPreview(false)
-            return
-        }
-
-        let cancelled = false
-
-        const generatePreview = async () => {
-            setPreviewImage(null)
-            setPreviewError(null)
-            setIsGeneratingPreview(true)
-
-            try {
-                let viewer: ModelViewerRef | null = null
-                const refDeadline = Date.now() + 5000
-                while (!viewer && Date.now() < refDeadline) {
-                    viewer = hiddenViewerRef.current
-                    if (!viewer) {
-                        await new Promise(resolve => setTimeout(resolve, 50))
-                    }
-                }
-
-                if (!viewer) {
-                    throw new Error('Preview renderer failed to initialize')
-                }
-
-                const ready = await viewer.waitForReady(30000)
-                if (!ready) {
-                    throw new Error('Preview loading timed out, please retry')
-                }
-
-                const imageBase64 = await viewer.takeHighResScreenshot({
-                    useStandardView: true,
-                    preserveAspect: true
-                })
-
-                if (!imageBase64) {
-                    throw new Error('Preview capture failed')
-                }
-
-                if (!cancelled) {
-                    setPreviewImage(imageBase64)
-                }
-            } catch (error) {
-                console.error('[PublishModal] Failed to pre-render publish preview:', error)
-                if (!cancelled) {
-                    setPreviewError(error instanceof Error ? error.message : 'Preview generation failed')
-                }
-            } finally {
-                if (!cancelled) {
-                    setIsGeneratingPreview(false)
-                }
-            }
-        }
-
-        void generatePreview()
-
-        return () => {
-            cancelled = true
-        }
-    }, [isOpen, modelSlug, modelUrl, wheelUrl, textureUrl, renderAttempt])
+    if (!isOpen) return null
 
     const handleConfirm = async () => {
-        if (!previewImage) {
+        if (!viewerRef.current) {
+            alert.error('Preview system is not ready yet. Please retry.')
             return
         }
 
         setIsProcessing(true)
         try {
-            await onConfirm(previewImage)
+            const ready = await viewerRef.current.waitForReady(30000)
+            if (!ready) {
+                alert.error('Preview loading timed out. Please retry.')
+                return
+            }
+
+            const imageBase64 = await viewerRef.current.takeHighResScreenshot({
+                useStandardView: true,
+                preserveAspect: true
+            })
+
+            if (!imageBase64) {
+                alert.error('Preview capture failed. Please retry.')
+                return
+            }
+
+            await onConfirm(imageBase64)
         } catch (error) {
-            console.error('Failed to confirm publish:', error)
+            console.error('Failed to capture snapshot:', error)
+            alert.error(error instanceof Error ? error.message : 'Publish failed')
         } finally {
             setIsProcessing(false)
         }
     }
 
-    const canConfirm = agree && !isPublishing && !isProcessing && !isGeneratingPreview && Boolean(previewImage)
-
-    if (!isOpen) return null
+    const canConfirm = agree && !isPublishing && !isProcessing
 
     return (
         <Portal>
@@ -153,34 +101,22 @@ export default function PublishModal({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="flex flex-col gap-4">
                                 <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-black/5 dark:border-white/10 overflow-hidden relative shadow-inner">
-                                    {previewImage ? (
-                                        <img
-                                            src={previewImage}
-                                            alt="Publish preview"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/80">
-                                            <Loader2 className={`w-8 h-8 ${isGeneratingPreview ? 'animate-spin' : ''}`} />
-                                            <div className="text-center px-6">
-                                                <p className="text-sm font-semibold">
-                                                    {isGeneratingPreview ? 'Generating publish preview...' : 'Publish preview generation failed'}
-                                                </p>
-                                                <p className="text-xs text-white/60 mt-1">
-                                                    {isGeneratingPreview ? 'First render may take longer on slower devices' : (previewError || 'Please retry')}
-                                                </p>
-                                            </div>
-                                            {!isGeneratingPreview && previewError ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setRenderAttempt((value) => value + 1)}
-                                                    className="mt-2 rounded-full border border-white/20 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
-                                                >
-                                                    Regenerate preview
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    )}
+                                    <ModelViewer
+                                        ref={viewerRef}
+                                        modelUrl={modelUrl}
+                                        wheelUrl={wheelUrl}
+                                        textureUrl={textureUrl}
+                                        modelSlug={modelSlug}
+                                        backgroundColor="#1F1F1F"
+                                        autoRotate={false}
+                                        className="w-full h-full"
+                                        cameraOrbit={previewParams.cameraOrbit}
+                                        fieldOfView={previewParams.fieldOfView}
+                                        cameraControls={false}
+                                    />
+                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-[10px] text-white/70 font-medium">
+                                        3D Preview (Live)
+                                    </div>
                                 </div>
                                 <p className="text-xs text-gray-400 text-center italic">
                                     * {tGen('preview_consistency_hint')}
@@ -269,36 +205,6 @@ export default function PublishModal({
                             </div>
                         </div>
                     </div>
-
-                    {isGeneratingPreview || (!previewImage && !previewError) ? (
-                        <div
-                            style={{
-                                position: 'fixed',
-                                left: 0,
-                                top: 0,
-                                width: '1024px',
-                                height: '768px',
-                                opacity: 0.01,
-                                pointerEvents: 'none',
-                                zIndex: -1
-                            }}
-                            aria-hidden="true"
-                        >
-                            <ModelViewer
-                                ref={hiddenViewerRef}
-                                modelUrl={modelUrl}
-                                wheelUrl={wheelUrl}
-                                textureUrl={textureUrl}
-                                modelSlug={modelSlug}
-                                backgroundColor="#1F1F1F"
-                                autoRotate={false}
-                                className="w-full h-full"
-                                cameraOrbit={previewParams.cameraOrbit}
-                                fieldOfView={previewParams.fieldOfView}
-                                cameraControls={false}
-                            />
-                        </div>
-                    ) : null}
                 </div>
             </div>
         </Portal>

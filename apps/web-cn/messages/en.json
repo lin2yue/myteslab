@@ -36,6 +36,7 @@
         "nav": {
             "gallery": "Discover",
             "ai_generator": "AI Design",
+            "activity": "Activity",
             "pricing": "Pricing"
         }
     },
