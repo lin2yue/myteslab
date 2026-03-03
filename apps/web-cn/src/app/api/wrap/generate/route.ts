@@ -7,7 +7,7 @@
 import '@/lib/proxy-config';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWrapTexture, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
+import { generateBilingualMetadata, generateWrapTexture, optimizePromptForPolicyRetry, type GenerateWrapResult } from '@/lib/ai/gemini-image';
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
@@ -121,6 +121,22 @@ function buildLocalWrapMetadata(prompt: string, modelName: string) {
         description: description || '',
         description_en: description || '',
     };
+}
+
+async function resolveWrapMetadata(prompt: string, modelName: string) {
+    const fallback = buildLocalWrapMetadata(prompt, modelName);
+    try {
+        const metadata = await generateBilingualMetadata(prompt, modelName);
+        return {
+            name: String(metadata?.name || '').trim() || fallback.name,
+            name_en: String(metadata?.name_en || '').trim() || String(metadata?.name || '').trim() || fallback.name_en,
+            description: String(metadata?.description || '').trim(),
+            description_en: String(metadata?.description_en || '').trim(),
+        };
+    } catch (error) {
+        console.error('[AI-GEN] Failed to generate bilingual metadata:', error);
+        return fallback;
+    }
 }
 
 function compactDiagnosticText(input: string, max = 160): string {
@@ -722,7 +738,7 @@ export async function processGenerationTask(params: {
         }
 
         console.log(`[AI-GEN] Starting Gemini image generation (Hybrid mode)...`);
-        const metadata = buildLocalWrapMetadata(prompt, modelName);
+        const metadataPromise = resolveWrapMetadata(prompt, modelName);
         let finalPromptUsed = prompt;
         let optimizedPromptUsed: string | null = null;
 
@@ -864,6 +880,8 @@ export async function processGenerationTask(params: {
         }
 
         await logStep('database_save_start');
+
+        const metadata = await metadataPromise;
 
         const slugBase = buildSlugBase({
             name: metadata.name,

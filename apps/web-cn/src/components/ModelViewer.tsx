@@ -55,6 +55,114 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const modelLoadedRef = useRef(false)
     const textureAppliedRef = useRef(false)
     const viewerInitializedRef = useRef(false)
+    const wheelAppliedRef = useRef(false)
+    const appearanceReadyRef = useRef(false)
+
+    const getViewerCanvas = (viewer: any): HTMLCanvasElement | null => {
+        const shadowCanvas = viewer?.shadowRoot?.querySelector?.('canvas')
+        if (shadowCanvas instanceof HTMLCanvasElement) return shadowCanvas
+
+        const lightCanvas = viewer?.querySelector?.('canvas')
+        if (lightCanvas instanceof HTMLCanvasElement) return lightCanvas
+
+        return null
+    }
+
+    const createRenderFingerprint = (canvas: HTMLCanvasElement) => {
+        if (canvas.width < 64 || canvas.height < 48) return null
+
+        const probe = document.createElement('canvas')
+        probe.width = 32
+        probe.height = 24
+        const ctx = probe.getContext('2d', { willReadFrequently: true })
+        if (!ctx) return null
+
+        ctx.drawImage(canvas, 0, 0, probe.width, probe.height)
+        const { data } = ctx.getImageData(0, 0, probe.width, probe.height)
+
+        let hash = 2166136261 >>> 0
+        let visiblePixels = 0
+        const totalPixels = probe.width * probe.height
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i]
+            const g = data[i + 1]
+            const b = data[i + 2]
+            const a = data[i + 3]
+            const luminance = ((r * 3) + (g * 4) + b) >> 3
+
+            hash ^= luminance + a
+            hash = Math.imul(hash, 16777619) >>> 0
+
+            if (a > 8 && (Math.abs(r - 31) + Math.abs(g - 31) + Math.abs(b - 31)) > 24) {
+                visiblePixels += 1
+            }
+        }
+
+        return {
+            width: canvas.width,
+            height: canvas.height,
+            hash,
+            visibleRatio: visiblePixels / totalPixels
+        }
+    }
+
+    const waitForStableRender = async (viewer: any, timeout = 1800) => {
+        const start = Date.now()
+        let previous: ReturnType<typeof createRenderFingerprint> = null
+        let stableMatches = 0
+
+        while (Date.now() - start < timeout) {
+            if (viewer.requestUpdate) viewer.requestUpdate()
+            if (viewer.updateComplete) await viewer.updateComplete
+            if (typeof viewer.requestRender === 'function') viewer.requestRender()
+
+            await new Promise(resolve => requestAnimationFrame(resolve))
+            await new Promise(resolve => requestAnimationFrame(resolve))
+
+            const canvas = getViewerCanvas(viewer)
+            const fingerprint = canvas ? createRenderFingerprint(canvas) : null
+
+            if (!fingerprint || fingerprint.visibleRatio < 0.04) {
+                stableMatches = 0
+                previous = fingerprint
+                await new Promise(resolve => setTimeout(resolve, 80))
+                continue
+            }
+
+            if (
+                previous
+                && previous.width === fingerprint.width
+                && previous.height === fingerprint.height
+                && Math.abs(previous.hash - fingerprint.hash) < 1500000
+                && Math.abs(previous.visibleRatio - fingerprint.visibleRatio) < 0.015
+            ) {
+                stableMatches += 1
+            } else {
+                stableMatches = 0
+            }
+
+            previous = fingerprint
+
+            if (stableMatches >= 1) {
+                return true
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 80))
+        }
+
+        return false
+    }
+
+    const finalizeAppearanceReady = async (viewer: any) => {
+        if (viewer.requestUpdate) viewer.requestUpdate()
+        if (viewer.updateComplete) await viewer.updateComplete
+        if (typeof viewer.requestRender === 'function') viewer.requestRender()
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        await new Promise(resolve => setTimeout(resolve, 80))
+        appearanceReadyRef.current = true
+    }
 
     useImperativeHandle(ref, () => ({
         waitForReady: async (timeout = 10000) => {
@@ -62,8 +170,9 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             while (Date.now() - start < timeout) {
                 // If there's no textureUrl, we only care about model loading
                 const textureReady = !textureUrl || textureAppliedRef.current
+                const wheelReady = !wheelUrl || wheelAppliedRef.current
                 // Wait until post-load initialization (framing / grounding / wheel injection) is settled.
-                if (viewerInitializedRef.current && modelLoadedRef.current && textureReady && !textureLoading) {
+                if (viewerInitializedRef.current && modelLoadedRef.current && textureReady && wheelReady && appearanceReadyRef.current && !textureLoading) {
                     return true
                 }
                 await new Promise(resolve => setTimeout(resolve, 200))
@@ -105,20 +214,19 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     viewer.setAttribute('field-of-view', STANDARD_FOV);
                     viewer.setAttribute('exposure', STANDARD_EXPOSURE);
                     viewer.style.backgroundColor = STANDARD_BG;
-
-                    if (typeof viewer.jumpCameraToGoal === 'function') {
-                        viewer.jumpCameraToGoal();
-                    }
                 }
 
-                // Wait for renderer to settle:
-                // Use a smart frame-loop instead of fixed timeout.
-                // 5 frames ensures that the render loop has fully committed changes
-                // including shadow maps and post-processing on slower devices.
+                // Wait for LitElement to process attribute changes (especially camera-target: 'auto')
                 if (viewer.requestUpdate) viewer.requestUpdate();
                 if (viewer.updateComplete) await viewer.updateComplete;
-                for (let i = 0; i < 5; i++) {
-                    await new Promise(resolve => requestAnimationFrame(resolve));
+
+                if (useStandardView && typeof viewer.jumpCameraToGoal === 'function') {
+                    viewer.jumpCameraToGoal();
+                }
+
+                const settled = await waitForStableRender(viewer)
+                if (!settled) {
+                    console.warn('[ModelViewer] Capture render did not fully stabilize before timeout; proceeding with best-effort snapshot.')
                 }
 
                 // Capture screenshot
@@ -339,12 +447,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
     // 动态注入轮毂模型
     const injectWheels = async (viewer: any, wheelUrl: string) => {
-        if (!viewer || !wheelUrl) return
+        if (!viewer || !wheelUrl) return false
 
         try {
             const scene = getThreeScene(viewer)
             if (!scene || typeof scene.traverse !== 'function') {
-                return
+                return false
             }
 
             // 先探测锚点，避免误删内置轮毂（某些模型没有锚点）
@@ -373,7 +481,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 ])
             } catch (err) {
                 addLog(`[Error] Failed to import Three.js modules: ${err}`)
-                return
+                return false
             }
 
             const [{ GLTFLoader }, { DRACOLoader }, SkeletonUtils, THREE] = modules
@@ -393,7 +501,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 gltf = await loader.loadAsync(wheelUrl)
             } catch (err) {
                 addLog(`[Error] Failed to load wheel GLB: ${err}`)
-                return
+                return false
             }
 
             const wheelMaster = gltf.scene
@@ -402,7 +510,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             // 2. 寻找挂载点
             if (!scene.traverse) {
                 addLog('[Error] Scene object does not have traverse method!')
-                return
+                return false
             }
 
             if (foundAnchors.length === 0) {
@@ -413,7 +521,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                         return nodes.slice(0, 50).join(', ') + (nodes.length > 50 ? '...' : '');
                     })()
                 );
-                return
+                return false
             }
 
             addLog(`[Debug] Found ${foundAnchors.length} anchors: ${foundAnchors.map(a => a.name).join(', ')}`)
@@ -483,10 +591,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
 
             console.log(`[ModelViewer] Successfully injected wheels to ${foundAnchors.length} positions`)
+            return true
         } catch (err: any) {
             const errMsg = `[ModelViewer] Failed to inject wheels: ${err.message}`
             console.error(errMsg)
             addLog(`[ERROR] ${errMsg}`)
+            return false
         }
     }
 
@@ -544,7 +654,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 console.log(`[ModelViewer] Texture loaded successfully on attempt ${attempt}`)
                 setTextureLoading(false)
                 textureAppliedRef.current = true
-                return // Success, exit retry loop
+                return true // Success, exit retry loop
 
             } catch (err) {
                 lastError = err
@@ -564,18 +674,29 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         // All retries failed
         setTextureLoading(false)
         textureAppliedRef.current = false
+        return false
     }
 
     // Effect 1: Handle model element creation and modelUrl changes
     useEffect(() => {
-        import('@google/model-viewer')
-        if (!containerRef.current) return
+        import('@google/model-viewer').then(() => {
+            // Set src AFTER element upgrade so attributeChangedCallback fires on a fully-initialized instance.
+            // Setting src before upgrade causes model-viewer to silently skip loading.
+            if (viewer.isConnected) {
+                viewer.setAttribute('src', modelUrl);
+            }
+        }).catch(() => {});
+        if (!containerRef.current) {
+            return
+        }
 
         setLoading(true)
         setError(null)
         modelLoadedRef.current = false
         textureAppliedRef.current = false
         viewerInitializedRef.current = false
+        wheelAppliedRef.current = !wheelUrl
+        appearanceReadyRef.current = false
 
         const viewer = document.createElement('model-viewer') as any
         if (id) viewer.id = id
@@ -586,7 +707,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             ...(modelSlug && (viewerConfig.models as any)[modelSlug] ? (viewerConfig.models as any)[modelSlug] : {})
         }
 
-        viewer.setAttribute('src', modelUrl)
+        viewer.setAttribute('loading', 'eager')
         viewer.setAttribute('crossorigin', 'anonymous')
         if (cameraControls) {
             viewer.setAttribute('camera-controls', 'true')
@@ -683,9 +804,11 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                     await new Promise(resolve => requestAnimationFrame(resolve));
 
                     if (wheelUrl) {
-                        await injectWheels(viewer, wheelUrl);
+                        wheelAppliedRef.current = await injectWheels(viewer, wheelUrl);
                     } else {
-                        cleanScene(viewer);
+                        // Preserve built-in wheels for models that do not use an external wheel GLB.
+                        cleanScene(viewer, { removeWheels: false });
+                        wheelAppliedRef.current = true
                     }
 
                     await groundModel(viewer);
@@ -713,12 +836,19 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 }
             };
 
-            initializeViewerState();
+            const initPromise = initializeViewerState();
+            const texturePromise = textureUrl
+                ? applyTexture(viewer, textureUrl, modelSlug)
+                : Promise.resolve(true);
 
-            // Once loaded, apply current texture if any
-            if (textureUrl) {
-                applyTexture(viewer, textureUrl, modelSlug)
-            }
+            void Promise.allSettled([initPromise, texturePromise]).then(async () => {
+                if (viewerElementRef.current !== viewer) return
+                if (viewerInitializedRef.current && (!textureUrl || textureAppliedRef.current) && (!wheelUrl || wheelAppliedRef.current)) {
+                    await finalizeAppearanceReady(viewer)
+                }
+            }).catch((err) => {
+                console.error('[ModelViewer] Failed while waiting for appearance readiness:', err)
+            })
         }
 
         const onError = (event: any) => {
@@ -784,12 +914,19 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         const viewer = viewerElementRef.current
         // Only run if viewer is already loaded to avoid race conditions (handled in load listener otherwise)
         if (viewer && !loading && textureUrl) {
-            applyTexture(viewer, textureUrl, modelSlug)
+            appearanceReadyRef.current = false
+            void applyTexture(viewer, textureUrl, modelSlug).then(async (success) => {
+                if (!success || viewerElementRef.current !== viewer) return
+                if (viewerInitializedRef.current && (!wheelUrl || wheelAppliedRef.current)) {
+                    await finalizeAppearanceReady(viewer)
+                }
+            })
         } else if (viewer && !loading && !textureUrl) {
             // Logic to clear texture if needed (reset to original material colors/textures)
             // For now just keep last texture or reload model if required, but usually user clears texture by switching model
+            appearanceReadyRef.current = viewerInitializedRef.current && (!wheelUrl || wheelAppliedRef.current)
         }
-    }, [textureUrl, modelSlug, loading])
+    }, [textureUrl, modelSlug, loading, wheelUrl])
 
     return (
         <div className={`relative ${className}`}>

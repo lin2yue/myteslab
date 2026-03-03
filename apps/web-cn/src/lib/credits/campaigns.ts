@@ -25,6 +25,14 @@ const DEFAULT_MILESTONES: CreditRewardCampaignMilestone[] = [
     { milestone_downloads: 10, reward_credits: 10 },
 ];
 
+function normalizeDateValue(raw: unknown) {
+    if (!raw) return new Date(0).toISOString();
+    if (raw instanceof Date) return raw.toISOString();
+    const parsed = new Date(String(raw));
+    if (Number.isNaN(parsed.getTime())) return new Date(0).toISOString();
+    return parsed.toISOString();
+}
+
 export function normalizeCampaignStatus(raw: unknown, fallback: CreditRewardCampaignStatus = 'draft'): CreditRewardCampaignStatus {
     const value = String(raw || '').trim().toLowerCase();
     if (ALLOWED_STATUSES.has(value as CreditRewardCampaignStatus)) {
@@ -64,12 +72,12 @@ export function normalizeCampaignRow(row: Record<string, unknown>): CreditReward
         id: String(row.id),
         name: String(row.name || ''),
         status: normalizeCampaignStatus(row.status, 'draft'),
-        start_at: row.start_at ? String(row.start_at) : new Date(0).toISOString(),
-        end_at: row.end_at ? String(row.end_at) : new Date(0).toISOString(),
+        start_at: normalizeDateValue(row.start_at),
+        end_at: normalizeDateValue(row.end_at),
         milestones: normalizeCampaignMilestones(row.milestones),
         created_by: row.created_by ? String(row.created_by) : null,
-        created_at: row.created_at ? String(row.created_at) : new Date(0).toISOString(),
-        updated_at: row.updated_at ? String(row.updated_at) : new Date(0).toISOString(),
+        created_at: normalizeDateValue(row.created_at),
+        updated_at: normalizeDateValue(row.updated_at),
     };
 }
 
@@ -124,4 +132,3 @@ export async function ensureCreditRewardCampaignTables(client: PoolClient) {
           ON user_downloads(wrap_id, downloaded_at);
     `);
 }
-

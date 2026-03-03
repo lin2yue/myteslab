@@ -41,6 +41,14 @@ const DEFAULT_FREQUENCY_CAP: FrequencyCapConfig = {
     per_user_per_day: 1,
 };
 
+function normalizeDateValue(raw: unknown) {
+    if (!raw) return new Date(0).toISOString();
+    if (raw instanceof Date) return raw.toISOString();
+    const parsed = new Date(String(raw));
+    if (Number.isNaN(parsed.getTime())) return new Date(0).toISOString();
+    return parsed.toISOString();
+}
+
 function toInteger(raw: unknown, fallback: number, min: number, max: number) {
     const value = Math.floor(Number(raw));
     if (!Number.isFinite(value)) return fallback;
@@ -81,8 +89,8 @@ export function normalizeOperationCampaignRow(row: Record<string, unknown>): Ope
         name: String(row.name || ''),
         placement_key: normalizePlacementKey(row.placement_key),
         status: normalizeOperationCampaignStatus(row.status, 'draft'),
-        start_at: row.start_at ? String(row.start_at) : new Date(0).toISOString(),
-        end_at: row.end_at ? String(row.end_at) : new Date(0).toISOString(),
+        start_at: normalizeDateValue(row.start_at),
+        end_at: normalizeDateValue(row.end_at),
         traffic_ratio: toInteger(row.traffic_ratio, 100, 0, 100),
         priority: toInteger(row.priority, 0, -999, 999),
         frequency_cap: normalizeFrequencyCap(row.frequency_cap),
@@ -92,8 +100,8 @@ export function normalizeOperationCampaignRow(row: Record<string, unknown>): Ope
         action_config: toObject(row.action_config),
         archived_at: row.archived_at ? String(row.archived_at) : null,
         created_by: row.created_by ? String(row.created_by) : null,
-        created_at: row.created_at ? String(row.created_at) : new Date(0).toISOString(),
-        updated_at: row.updated_at ? String(row.updated_at) : new Date(0).toISOString(),
+        created_at: normalizeDateValue(row.created_at),
+        updated_at: normalizeDateValue(row.updated_at),
     };
 }
 

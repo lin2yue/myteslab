@@ -254,7 +254,7 @@ async function fetchWrapsInternal(
             `
             : sortBy === 'popular'
                 ? 'COALESCE(w.user_download_count, w.download_count, 0) DESC, w.id DESC'
-                : 'w.created_at DESC, w.id DESC'
+                : 'COALESCE(w.first_published_at, w.created_at) DESC, w.id DESC'
         params.push(pageSize)
         const limitParam = `$${params.length}`
         params.push(from)

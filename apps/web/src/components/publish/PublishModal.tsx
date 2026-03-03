@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
+import viewerConfig from '@/config/viewer-config.json'
 import { X, Loader2, Globe, ShieldCheck, DownloadCloud } from 'lucide-react'
-import Portal from '../Portal';
+import Portal from '../Portal'
+import { useAlert } from '@/components/alert/AlertProvider'
 
 interface PublishModalProps {
     isOpen: boolean
@@ -31,53 +33,56 @@ export default function PublishModal({
     const tGen = useTranslations('Generator')
     const [agree, setAgree] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
+    const alert = useAlert()
     const viewerRef = useRef<ModelViewerRef>(null)
-    const hiddenViewerRef = useRef<ModelViewerRef>(null)
 
-    // Params from render_config.json to match the generation script exactly
+    const modelPreviewConfig = modelSlug ? (viewerConfig.models as Record<string, { cameraOrbit?: string; fieldOfView?: string }>)[modelSlug] : undefined
     const previewParams = {
-        cameraOrbit: "225deg 75deg 85%",
-        fieldOfView: "30deg",
-        backgroundColor: "#FFFFFF",
-        exposure: 1.0,
-        environmentImage: "neutral",
-        shadowIntensity: 1,
-        shadowSoftness: 1
+        cameraOrbit: modelPreviewConfig?.cameraOrbit || '225deg 75deg 85%',
+        fieldOfView: modelPreviewConfig?.fieldOfView || '30deg',
     }
 
     if (!isOpen) return null
 
     const handleConfirm = async () => {
-        if (!hiddenViewerRef.current) return
+        if (!viewerRef.current) {
+            alert.error('Preview system is not ready yet. Please retry.')
+            return
+        }
 
         setIsProcessing(true)
         try {
-            // Wait for theDedicated snapshot renderer to be fully ready
-            const ready = await hiddenViewerRef.current.waitForReady(15000)
+            const ready = await viewerRef.current.waitForReady(30000)
             if (!ready) {
-                console.error('[PublishModal] Hidden viewer did not become ready in time, aborting publish snapshot.')
+                alert.error('Preview loading timed out. Please retry.')
                 return
             }
 
-            // Capture from the standard 1024x768 instance
-            const imageBase64 = await hiddenViewerRef.current.takeHighResScreenshot({ useStandardView: true })
+            const imageBase64 = await viewerRef.current.takeHighResScreenshot({
+                useStandardView: true,
+                preserveAspect: true
+            })
 
-            if (imageBase64) {
-                await onConfirm(imageBase64)
+            if (!imageBase64) {
+                alert.error('Preview capture failed. Please retry.')
+                return
             }
+
+            await onConfirm(imageBase64)
         } catch (error) {
             console.error('Failed to capture snapshot:', error)
+            alert.error(error instanceof Error ? error.message : 'Publish failed')
         } finally {
             setIsProcessing(false)
         }
     }
 
+    const canConfirm = agree && !isPublishing && !isProcessing
+
     return (
         <Portal>
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <div className="bg-white/90 dark:bg-zinc-900/80 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.35)] animate-in fade-in zoom-in duration-300 border border-black/5 dark:border-white/10 backdrop-blur">
-
-                    {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-black/5 dark:border-white/10">
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">{tGen('publish_preview')}</h2>
@@ -92,11 +97,8 @@ export default function PublishModal({
                         </button>
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 overflow-y-auto p-6 md:p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                            {/* Left: 3D Preview (User facing) */}
                             <div className="flex flex-col gap-4">
                                 <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-black/5 dark:border-white/10 overflow-hidden relative shadow-inner">
                                     <ModelViewer
@@ -121,7 +123,6 @@ export default function PublishModal({
                                 </p>
                             </div>
 
-                            {/* Right: Terms & Buttons */}
                             <div className="flex flex-col justify-between py-2">
                                 <div className="space-y-6">
                                     <div className="space-y-4">
@@ -185,8 +186,8 @@ export default function PublishModal({
                                     </button>
                                     <button
                                         onClick={handleConfirm}
-                                        disabled={!agree || isPublishing || isProcessing}
-                                        className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${agree && !isPublishing && !isProcessing ? 'btn-primary h-12' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                        disabled={!canConfirm}
+                                        className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${canConfirm ? 'btn-primary h-12' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                     >
                                         {isPublishing || isProcessing ? (
                                             <>
@@ -203,38 +204,6 @@ export default function PublishModal({
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* 
-                  Snapshot Pipe: Dedicated hidden instance locked at 1024x768 
-                  This follows the industry standard of separating 'Viewing' from 'Asset Generation'.
-                */}
-                    <div
-                        style={{
-                            position: 'fixed',
-                            left: 0,
-                            top: 0,
-                            width: '1024px',
-                            height: '768px',
-                            opacity: 0.01,
-                            pointerEvents: 'none',
-                            zIndex: -1
-                        }}
-                        aria-hidden="true"
-                    >
-                        <ModelViewer
-                            ref={hiddenViewerRef}
-                            modelUrl={modelUrl}
-                            wheelUrl={wheelUrl}
-                            textureUrl={textureUrl}
-                            modelSlug={modelSlug}
-                            backgroundColor="#1F1F1F"
-                            autoRotate={false}
-                            className="w-full h-full"
-                            cameraOrbit={previewParams.cameraOrbit}
-                            fieldOfView={previewParams.fieldOfView}
-                            cameraControls={false}
-                        />
                     </div>
                 </div>
             </div>

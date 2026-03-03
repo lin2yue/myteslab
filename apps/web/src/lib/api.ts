@@ -360,9 +360,9 @@ async function fetchWrapsInternal(
         } else {
             let query = buildBaseQuery()
             if (sortBy === 'popular') {
-                query = query.order('download_count', { ascending: false }).order('created_at', { ascending: false })
+                query = query.order('download_count', { ascending: false }).order('first_published_at', { ascending: false, nullsFirst: false })
             } else {
-                query = query.order('created_at', { ascending: false })
+                query = query.order('first_published_at', { ascending: false, nullsFirst: false })
             }
 
             const { data, error } = await query.range(from, to)

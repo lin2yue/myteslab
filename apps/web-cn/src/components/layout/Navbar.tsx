@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation';
 import { useTranslations } from '@/lib/i18n';
 import AuthButton from '@/components/auth/AuthButton';
+import ActivityNavEntry from '@/components/activity/ActivityNavEntry';
 import ThemeToggle from '@/components/ThemeToggle';
 import Portal from '@/components/Portal';
 import { useEffect, useState } from 'react';
@@ -123,6 +124,7 @@ export default function Navbar() {
                             <ThemeToggle />
                         </div>
                         <div className="flex items-center gap-0.5 sm:gap-2">
+                            <ActivityNavEntry />
                             <AuthButton />
                             {/* Mobile Menu */}
                             <div className="relative md:hidden">

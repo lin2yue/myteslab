@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from '@/lib/i18n'
 import { ModelViewer, ModelViewerRef } from '@/components/ModelViewer'
-import { X, Loader2, Globe, ShieldCheck, DownloadCloud, AlertTriangle, Store, CheckCircle2 } from 'lucide-react'
+import viewerConfig from '@/config/viewer-config.json'
+import { X, Loader2, Globe, ShieldCheck, DownloadCloud, Store, CheckCircle2 } from 'lucide-react'
 import Portal from '../Portal';
 import { useAlert } from '@/components/alert/AlertProvider'
 
@@ -50,15 +51,10 @@ export default function PublishModal({
     const alert = useAlert()
     const viewerRef = useRef<ModelViewerRef>(null)
 
-    // Params from render_config.json to match the generation script exactly
+    const modelPreviewConfig = modelSlug ? (viewerConfig.models as Record<string, { cameraOrbit?: string; fieldOfView?: string }>)[modelSlug] : undefined
     const previewParams = {
-        cameraOrbit: "225deg 75deg 85%",
-        fieldOfView: "30deg",
-        backgroundColor: "#FFFFFF",
-        exposure: 1.0,
-        environmentImage: "neutral",
-        shadowIntensity: 1,
-        shadowSoftness: 1
+        cameraOrbit: modelPreviewConfig?.cameraOrbit || '225deg 75deg 85%',
+        fieldOfView: modelPreviewConfig?.fieldOfView || '30deg',
     }
 
     if (!isOpen) return null
@@ -73,7 +69,6 @@ export default function PublishModal({
         try {
             const ready = await viewerRef.current.waitForReady(30000)
             if (!ready) {
-                console.error('[PublishModal] Viewer did not become ready in time, aborting publish snapshot.')
                 alert.error('预览图加载超时，请检查网络并重试。')
                 return
             }
@@ -83,14 +78,16 @@ export default function PublishModal({
                 preserveAspect: true
             })
 
-            if (imageBase64) {
-                const marketplaceOptions: MarketplaceOptions | undefined = isCreator
-                    ? { enabled: marketplaceEnabled, priceCredits: marketplaceEnabled ? selectedPrice : 0 }
-                    : undefined;
-                await onConfirm(imageBase64, marketplaceOptions)
-            } else {
+            if (!imageBase64) {
                 alert.error('图抓取失败，请重试')
+                return
             }
+
+            const marketplaceOptions: MarketplaceOptions | undefined = isCreator
+                ? { enabled: marketplaceEnabled, priceCredits: marketplaceEnabled ? selectedPrice : 0 }
+                : undefined
+
+            await onConfirm(imageBase64, marketplaceOptions)
         } catch (error) {
             console.error('Failed to capture snapshot:', error)
             alert.error('发布失败：' + (error instanceof Error ? error.message : '未知错误'))
@@ -99,12 +96,13 @@ export default function PublishModal({
         }
     }
 
+    const canConfirm = agree && !isPublishing && !isProcessing
+
     return (
         <Portal>
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <div className="bg-white/90 dark:bg-zinc-900/80 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.35)] animate-in fade-in zoom-in duration-300 border border-black/5 dark:border-white/10 backdrop-blur">
 
-                    {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-black/5 dark:border-white/10">
                         <div>
                             <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">{tGen('publish_preview')}</h2>
@@ -119,11 +117,9 @@ export default function PublishModal({
                         </button>
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 overflow-y-auto p-6 md:p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-                            {/* Left: 3D Preview (User facing) */}
                             <div className="flex flex-col gap-4">
                                 <div className="aspect-[4/3] bg-[#1F1F1F] rounded-2xl border border-black/5 dark:border-white/10 overflow-hidden relative shadow-inner">
                                     <ModelViewer
@@ -148,7 +144,6 @@ export default function PublishModal({
                                 </p>
                             </div>
 
-                            {/* Right: Terms & Buttons */}
                             <div className="flex flex-col justify-between py-2">
                                 <div className="space-y-6">
                                     <div className="space-y-4">
@@ -189,7 +184,6 @@ export default function PublishModal({
                                         </div>
                                     </div>
 
-                                    {/* 创作者商城区块 */}
                                     {isCreator && (
                                         <div className="border-t border-black/5 dark:border-white/10 pt-4">
                                             <label className="flex items-start gap-3 cursor-pointer group">
@@ -270,8 +264,8 @@ export default function PublishModal({
                                     </button>
                                     <button
                                         onClick={handleConfirm}
-                                        disabled={!agree || isPublishing || isProcessing}
-                                        className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${agree && !isPublishing && !isProcessing ? 'btn-primary h-12' : 'bg-gray-200 dark:bg-zinc-700 text-gray-400 dark:text-zinc-500 cursor-not-allowed'}`}
+                                        disabled={!canConfirm}
+                                        className={`flex-[2] h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${canConfirm ? 'btn-primary h-12' : 'bg-gray-200 dark:bg-zinc-700 text-gray-400 dark:text-zinc-500 cursor-not-allowed'}`}
                                     >
                                         {isPublishing || isProcessing ? (
                                             <>
