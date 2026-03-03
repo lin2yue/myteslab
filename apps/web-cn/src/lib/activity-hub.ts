@@ -47,6 +47,9 @@ type ActivitySelection = {
     window: ActivityWindow | null;
 };
 
+// 运营账号不参与活动榜单；超级管理员统一通过 role 过滤。
+const ACTIVITY_RANKING_EXCLUDED_USER_IDS = ['2d020ec5-39ca-4757-a5a0-949e9698dc2b'] as const;
+
 export type ActivityEntrySummary = {
     visible: boolean;
     href: string;
@@ -308,6 +311,7 @@ async function getUserLeaderboard(
                 COUNT(DISTINCT w.id)::int AS wrap_count
             FROM user_downloads ud
             JOIN wraps w ON w.id = ud.wrap_id
+            JOIN profiles creator ON creator.id = w.user_id
             WHERE ud.downloaded_at >= $1
               AND ud.downloaded_at < $2
               AND ud.user_id IS NOT NULL
@@ -316,6 +320,8 @@ async function getUserLeaderboard(
               AND w.deleted_at IS NULL
               AND COALESCE(w.first_published_at, w.created_at) >= $1
               AND COALESCE(w.first_published_at, w.created_at) < $2
+              AND creator.role IS DISTINCT FROM 'super_admin'
+              AND NOT (creator.id = ANY($3::uuid[]))
             GROUP BY w.user_id
         ),
         ranked AS (
@@ -339,7 +345,7 @@ async function getUserLeaderboard(
         LEFT JOIN profiles p ON p.id = r.user_id
         ORDER BY r.rank ASC, r.user_id ASC
         LIMIT 10`,
-        [startAt, endAt]
+        [startAt, endAt, ACTIVITY_RANKING_EXCLUDED_USER_IDS]
     );
 
     const items = rows.map((row) => ({
@@ -371,6 +377,7 @@ async function getCurrentUserStanding(
                 COUNT(DISTINCT w.id)::int AS wrap_count
             FROM user_downloads ud
             JOIN wraps w ON w.id = ud.wrap_id
+            JOIN profiles creator ON creator.id = w.user_id
             WHERE ud.downloaded_at >= $1
               AND ud.downloaded_at < $2
               AND ud.user_id IS NOT NULL
@@ -379,6 +386,8 @@ async function getCurrentUserStanding(
               AND w.deleted_at IS NULL
               AND COALESCE(w.first_published_at, w.created_at) >= $1
               AND COALESCE(w.first_published_at, w.created_at) < $2
+              AND creator.role IS DISTINCT FROM 'super_admin'
+              AND NOT (creator.id = ANY($3::uuid[]))
             GROUP BY w.user_id
         ),
         ranked AS (
@@ -391,9 +400,9 @@ async function getCurrentUserStanding(
         )
         SELECT rank, total_downloads, wrap_count
         FROM ranked
-        WHERE user_id = $3
+        WHERE user_id = $4
         LIMIT 1`,
-        [startAt, endAt, userId]
+        [startAt, endAt, ACTIVITY_RANKING_EXCLUDED_USER_IDS, userId]
     );
 
     if (!rows[0]) return null;
@@ -421,11 +430,14 @@ async function getWrapLeaderboard(
                 w.user_id,
                 COALESCE(w.first_published_at, w.created_at) AS published_at
             FROM wraps w
+            JOIN profiles creator ON creator.id = w.user_id
             WHERE w.user_id IS NOT NULL
               AND w.is_public = TRUE
               AND w.deleted_at IS NULL
               AND COALESCE(w.first_published_at, w.created_at) >= $1
               AND COALESCE(w.first_published_at, w.created_at) < $2
+              AND creator.role IS DISTINCT FROM 'super_admin'
+              AND NOT (creator.id = ANY($3::uuid[]))
         ),
         wrap_scores AS (
             SELECT
@@ -468,7 +480,7 @@ async function getWrapLeaderboard(
         LEFT JOIN profiles p ON p.id = r.user_id
         ORDER BY r.rank ASC, r.published_at ASC, r.wrap_id ASC
         LIMIT 10`,
-        [startAt, endAt]
+        [startAt, endAt, ACTIVITY_RANKING_EXCLUDED_USER_IDS]
     );
 
     const items = rows.map((row) => {
