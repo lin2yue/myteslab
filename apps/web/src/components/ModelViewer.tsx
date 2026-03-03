@@ -366,9 +366,10 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     }
 
     // 辅助：清理场景（移除地板、光源等）
-    const cleanScene = (viewer: any) => {
+    const cleanScene = (viewer: any, options: { removeWheels?: boolean } = {}) => {
         const scene = getThreeScene(viewer)
         if (!scene || typeof scene.traverse !== 'function') return
+        const { removeWheels = true } = options
 
         const objectsToRemove: any[] = []
         scene.traverse((node: any) => {
@@ -383,7 +384,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
             // 逻辑：如果名字包含 WHEEL 且是一个 Mesh，且不是我们要用的 Spatial 锚点，就删掉它
             // UPDATE: 如果它看起来像一个有效的锚点（比如 Wheel_FL），不要删除它！
             // 留给 injectWheels 去处理（剥离几何体并挂载新轮毂）
-            if (name.includes('WHEEL') && node.isMesh && !isWheelAnchorNode(name)) {
+            if (removeWheels && name.includes('WHEEL') && node.isMesh && !isWheelAnchorNode(name)) {
                 // 特殊检查：有些模型直接把轮子挂在根部或者其他地方
                 console.log(`[ModelViewer] Found redundant wheel mesh to remove: ${node.name}`)
                 objectsToRemove.push(node)
