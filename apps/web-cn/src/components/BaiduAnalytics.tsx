@@ -7,14 +7,12 @@ import { useEffect, Suspense, useMemo, useRef } from 'react'
 
 /**
  * 百度统计组件
- * 用于追踪和分析网站流量
+ * 注意：不禁用 _setAutoPageview，让首次加载自动上报来源（含搜索引擎 referrer）
+ * SPA 路由变化时手动 _trackPageview 补报
  */
 export function BaiduAnalytics() {
-  // 使用 NEXT_PUBLIC_ 前缀的环境变量,客户端可访问
-  // 注意:这个值在构建时被注入,不是运行时读取
   const BAIDU_ID = process.env.NEXT_PUBLIC_BAIDU_ANALYTICS_ID
 
-  // 如果没有配置 ID,不渲染
   const isPlaceholderValue = BAIDU_ID === 'NEXT_PUBLIC_BAIDU_ANALYTICS_ID'
   if (!BAIDU_ID || isPlaceholderValue) {
     console.warn('[Baidu Analytics] NEXT_PUBLIC_BAIDU_ANALYTICS_ID is missing or invalid')
@@ -31,10 +29,6 @@ export function BaiduAnalytics() {
       <Script id="baidu-analytics" strategy="afterInteractive">
         {`
           window._hmt = window._hmt || [];
-          if (!window.__baiduAutoPageviewDisabled) {
-            window._hmt.push(['_setAutoPageview', false]);
-            window.__baiduAutoPageviewDisabled = true;
-          }
           (function() {
             var hm = document.createElement("script");
             hm.async = true;
@@ -54,7 +48,9 @@ export function BaiduAnalytics() {
 function TrackPageview() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isFirstRender = useRef(true)
   const lastTrackedUrlRef = useRef<string>('')
+
   const url = useMemo(() => {
     const query = searchParams.toString()
     return `${pathname}${query ? `?${query}` : ''}`
@@ -62,13 +58,15 @@ function TrackPageview() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window._hmt = window._hmt || []
-    if (!window.__baiduAutoPageviewDisabled) {
-      window._hmt.push(['_setAutoPageview', false])
-      window.__baiduAutoPageviewDisabled = true
+    // 首次加载跳过手动上报，让百度 SDK 自动处理（保留 referrer / 搜索来源）
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      lastTrackedUrlRef.current = url
+      return
     }
+    // SPA 路由变化时手动补报
     if (lastTrackedUrlRef.current === url) return
-
+    window._hmt = window._hmt || []
     window._hmt.push(['_trackPageview', url])
     lastTrackedUrlRef.current = url
   }, [url])
