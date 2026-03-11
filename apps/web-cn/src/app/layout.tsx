@@ -25,9 +25,9 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-    const title = '特玩涂装 | 特斯拉改色贴膜免费下载 - AI 生成 + 3D 预览'
+    const title = '特玩涂装 | 特斯拉喷漆车间贴膜免费下载 - AI 生成 + 3D 预览'
 
-    const description = '特玩涂装 — 特斯拉改色贴膜、涂装素材免费下载平台。覆盖 Model 3、Model Y、Cybertruck、Model S、Model X，支持 AI 一键生成改色方案、3D 实车预览，免费下载高清贴膜文件。'
+    const description = '特玩涂装 — 特斯拉喷漆车间素材、改色贴膜免费下载平台，海量涂装方案持续更新。覆盖 Model 3、Model Y、Cybertruck、Model S、Model X，支持 AI 一键生成改色方案、3D 实车预览，免费下载高清贴膜文件。'
 
     return {
         title,
@@ -74,7 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
         },
         other: {
             'baidu-site-verification': 'codeva-owLmaXQfzs',
-            keywords: '特玩涂装,特斯拉涂装,特斯拉改色贴膜,特斯拉贴膜免费下载,特斯拉改色膜免费下载,特斯拉Model Y改色膜,特斯拉Model 3改色膜,特斯拉Cybertruck贴膜,特斯拉喷漆车间素材,Tesla wrap download,特斯拉AI改色,特斯拉3D预览贴膜,特斯拉车衣设计',
+            keywords: '特玩涂装,特斯拉涂装,特斯拉改色贴膜,特斯拉贴膜免费下载,特斯拉改色膜免费下载,特斯拉Model Y改色膜,特斯拉Model 3改色膜,特斯拉Cybertruck贴膜,特斯拉喷漆车间素材,特斯拉喷漆车间免费皮肤,Tesla wrap download,特斯拉AI改色,特斯拉3D预览贴膜,特斯拉车衣设计',
         },
     }
 }
