@@ -11,6 +11,7 @@ import { generateBilingualMetadata, generateWrapTexture, optimizePromptForPolicy
 import { uploadToOSS } from '@/lib/oss';
 import { getMaskUrl, getMaskDimensions, MASK_DIMENSIONS } from '@/lib/ai/mask-config';
 import { logTaskStep } from '@/lib/ai/task-logger';
+import { sanitizeUserFacingGenerationError, GENERIC_GENERATION_ERROR, GENERATION_PROMPT_ADJUST_ERROR, GENERATION_TIMEOUT_ERROR } from '@/lib/ai/user-facing-errors';
 import { WRAP_CATEGORY } from '@/lib/constants/category';
 import { ServiceType, getServiceCost } from '@/lib/constants/credits';
 import { buildSlugBase, ensureUniqueSlug } from '@/lib/slug';
@@ -159,47 +160,38 @@ function buildFailureDiagnosticSummary(result: Pick<GenerateWrapResult, 'errorCo
 
 function mapGenerationFailureForUser(result: Pick<GenerateWrapResult, 'error' | 'errorCode' | 'finishReasons' | 'finishMessages' | 'promptBlockReason' | 'responseId'>) {
     const errorCode = result.errorCode || 'unknown_error';
-    const finishReasons = (result.finishReasons || []).map(x => String(x).toUpperCase());
-    const finishMessage = (result.finishMessages || []).map(x => String(x).trim()).find(Boolean) || '';
-    const promptBlockReason = (result.promptBlockReason || '').toUpperCase();
-    const responseIdSuffix = result.responseId ? `（responseId=${result.responseId}）` : '';
 
     if (errorCode === 'prompt_blocked') {
-        const reasonText = promptBlockReason || 'UNKNOWN';
-        const detail = finishMessage ? ` 模型反馈：${compactDiagnosticText(finishMessage, 120)}` : '';
         return {
             code: errorCode,
-            message: `生成失败：请求被模型策略拦截（${reasonText}）。${detail}${responseIdSuffix}`,
+            message: GENERATION_PROMPT_ADJUST_ERROR,
         };
     }
 
     if (errorCode === 'recitation_blocked') {
-        const detail = finishMessage ? ` 模型反馈：${compactDiagnosticText(finishMessage, 120)}` : '';
         return {
             code: errorCode,
-            message: `生成失败：触发版权引用限制（RECITATION）。${detail}${responseIdSuffix}`,
+            message: GENERATION_PROMPT_ADJUST_ERROR,
         };
     }
 
     if (errorCode === 'no_image_payload') {
-        const reasons = finishReasons.join(',');
-        const detail = finishMessage ? ` 模型反馈：${compactDiagnosticText(finishMessage, 120)}` : '';
         return {
             code: errorCode,
-            message: `生成失败：模型未返回图片（${reasons || 'UNKNOWN'}）。${detail}${responseIdSuffix}`,
+            message: GENERIC_GENERATION_ERROR,
         };
     }
 
     if (errorCode === 'timeout') {
         return {
             code: errorCode,
-            message: `${result.error || '生成失败：AI生成超时，请稍后重试。'}${responseIdSuffix}`,
+            message: GENERATION_TIMEOUT_ERROR,
         };
     }
 
     return {
         code: errorCode,
-        message: `${result.error || 'AI generation failed'}${responseIdSuffix}`,
+        message: sanitizeUserFacingGenerationError(result.error, GENERIC_GENERATION_ERROR),
     };
 }
 
@@ -1259,7 +1251,7 @@ export async function POST(request: NextRequest) {
                 );
                 return NextResponse.json({
                     success: false,
-                    error: taskRows[0]?.error_message || 'Task failed previously',
+                    error: sanitizeUserFacingGenerationError(taskRows[0]?.error_message, GENERIC_GENERATION_ERROR),
                     taskId,
                     status: 'failed'
                 }, { status: 200 }); // 返回 200 但 success: false，由前端处理

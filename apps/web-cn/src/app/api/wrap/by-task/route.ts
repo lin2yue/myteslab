@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { dbQuery } from '@/lib/db';
+import { sanitizeUserFacingGenerationError, GENERIC_GENERATION_ERROR } from '@/lib/ai/user-facing-errors';
 
 const RETRY_AFTER_SECONDS = Number(process.env.WRAP_TASK_RETRY_AFTER_SECONDS ?? 5);
 const THROTTLE_WINDOW_MS = Number(process.env.WRAP_TASK_THROTTLE_WINDOW_MS ?? 3000);
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
                     status: 'failed',
                     taskStatus: task.status,
                     refunded: task.status === 'failed_refunded',
-                    error: task.error_message || 'Generation failed',
+                    error: sanitizeUserFacingGenerationError(task.error_message, GENERIC_GENERATION_ERROR),
                     retryAfter: RETRY_AFTER_SECONDS
                 };
                 cacheMap.set(cacheKey, { payload, status: 200, expiresAt: now + CACHE_TTL_MS });

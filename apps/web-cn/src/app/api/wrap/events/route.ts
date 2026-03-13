@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { sanitizeUserFacingGenerationError } from '@/lib/ai/user-facing-errors';
 
 /**
  * SSE endpoint for real-time generation task updates.
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
                                 [taskId]
                             );
                             if (rows[0]) {
+                                rows[0].error_message = sanitizeUserFacingGenerationError(rows[0].error_message, rows[0].error_message || '');
                                 let wrap = null;
                                 if (rows[0].status === 'completed' && rows[0].wrap_id) {
                                     const { rows: wraps } = await client.query(
