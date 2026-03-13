@@ -1,3 +1,5 @@
+import { reportError } from '@/lib/monitor';
+
 /**
  * API Route: /api/wrap/generate
  * Handles AI wrap texture generation requests
@@ -962,7 +964,7 @@ export async function processGenerationTask(params: {
         return;
 
     } catch (error: any) {
-        console.error('❌ [AI-GEN] Background task error:', error);
+        reportError({ error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, context: { taskId, userId, phase: 'background-worker' } }); console.error('❌ [AI-GEN] Background task error:', error);
         try {
             await markTaskFailed(`Global API Error: ${error instanceof Error ? error.message : String(error)}`);
             await logTaskStep(taskId, 'failed', 'failed', `Global Error: ${error instanceof Error ? error.message : String(error)}`);
@@ -1306,7 +1308,7 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('❌ [AI-GEN] Global API Error:', error);
+        reportError({ error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, context: { requestId, userId: user?.id, phase: 'api-main' } }); console.error('❌ [AI-GEN] Global API Error:', error);
 
         if (taskId) {
             try {
