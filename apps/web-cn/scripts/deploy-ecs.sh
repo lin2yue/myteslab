@@ -27,6 +27,11 @@ NEXT_PUBLIC_APP_URL="https://tewan.club"
 
 echo "🚀 开始部署 ${CONTAINER_NAME}..."
 
+if [ -z "${GEMINI_API_KEY}" ]; then
+    echo "❌ GEMINI_API_KEY 未设置，请通过服务器环境变量或命令行传入。"
+    exit 1
+fi
+
 # 1. 停止并删除旧容器
 if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
     echo "🛑 停止并删除旧容器..."
