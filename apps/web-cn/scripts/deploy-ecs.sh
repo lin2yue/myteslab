@@ -10,6 +10,7 @@ IMAGE_URL="crpi-2gk4b5rysu1wr37v.cn-beijing.personal.cr.aliyuncs.com/tewan/web-c
 
 # 默认环境变量 (请在服务器本地修改或通过命令行传入)
 DATABASE_URL=${DATABASE_URL:-"postgresql://tewan:YOUR_PASSWORD@pgm-2zeum4kehtj5049x.pg.rds.aliyuncs.com:5432/tewan_web_cn"}
+GEMINI_API_KEY=${GEMINI_API_KEY:-""}
 NEXT_PUBLIC_CDN_URL="https://cdn.tewan.club"
 OSS_REGION="oss-cn-beijing"
 OSS_BUCKET="lock-sounds"
@@ -25,6 +26,11 @@ DM_FROM_ALIAS="Tewan Club"
 NEXT_PUBLIC_APP_URL="https://tewan.club"
 
 echo "🚀 开始部署 ${CONTAINER_NAME}..."
+
+if [ -z "${GEMINI_API_KEY}" ]; then
+    echo "❌ GEMINI_API_KEY 未设置，请通过服务器环境变量或命令行传入。"
+    exit 1
+fi
 
 # 1. 停止并删除旧容器
 if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
@@ -45,6 +51,7 @@ docker run -d \
   --restart always \
   -p 3000:3000 \
   -e DATABASE_URL="${DATABASE_URL}" \
+  -e GEMINI_API_KEY="${GEMINI_API_KEY}" \
   -e NEXT_PUBLIC_CDN_URL="${NEXT_PUBLIC_CDN_URL}" \
   -e OSS_REGION="${OSS_REGION}" \
   -e OSS_BUCKET="${OSS_BUCKET}" \
