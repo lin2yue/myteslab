@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { dbQuery } from '@/lib/db';
+import { sanitizeUserFacingGenerationError } from '@/lib/ai/user-facing-errors';
 
 type TaskHistoryRow = {
     id: string;
@@ -46,7 +47,10 @@ export async function GET(request: Request) {
              LIMIT $2`,
             [user.id, limit]
         );
-        tasks = taskResult.rows;
+        tasks = taskResult.rows.map(task => ({
+            ...task,
+            error_message: sanitizeUserFacingGenerationError(task.error_message, task.error_message || '')
+        }));
     }
 
     return NextResponse.json({ success: true, wraps: rows, tasks });
