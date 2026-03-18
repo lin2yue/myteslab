@@ -6,6 +6,7 @@ import { useEditorStore } from '../store/useEditorStore'
 
 const WIDTH = 1024
 const HEIGHT = 1024
+const BASE_LAYER_NAME = '__base_fill_layer__'
 const QUICK_COLORS = ['#ffffff', '#0f172a', '#ef4444', '#f59e0b', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7']
 
 export type EditorProjectData = {
@@ -27,6 +28,7 @@ export type Canvas2DEditorRef = {
 export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEditor(_, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null)
+  const rafSyncRef = useRef<number | null>(null)
 
   const {
     tool,
@@ -48,6 +50,38 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
     setTextureDataUrl(c.toDataURL({ format: 'png', multiplier: 1 }))
   }, [setTextureDataUrl])
 
+  const syncTextureThrottled = useCallback(() => {
+    if (rafSyncRef.current) return
+    rafSyncRef.current = requestAnimationFrame(() => {
+      syncTexture()
+      rafSyncRef.current = null
+    })
+  }, [syncTexture])
+
+  const ensureBaseFillLayer = useCallback(() => {
+    const c = fabricCanvasRef.current
+    if (!c) return null
+
+    let layer = c.getObjects().find((obj) => (obj as fabric.Object & { name?: string }).name === BASE_LAYER_NAME)
+    if (!layer) {
+      layer = new fabric.Rect({
+        left: 0,
+        top: 0,
+        width: WIDTH,
+        height: HEIGHT,
+        fill: '#111827',
+        selectable: false,
+        evented: false,
+        hoverCursor: 'default'
+      })
+      ;(layer as fabric.Object & { name?: string }).name = BASE_LAYER_NAME
+      c.add(layer)
+      c.sendToBack(layer)
+    }
+
+    return layer
+  }, [])
+
   useImperativeHandle(
     ref,
     () => ({
@@ -56,7 +90,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
         if (!c) return null
         return {
           version: 1,
-          canvas: c.toDatalessJSON(),
+          canvas: c.toDatalessJSON(['name']),
           toolState: { tool, shapeType, color, brushSize }
         }
       },
@@ -65,6 +99,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
         if (!c) return
         await new Promise<void>((resolve) => {
           c.loadFromJSON(project.canvas as Record<string, unknown>, () => {
+            ensureBaseFillLayer()
             c.renderAll()
             resolve()
           })
@@ -77,7 +112,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
         syncTexture()
       }
     }),
-    [brushSize, color, shapeType, tool, setBrushSize, setColor, setShapeType, setTool, syncTexture]
+    [brushSize, color, shapeType, tool, ensureBaseFillLayer, setBrushSize, setColor, setShapeType, setTool, syncTexture]
   )
 
   useEffect(() => {
@@ -90,6 +125,9 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
       preserveObjectStacking: true
     })
 
+    fabricCanvasRef.current = c
+    ensureBaseFillLayer()
+
     c.freeDrawingBrush = new fabric.PencilBrush(c)
     c.freeDrawingBrush.width = brushSize
     c.freeDrawingBrush.color = color
@@ -99,15 +137,19 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
     c.on('object:modified', syncTexture)
     c.on('object:removed', syncTexture)
     c.on('path:created', syncTexture)
+    c.on('mouse:move', () => {
+      if (c.isDrawingMode && c.isDrawingMode) syncTextureThrottled()
+    })
+    c.on('after:render', syncTextureThrottled)
 
-    fabricCanvasRef.current = c
     syncTexture()
 
     return () => {
+      if (rafSyncRef.current) cancelAnimationFrame(rafSyncRef.current)
       c.dispose()
       fabricCanvasRef.current = null
     }
-  }, [bg, brushSize, color, syncTexture])
+  }, [bg, brushSize, color, ensureBaseFillLayer, syncTexture, syncTextureThrottled])
 
   useEffect(() => {
     const c = fabricCanvasRef.current
@@ -120,7 +162,11 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
   const fillAll = () => {
     const c = fabricCanvasRef.current
     if (!c) return
-    c.setBackgroundColor(color, () => c.renderAll())
+    const layer = ensureBaseFillLayer()
+    if (!layer) return
+    layer.set('fill', color)
+    c.sendToBack(layer)
+    c.renderAll()
     syncTexture()
   }
 
@@ -148,7 +194,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <button className={`${pill}`} onClick={fillAll}>一键填色</button>
+        <button className={pill} onClick={fillAll}>一键填色</button>
         <button className={`${pill} ${tool === 'paint' ? active : ''}`} onClick={() => setTool('paint')}>画笔</button>
         <button className={`${pill} ${tool === 'shape' ? active : ''}`} onClick={() => setTool('shape')}>形状</button>
         <button className={`${pill} ${tool === 'text' ? active : ''}`} onClick={() => setTool('text')}>文字</button>
