@@ -46,6 +46,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/ali-oss": "^6.11.9",
     "@types/bcryptjs": "^2.4.6",
+    "@types/fabric": "^5.3.10",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.9",
     "@types/pg": "^8.11.10",
