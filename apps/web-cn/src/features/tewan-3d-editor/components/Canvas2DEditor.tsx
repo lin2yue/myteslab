@@ -6,6 +6,7 @@ import { useEditorStore } from '../store/useEditorStore'
 
 const WIDTH = 1024
 const HEIGHT = 1024
+const QUICK_COLORS = ['#ffffff', '#0f172a', '#ef4444', '#f59e0b', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7']
 
 export type EditorProjectData = {
   version: 1
@@ -39,7 +40,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
     setTextureDataUrl
   } = useEditorStore()
 
-  const bg = useMemo(() => '#111827', [])
+  const bg = useMemo(() => '#0b1220', [])
 
   const syncTexture = useCallback(() => {
     const c = fabricCanvasRef.current
@@ -56,12 +57,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
         return {
           version: 1,
           canvas: c.toDatalessJSON(),
-          toolState: {
-            tool,
-            shapeType,
-            color,
-            brushSize
-          }
+          toolState: { tool, shapeType, color, brushSize }
         }
       },
       importProject: async (project) => {
@@ -131,30 +127,10 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
   const addShape = () => {
     const c = fabricCanvasRef.current
     if (!c) return
-
     if (shapeType === 'rect') {
-      c.add(
-        new fabric.Rect({
-          left: WIDTH / 2 - 120,
-          top: HEIGHT / 2 - 80,
-          width: 240,
-          height: 160,
-          fill: color,
-          opacity: 0.9,
-          rx: 8,
-          ry: 8
-        })
-      )
+      c.add(new fabric.Rect({ left: WIDTH / 2 - 120, top: HEIGHT / 2 - 80, width: 240, height: 160, fill: color, opacity: 0.92, rx: 12, ry: 12 }))
     } else {
-      c.add(
-        new fabric.Circle({
-          left: WIDTH / 2 - 100,
-          top: HEIGHT / 2 - 100,
-          radius: 100,
-          fill: color,
-          opacity: 0.9
-        })
-      )
+      c.add(new fabric.Circle({ left: WIDTH / 2 - 100, top: HEIGHT / 2 - 100, radius: 100, fill: color, opacity: 0.92 }))
     }
     c.renderAll()
   }
@@ -162,56 +138,58 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef>(function Canvas2DEdi
   const addText = () => {
     const c = fabricCanvasRef.current
     if (!c) return
-    c.add(
-      new fabric.IText('Tewan 3D', {
-        left: WIDTH / 2 - 140,
-        top: HEIGHT / 2 - 20,
-        fontSize: 64,
-        fill: color,
-        fontWeight: '700'
-      })
-    )
+    c.add(new fabric.IText('TESLA', { left: WIDTH / 2 - 120, top: HEIGHT / 2 - 20, fontSize: 68, fill: color, fontWeight: '700', fontFamily: 'Inter' }))
     c.renderAll()
   }
 
+  const pill = 'rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white transition hover:bg-white/10'
+  const active = 'border-cyan-300/70 bg-cyan-400/20 text-cyan-100'
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-gray-900 p-3 text-sm">
-        <button className="rounded bg-gray-700 px-3 py-1" onClick={fillAll}>一键填色</button>
-        <button className={`rounded px-3 py-1 ${tool === 'paint' ? 'bg-pink-600' : 'bg-gray-700'}`} onClick={() => setTool('paint')}>画笔</button>
-        <button className={`rounded px-3 py-1 ${tool === 'shape' ? 'bg-pink-600' : 'bg-gray-700'}`} onClick={() => setTool('shape')}>形状</button>
-        <button className={`rounded px-3 py-1 ${tool === 'text' ? 'bg-pink-600' : 'bg-gray-700'}`} onClick={() => setTool('text')}>文字</button>
-
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-8 w-10 cursor-pointer rounded" />
-
-        <label className="ml-1 inline-flex items-center gap-2 text-gray-300">
-          笔刷
-          <input
-            type="range"
-            min={2}
-            max={60}
-            value={brushSize}
-            onChange={(e) => setBrushSize(Number(e.target.value))}
-          />
-        </label>
-
-        {tool === 'shape' && (
-          <select
-            className="rounded bg-gray-800 px-2 py-1"
-            value={shapeType}
-            onChange={(e) => setShapeType(e.target.value as 'rect' | 'circle')}
-          >
-            <option value="rect">矩形</option>
-            <option value="circle">圆形</option>
-          </select>
-        )}
-
-        {tool === 'shape' && <button className="rounded bg-indigo-600 px-3 py-1" onClick={addShape}>添加形状</button>}
-        {tool === 'text' && <button className="rounded bg-indigo-600 px-3 py-1" onClick={addText}>添加文字</button>}
+      <div className="grid grid-cols-2 gap-2">
+        <button className={`${pill}`} onClick={fillAll}>一键填色</button>
+        <button className={`${pill} ${tool === 'paint' ? active : ''}`} onClick={() => setTool('paint')}>画笔</button>
+        <button className={`${pill} ${tool === 'shape' ? active : ''}`} onClick={() => setTool('shape')}>形状</button>
+        <button className={`${pill} ${tool === 'text' ? active : ''}`} onClick={() => setTool('text')}>文字</button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-800 bg-black">
-        <canvas ref={canvasRef} className="block h-auto w-full max-w-[512px]" />
+      <div className="rounded-2xl border border-white/15 bg-black/30 p-3">
+        <div className="mb-3 flex items-center justify-between text-xs text-slate-300">
+          <span>颜色与笔刷</span>
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-8 w-10 cursor-pointer rounded border border-white/20 bg-transparent" />
+        </div>
+
+        <div className="mb-3 flex flex-wrap gap-2">
+          {QUICK_COLORS.map((c) => (
+            <button
+              key={c}
+              aria-label={c}
+              className={`h-6 w-6 rounded-full border ${color === c ? 'border-white ring-2 ring-cyan-400/60' : 'border-white/30'}`}
+              style={{ backgroundColor: c }}
+              onClick={() => setColor(c)}
+            />
+          ))}
+        </div>
+
+        <label className="mb-2 block text-xs text-slate-300">笔刷粗细：{brushSize}</label>
+        <input type="range" min={2} max={60} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+
+        {tool === 'shape' && (
+          <div className="mt-3 flex gap-2">
+            <select className="flex-1 rounded-lg border border-white/20 bg-slate-900/70 px-2 py-2 text-xs" value={shapeType} onChange={(e) => setShapeType(e.target.value as 'rect' | 'circle')}>
+              <option value="rect">矩形</option>
+              <option value="circle">圆形</option>
+            </select>
+            <button className="rounded-lg border border-cyan-400/40 bg-cyan-500/20 px-3 py-2 text-xs" onClick={addShape}>添加</button>
+          </div>
+        )}
+
+        {tool === 'text' && <button className="mt-3 w-full rounded-lg border border-cyan-400/40 bg-cyan-500/20 px-3 py-2 text-xs" onClick={addText}>添加文字</button>}
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#090f1a]">
+        <canvas ref={canvasRef} className="block h-auto w-full" />
       </div>
     </div>
   )
