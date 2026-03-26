@@ -47,7 +47,7 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: OS
 
     // 缩放
     if (width || height) {
-        let resizeStr = `image/resize,m_${resize}`;
+        let resizeStr = `resize,m_${resize}`;
         if (width) resizeStr += `,w_${width}`;
         if (height) resizeStr += `,h_${height}`;
         processParts.push(resizeStr);

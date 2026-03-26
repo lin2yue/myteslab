@@ -15,6 +15,7 @@ import Card from '@/components/ui/Card'
 import { getModelDisplayName } from '@/lib/model-display'
 import WrapDetailViewerPanel from '@/components/wrap/WrapDetailViewerPanel'
 import WrapDetailActionPanel from '@/components/wrap/WrapDetailActionPanel'
+import TexturePreviewModal from '@/components/wrap/TexturePreviewModal'
 import { dbQuery } from '@/lib/db'
 
 export async function generateMetadata({
@@ -312,17 +313,14 @@ export default async function WrapDetailPage({
                                         height={450}
                                         className="w-full h-auto max-h-[180px] object-contain mx-auto"
                                     />
-                                    {/* 放大遮罩 */}
-                                    <a
-                                        href={getOptimizedImageUrl(wrap.texture_url, { width: 1600 })}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[1px]"
-                                    >
-                                        <span className="text-white text-[10px] font-bold tracking-widest uppercase bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
-                                            View Original
-                                        </span>
-                                    </a>
+                                    {/* 弹窗预览（含水印） */}
+                                    <TexturePreviewModal
+                                        textureUrl={wrap.texture_url}
+                                        altText={wrap.prompt
+                                            ? `${name} Tesla ${modelName || ''} wrap texture - ${wrap.prompt.slice(0, 100)}`
+                                            : `${name} Tesla ${modelName || ''} wrap design texture pattern`
+                                        }
+                                    />
                                 </div>
                             </div>
 
