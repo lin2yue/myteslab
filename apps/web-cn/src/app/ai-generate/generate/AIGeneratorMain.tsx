@@ -350,6 +350,10 @@ export default function AIGeneratorMain({
     const lastSyncedModelRef = useRef<string | null>(null)
     const hasHydratedModelPreferenceRef = useRef(false)
     const [isModelPreferenceReady, setIsModelPreferenceReady] = useState(false)
+    const [isFigmaCapture] = useState(() => {
+        if (typeof window === 'undefined') return false
+        return window.location.hash.includes('figmacapture=')
+    })
 
     const aiThemeStorageKey = 'ai_viewer_theme'
     const modelPreferenceStorageKey = 'ai_generator_last_model'
@@ -400,6 +404,10 @@ export default function AIGeneratorMain({
     }, [selectedModel, modelPreferenceStorageKey])
 
     useEffect(() => {
+        if (isFigmaCapture) {
+            setIsModelPreferenceReady(true)
+            return
+        }
         if (typeof window === 'undefined') return
         const regenTargetModel = resolveRegenTargetModel()
         if (regenTargetModel) {
@@ -457,9 +465,10 @@ export default function AIGeneratorMain({
         return () => {
             cancelled = true
         }
-    }, [isLoggedInInternal, sortedModels, resolveRegenTargetModel, modelPreferenceStorageKey])
+    }, [isFigmaCapture, isLoggedInInternal, sortedModels, resolveRegenTargetModel, modelPreferenceStorageKey])
 
     useEffect(() => {
+        if (isFigmaCapture) return
         if (!isLoggedInInternal || !isModelPreferenceReady) return
         if (!selectedModel || !sortedModels.some(m => m.slug === selectedModel)) return
         if (lastSyncedModelRef.current === selectedModel) return
@@ -498,7 +507,7 @@ export default function AIGeneratorMain({
                 modelSyncTimerRef.current = null
             }
         }
-    }, [isLoggedInInternal, isModelPreferenceReady, selectedModel, sortedModels])
+    }, [isFigmaCapture, isLoggedInInternal, isModelPreferenceReady, selectedModel, sortedModels])
 
     // Sync 3D day/night with theme by default, unless user manually overrides
     useEffect(() => {
@@ -670,17 +679,19 @@ export default function AIGeneratorMain({
     }, [])
 
     useEffect(() => {
+        if (isFigmaCapture) return
         checkAuth()
         fetchHistory()
-    }, [checkAuth, fetchHistory])
+    }, [isFigmaCapture, checkAuth, fetchHistory])
 
     useEffect(() => {
+        if (isFigmaCapture) return
         if (!isLoggedInInternal) return
         const timer = window.setInterval(() => {
             void fetchHistory()
         }, 15000)
         return () => window.clearInterval(timer)
-    }, [isLoggedInInternal, fetchHistory])
+    }, [isFigmaCapture, isLoggedInInternal, fetchHistory])
 
     const pendingTaskIds = useMemo(
         () => taskHistory
@@ -695,12 +706,14 @@ export default function AIGeneratorMain({
     )
 
     useEffect(() => {
+        if (isFigmaCapture) return
         if (pendingTaskIds.length === 0) return
         const timer = window.setInterval(() => setElapsedNow(Date.now()), 100)
         return () => window.clearInterval(timer)
-    }, [pendingTaskKey])
+    }, [isFigmaCapture, pendingTaskKey])
 
     useEffect(() => {
+        if (isFigmaCapture) return
         const taskIds = pendingTaskKey ? pendingTaskKey.split(',').filter(Boolean) : []
         if (taskIds.length === 0) return
         let active = true
@@ -906,7 +919,7 @@ export default function AIGeneratorMain({
             window.clearInterval(timer)
             Object.values(sseConnections).forEach(es => es.close());
         }
-    }, [pendingTaskKey, fetchHistory])
+    }, [isFigmaCapture, pendingTaskKey, fetchHistory])
 
     // 生成逻辑
     const isBusy = isGenerating
@@ -1570,18 +1583,41 @@ export default function AIGeneratorMain({
                 {/* Left Side: 3D Preview (65%) */}
                 <div className="flex-none lg:flex-[6.5] flex flex-col p-4 pb-0 overflow-hidden bg-white/60 dark:bg-zinc-950/40 backdrop-blur">
                     <div className="relative flex-1 aspect-video max-h-[50vh] min-h-[220px] lg:aspect-auto lg:max-h-none overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
-                        <ModelViewer
-                            key={`ai-viewer-${selectedModel}-${viewerResetKey}`}
-                            ref={viewerRef}
-                            id="ai-viewer"
-                            modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
-                            wheelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.wheelUrl || '', { stable: true })}
-                            textureUrl={currentTexture || undefined}
-                            modelSlug={selectedModel}
-                            backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
-                            autoRotate={autoRotate}
-                            className="w-full h-full"
-                        />
+                        {isFigmaCapture ? (
+                            <div className={`relative h-full w-full overflow-hidden ${isNight ? 'bg-[#1F1F1F]' : 'bg-[#F5F5F5]'}`}>
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.9),transparent_32%),radial-gradient(circle_at_80%_15%,rgba(0,0,0,0.08),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(229,231,235,0.9))] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_32%),radial-gradient(circle_at_80%_15%,rgba(255,255,255,0.06),transparent_24%),linear-gradient(135deg,rgba(39,39,42,0.96),rgba(24,24,27,0.98))]" />
+                                <div className="absolute inset-x-6 top-6 flex items-center justify-between">
+                                    <div className="rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium tracking-[0.18em] text-white/90 uppercase">
+                                        {selectedModel}
+                                    </div>
+                                    <div className="rounded-full border border-black/10 bg-white/70 px-3 py-1 text-[11px] text-gray-600 backdrop-blur dark:border-white/10 dark:bg-white/10 dark:text-zinc-200">
+                                        Figma Capture Preview
+                                    </div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center p-8">
+                                    <div className="relative h-full w-full max-w-4xl">
+                                        <div className="absolute left-[12%] right-[12%] top-[18%] h-[54%] rounded-[28px] border border-black/10 bg-gradient-to-br from-zinc-200 via-white to-zinc-300 shadow-[0_24px_60px_rgba(0,0,0,0.16)] dark:border-white/10 dark:from-zinc-700 dark:via-zinc-500 dark:to-zinc-800" />
+                                        <div className="absolute left-[18%] right-[18%] top-[30%] h-[18%] rounded-[999px] border border-black/8 bg-black/90 shadow-[0_12px_30px_rgba(0,0,0,0.2)] dark:border-white/10" />
+                                        <div className="absolute left-[16%] right-[16%] bottom-[18%] h-[16%] rounded-[999px] bg-gradient-to-r from-black/75 via-black/85 to-black/75 blur-[1px]" />
+                                        <div className="absolute bottom-[14%] left-[20%] h-14 w-14 rounded-full border-[6px] border-black/80 bg-zinc-200 shadow-[0_8px_20px_rgba(0,0,0,0.24)] dark:border-zinc-900 dark:bg-zinc-500" />
+                                        <div className="absolute bottom-[14%] right-[20%] h-14 w-14 rounded-full border-[6px] border-black/80 bg-zinc-200 shadow-[0_8px_20px_rgba(0,0,0,0.24)] dark:border-zinc-900 dark:bg-zinc-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <ModelViewer
+                                key={`ai-viewer-${selectedModel}-${viewerResetKey}`}
+                                ref={viewerRef}
+                                id="ai-viewer"
+                                modelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.modelUrl || '', { stable: true })}
+                                wheelUrl={getProxyUrl(models.find((m: any) => m.slug === selectedModel)?.wheelUrl || '', { stable: true })}
+                                textureUrl={currentTexture || undefined}
+                                modelSlug={selectedModel}
+                                backgroundColor={isNight ? '#1F1F1F' : '#FFFFFF'}
+                                autoRotate={autoRotate}
+                                className="w-full h-full"
+                            />
+                        )}
                     </div>
 
                     {/* Bottom Controls for 3D */}

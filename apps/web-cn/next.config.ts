@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    const cspHeader = \`
+    const cspHeader = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://hm.baidu.com https://zz.bdstatic.com https://*.bdstatic.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
       font-src 'self' https://fonts.gstatic.com;
       connect-src 'self' https://cdn.tewan.club https://www.google-analytics.com https://hm.baidu.com https://vitals.vercel-insights.com https://*.paddle.com;
       frame-ancestors 'self';
-    \`.replace(/\s{2,}/g, ' ').trim();
+    `.replace(/\s{2,}/g, ' ').trim();
 
     return [
       {

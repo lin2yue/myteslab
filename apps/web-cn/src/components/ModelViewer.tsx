@@ -18,6 +18,12 @@ interface ModelViewerProps {
     cameraOrbit?: string
     fieldOfView?: string
     cameraControls?: boolean
+    /** Custom material filter: return true to apply texture to this material */
+    materialFilter?: (materialName: string, meshName: string) => boolean
+    /** Surface finish: 'matte' or 'gloss' — adjusts roughness/metalness */
+    materialFinish?: 'matte' | 'gloss'
+    /** Whether to show rotation tip overlay. Default true. */
+    showTips?: boolean
 }
 
 export interface ModelViewerRef {
@@ -37,7 +43,10 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     backgroundColor: propBackgroundColor,
     cameraOrbit: propCameraOrbit,
     fieldOfView: propFieldOfView,
-    cameraControls = true
+    cameraControls = true,
+    materialFilter,
+    materialFinish,
+    showTips = true,
 }, ref) => {
     const t = useTranslations('Common')
     const containerRef = useRef<HTMLDivElement>(null)
@@ -57,6 +66,12 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
     const viewerInitializedRef = useRef(false)
     const wheelAppliedRef = useRef(false)
     const appearanceReadyRef = useRef(false)
+
+    // Keep latest prop values accessible inside async closures without stale captures
+    const materialFilterRef = useRef(materialFilter)
+    const materialFinishRef = useRef(materialFinish)
+    useEffect(() => { materialFilterRef.current = materialFilter }, [materialFilter])
+    useEffect(() => { materialFinishRef.current = materialFinish }, [materialFinish])
 
     const getViewerCanvas = (viewer: any): HTMLCanvasElement | null => {
         const shadowCanvas = viewer?.shadowRoot?.querySelector?.('canvas')
@@ -600,6 +615,18 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
     }
 
+    const applyFinishToMaterial = (material: any, finish?: 'matte' | 'gloss') => {
+        if (!finish) return
+        try {
+            const roughness = finish === 'matte' ? 0.85 : 0.15
+            const metalness = finish === 'matte' ? 0.05 : 0.75
+            material.pbrMetallicRoughness.setRoughnessFactor(roughness)
+            material.pbrMetallicRoughness.setMetallicFactor(metalness)
+        } catch (e) {
+            console.warn('[ModelViewer] applyFinishToMaterial failed:', e)
+        }
+    }
+
     // 处理贴图应用逻辑
     const applyTexture = async (viewer: any, url: string, slug?: string) => {
         if (!viewer || !url) return
@@ -615,39 +642,46 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
 
                 const texture = await viewer.createTexture(url)
                 const materials = viewer.model.materials
+                const filter = materialFilterRef.current
 
-                // 1. 通过 Model Viewer API 设置纹理
-                materials.forEach((material: any) => {
-                    const name = material.name?.toLowerCase() || ''
-                    const isBody = name === '' ||
+                const isBodyMaterial = (name: string, meshName = '') => {
+                    if (filter) return filter(name, meshName)
+                    return name === '' ||
                         name.includes('paint') ||
                         name.includes('body') ||
                         name.includes('exterior') ||
                         name.includes('stainless') ||
                         name === 'ext_body'
+                }
 
-                    if (isBody) {
-                        try {
-                            if (material.pbrMetallicRoughness.baseColorTexture) {
-                                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
-                            } else {
-                                // Fallback: try to create a default texture if it lacks one
-                                material.pbrMetallicRoughness.baseColorTexture = { texture }
-                            }
+                // 1. 通过 Model Viewer API 设置纹理
+                materials.forEach((material: any) => {
+                    const name = material.name?.toLowerCase() || ''
+                    if (!isBodyMaterial(name)) return
 
-                            // 关键：不在前端做贴图旋转/镜像/缩放，OSS 已处理
-                            const threeTexture = (texture as any).source?.texture || (texture as any).texture
-                            if (threeTexture) {
-                                threeTexture.flipY = false
-                                threeTexture.repeat.set(1, 1)
-                                threeTexture.offset.set(0, 0)
-                                threeTexture.wrapS = 1000 // RepeatWrapping
-                                threeTexture.wrapT = 1000 // RepeatWrapping
-                                threeTexture.needsUpdate = true
-                            }
-                        } catch (e) {
-                            console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
+                    try {
+                        if (material.pbrMetallicRoughness.baseColorTexture) {
+                            material.pbrMetallicRoughness.baseColorTexture.setTexture(texture)
+                        } else {
+                            // Fallback: try to create a default texture if it lacks one
+                            material.pbrMetallicRoughness.baseColorTexture = { texture }
                         }
+
+                        // 关键：不在前端做贴图旋转/镜像/缩放，OSS 已处理
+                        const threeTexture = (texture as any).source?.texture || (texture as any).texture
+                        if (threeTexture) {
+                            threeTexture.flipY = false
+                            threeTexture.repeat.set(1, 1)
+                            threeTexture.offset.set(0, 0)
+                            threeTexture.wrapS = 1000 // RepeatWrapping
+                            threeTexture.wrapT = 1000 // RepeatWrapping
+                            threeTexture.needsUpdate = true
+                        }
+
+                        // Apply surface finish (roughness/metalness)
+                        applyFinishToMaterial(material, materialFinishRef.current)
+                    } catch (e) {
+                        console.warn(`Model Viewer API 设置材质 ${name} 失败:`, e)
                     }
                 })
 
@@ -928,6 +962,35 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
         }
     }, [textureUrl, modelSlug, loading, wheelUrl])
 
+    // Effect 5: Apply materialFinish when it changes (independent of texture)
+    useEffect(() => {
+        const viewer = viewerElementRef.current
+        if (!viewer || loading) return
+        try {
+            const materials = viewer.model?.materials
+            if (!materials) return
+            const filter = materialFilterRef.current
+            const isBodyMaterial = (name: string) => {
+                if (filter) return filter(name, '')
+                return name === '' ||
+                    name.includes('paint') ||
+                    name.includes('body') ||
+                    name.includes('exterior') ||
+                    name.includes('stainless') ||
+                    name === 'ext_body'
+            }
+            materials.forEach((material: any) => {
+                const name = material.name?.toLowerCase() || ''
+                if (isBodyMaterial(name)) {
+                    applyFinishToMaterial(material, materialFinish)
+                }
+            })
+            if (typeof viewer.requestRender === 'function') viewer.requestRender()
+        } catch (e) {
+            console.warn('[ModelViewer] materialFinish effect failed:', e)
+        }
+    }, [materialFinish, loading])
+
     return (
         <div className={`relative ${className}`}>
             <div ref={containerRef} className="w-full h-full" />
@@ -959,7 +1022,7 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 </div>
             )}
 
-            {!loading && !error && cameraControls && (
+            {!loading && !error && cameraControls && showTips && (
                 // Control Tips - Top Right
                 <div className="absolute top-4 right-4 bg-gray-800/80 backdrop-blur-sm text-white text-[10px] px-3 py-2 rounded-full shadow-lg pointer-events-none z-10 border border-white/10">
                     💡 {t('tips')}

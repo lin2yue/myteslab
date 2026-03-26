@@ -133,6 +133,58 @@ export default function RootLayout({
             `,
                     }}
                 />
+                <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async />
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+              (function () {
+                function bootCapture() {
+                  try {
+                    var hash = window.location.hash ? window.location.hash.slice(1) : '';
+                    if (!hash) return;
+                    var params = new URLSearchParams(hash);
+                    var captureId = params.get('figmacapture');
+                    var endpoint = params.get('figmaendpoint');
+                    if (!captureId || !endpoint) return;
+
+                    var selector = params.get('figmaselector') || 'main';
+                    var delay = Number(params.get('figmadelay') || '1500');
+                    var started = false;
+
+                    function tryCapture() {
+                      if (started) return;
+                      if (!window.figma || typeof window.figma.captureForDesign !== 'function') {
+                        window.setTimeout(tryCapture, 250);
+                        return;
+                      }
+
+                      started = true;
+                      window.figma.captureForDesign({
+                        captureId: captureId,
+                        endpoint: endpoint,
+                        selector: selector,
+                      }).catch(function (err) {
+                        console.error('[figma-capture] capture failed', err);
+                        started = false;
+                        window.setTimeout(tryCapture, 1000);
+                      });
+                    }
+
+                    window.setTimeout(tryCapture, delay);
+                  } catch (err) {
+                    console.error('[figma-capture] boot failed', err);
+                  }
+                }
+
+                if (document.readyState === 'complete') {
+                  bootCapture();
+                } else {
+                  window.addEventListener('load', bootCapture, { once: true });
+                }
+              })();
+            `,
+                    }}
+                />
             </head>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 flex flex-col`}
