@@ -1038,6 +1038,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     let taskId: string | undefined;
+    let authenticatedUserId: string | undefined;
 
     const requestId = crypto.randomUUID();
     console.log(`[AI-GEN] [${requestId}] Request received. Content-Length: ${request.headers.get('content-length')}`);
@@ -1066,6 +1067,7 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`[AI-GEN] [${requestId}] User authenticated: ${user.id}`);
+        authenticatedUserId = user.id;
 
         let body;
         try {
@@ -1308,7 +1310,7 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error: any) {
-        reportError({ error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, context: { requestId, userId: user?.id, phase: 'api-main' } }); console.error('❌ [AI-GEN] Global API Error:', error);
+        reportError({ error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, context: { requestId, userId: authenticatedUserId, phase: 'api-main' } }); console.error('❌ [AI-GEN] Global API Error:', error);
 
         if (taskId) {
             try {

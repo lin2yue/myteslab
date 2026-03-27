@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
         const project_id = dsn.split('/').pop();
         const sentryHost = dsn.split('@')[1].split('/')[0];
-        const url = \`https://\${sentryHost}/api/\${project_id}/envelope/\`;
+        const url = `https://${sentryHost}/api/${project_id}/envelope/`;
 
         // 通过代理中转（如果需要的话，这里可以加上 fetch 代理配置）
         const response = await fetch(url, {
