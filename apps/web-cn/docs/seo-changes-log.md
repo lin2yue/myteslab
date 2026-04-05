@@ -25,6 +25,30 @@
 - manually inspect `/`, `/models/model-y`, `/robots.txt`, `/sitemap.xml`
 
 ### Follow-up
-- Add detail-page visible semantic content module.
 - Add weekly report cron or manual routine.
 - Expand query clustering and page recommendation logic.
+
+## 2026-04-05 (round 2)
+
+### Changes
+- Reverted homepage visible H1/UI SEO changes; kept homepage SEO low-interference.
+- Added low-interference semantic content block to wrap detail pages under the description area.
+- Upgraded `scripts/seo-fetch-report.js`:
+  - page type classification
+  - query clustering (home core / model intent / wrap long-tail / tutorial intent)
+  - richer markdown report output
+
+### Intent
+- Keep homepage UI stable while continuing SEO improvement in lower-risk areas.
+- Strengthen wrap detail pages for long-tail query intent without damaging core experience.
+- Make weekly SEO analysis more actionable by clustering queries into page strategy buckets.
+
+### Validation to run
+- `npm run seo:report`
+- `npm run build`
+- inspect a wrap detail page for content density changes
+
+### Follow-up
+- Add tutorial / how-to landing pages for import/download intent.
+- Add page recommendation scoring into SEO report output.
+- Decide whether to schedule weekly report generation via cron.

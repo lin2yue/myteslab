@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-05T02:35:13.282Z",
+  "generatedAt": "2026-04-05T14:56:02.688Z",
   "ga4PropertyId": "526086791",
   "gscSiteUrl": "sc-domain:tewan.club",
   "ga4": {
@@ -1005,20 +1005,20 @@
           "https://tewan.club/",
           "特斯拉自定义涂装下载"
         ],
-        "clicks": 31,
-        "impressions": 69,
-        "ctr": 0.4492753623188406,
-        "position": 5.231884057971015
+        "clicks": 32,
+        "impressions": 71,
+        "ctr": 0.4507042253521127,
+        "position": 5.154929577464789
       },
       {
         "keys": [
           "https://tewan.club/",
           "特斯拉塗裝下載"
         ],
-        "clicks": 15,
-        "impressions": 73,
-        "ctr": 0.2054794520547945,
-        "position": 6.561643835616438
+        "clicks": 17,
+        "impressions": 77,
+        "ctr": 0.22077922077922077,
+        "position": 6.532467532467533
       },
       {
         "keys": [
@@ -1026,9 +1026,9 @@
           "tesla 塗 裝 下載"
         ],
         "clicks": 13,
-        "impressions": 68,
-        "ctr": 0.19117647058823528,
-        "position": 6.264705882352941
+        "impressions": 72,
+        "ctr": 0.18055555555555555,
+        "position": 6.236111111111111
       },
       {
         "keys": [
@@ -1036,9 +1036,9 @@
           "特斯拉3d車漆外觀下載"
         ],
         "clicks": 3,
-        "impressions": 18,
-        "ctr": 0.16666666666666666,
-        "position": 10.222222222222221
+        "impressions": 20,
+        "ctr": 0.15,
+        "position": 10.1
       },
       {
         "keys": [
@@ -1046,19 +1046,19 @@
           "特斯拉涂装下载"
         ],
         "clicks": 3,
-        "impressions": 18,
-        "ctr": 0.16666666666666666,
-        "position": 5.333333333333333
+        "impressions": 19,
+        "ctr": 0.15789473684210525,
+        "position": 5.157894736842105
       },
       {
         "keys": [
           "https://tewan.club/",
           "特斯拉皮肤下载"
         ],
-        "clicks": 2,
-        "impressions": 5,
-        "ctr": 0.4,
-        "position": 13.4
+        "clicks": 3,
+        "impressions": 6,
+        "ctr": 0.5,
+        "position": 12.166666666666666
       },
       {
         "keys": [
@@ -1086,9 +1086,9 @@
           "特斯拉喷漆车间下载"
         ],
         "clicks": 1,
-        "impressions": 14,
-        "ctr": 0.07142857142857142,
-        "position": 4
+        "impressions": 15,
+        "ctr": 0.06666666666666667,
+        "position": 4.266666666666667
       },
       {
         "keys": [
@@ -1278,26 +1278,29 @@
       {
         "page": "https://tewan.club/",
         "query": "特斯拉塗裝下載",
-        "clicks": 15,
-        "impressions": 73,
-        "ctr": 0.2054794520547945,
-        "position": 6.561643835616438
-      },
-      {
-        "page": "https://tewan.club/",
-        "query": "特斯拉自定义涂装下载",
-        "clicks": 31,
-        "impressions": 69,
-        "ctr": 0.4492753623188406,
-        "position": 5.231884057971015
+        "clicks": 17,
+        "impressions": 77,
+        "ctr": 0.22077922077922077,
+        "position": 6.532467532467533,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
         "query": "tesla 塗 裝 下載",
         "clicks": 13,
-        "impressions": 68,
-        "ctr": 0.19117647058823528,
-        "position": 6.264705882352941
+        "impressions": 72,
+        "ctr": 0.18055555555555555,
+        "position": 6.236111111111111,
+        "pageType": "home"
+      },
+      {
+        "page": "https://tewan.club/",
+        "query": "特斯拉自定义涂装下载",
+        "clicks": 32,
+        "impressions": 71,
+        "ctr": 0.4507042253521127,
+        "position": 5.154929577464789,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
@@ -1305,7 +1308,8 @@
         "clicks": 1,
         "impressions": 25,
         "ctr": 0.04,
-        "position": 4.88
+        "position": 4.88,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
@@ -1313,15 +1317,17 @@
         "clicks": 2,
         "impressions": 21,
         "ctr": 0.09523809523809523,
-        "position": 8.80952380952381
+        "position": 8.80952380952381,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
         "query": "特斯拉涂装下载",
         "clicks": 3,
-        "impressions": 18,
-        "ctr": 0.16666666666666666,
-        "position": 5.333333333333333
+        "impressions": 19,
+        "ctr": 0.15789473684210525,
+        "position": 5.157894736842105,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
@@ -1329,15 +1335,17 @@
         "clicks": 0,
         "impressions": 18,
         "ctr": 0,
-        "position": 9.222222222222221
+        "position": 9.222222222222221,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
         "query": "特斯拉喷漆车间下载",
         "clicks": 1,
-        "impressions": 14,
-        "ctr": 0.07142857142857142,
-        "position": 4
+        "impressions": 15,
+        "ctr": 0.06666666666666667,
+        "position": 4.266666666666667,
+        "pageType": "home"
       }
     ],
     "nearPageOne": [
@@ -1347,7 +1355,8 @@
         "clicks": 2,
         "impressions": 21,
         "ctr": 0.09523809523809523,
-        "position": 8.80952380952381
+        "position": 8.80952380952381,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
@@ -1355,23 +1364,26 @@
         "clicks": 0,
         "impressions": 18,
         "ctr": 0,
-        "position": 9.222222222222221
+        "position": 9.222222222222221,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
         "query": "特斯拉3d車漆外觀下載",
         "clicks": 3,
-        "impressions": 18,
-        "ctr": 0.16666666666666666,
-        "position": 10.222222222222221
+        "impressions": 20,
+        "ctr": 0.15,
+        "position": 10.1,
+        "pageType": "home"
       },
       {
         "page": "https://tewan.club/",
         "query": "特斯拉皮肤下载",
-        "clicks": 2,
-        "impressions": 5,
-        "ctr": 0.4,
-        "position": 13.4
+        "clicks": 3,
+        "impressions": 6,
+        "ctr": 0.5,
+        "position": 12.166666666666666,
+        "pageType": "home"
       }
     ],
     "landingPages": [
@@ -1381,7 +1393,8 @@
         "sessions": 424,
         "activeUsers": 387,
         "engagedSessions": 410,
-        "engagementDuration": 84407
+        "engagementDuration": 84407,
+        "pageType": "home"
       },
       {
         "page": "(not set)",
@@ -1389,7 +1402,8 @@
         "sessions": 26,
         "activeUsers": 15,
         "engagedSessions": 0,
-        "engagementDuration": 22
+        "engagementDuration": 22,
+        "pageType": "other"
       },
       {
         "page": "/lock-sounds",
@@ -1397,7 +1411,8 @@
         "sessions": 17,
         "activeUsers": 9,
         "engagedSessions": 16,
-        "engagementDuration": 2114
+        "engagementDuration": 2114,
+        "pageType": "other"
       },
       {
         "page": "/ai-generate/generate",
@@ -1405,7 +1420,8 @@
         "sessions": 12,
         "activeUsers": 5,
         "engagedSessions": 8,
-        "engagementDuration": 853
+        "engagementDuration": 853,
+        "pageType": "ai-generate"
       },
       {
         "page": "/models/model-y",
@@ -1413,7 +1429,8 @@
         "sessions": 12,
         "activeUsers": 9,
         "engagedSessions": 11,
-        "engagementDuration": 2608
+        "engagementDuration": 2608,
+        "pageType": "model"
       },
       {
         "page": "/models/model-y-2025-premium",
@@ -1421,7 +1438,8 @@
         "sessions": 8,
         "activeUsers": 5,
         "engagedSessions": 6,
-        "engagementDuration": 749
+        "engagementDuration": 749,
+        "pageType": "model"
       },
       {
         "page": "/models/modely-l",
@@ -1429,7 +1447,8 @@
         "sessions": 4,
         "activeUsers": 2,
         "engagedSessions": 4,
-        "engagementDuration": 85
+        "engagementDuration": 85,
+        "pageType": "model"
       },
       {
         "page": "/wraps/model-y-2025-premium-wrap-fe6da7",
@@ -1437,7 +1456,8 @@
         "sessions": 4,
         "activeUsers": 4,
         "engagedSessions": 3,
-        "engagementDuration": 325
+        "engagementDuration": 325,
+        "pageType": "wrap-detail"
       },
       {
         "page": "/wraps/model-y-2025-performance-labubu",
@@ -1445,7 +1465,8 @@
         "sessions": 3,
         "activeUsers": 2,
         "engagedSessions": 3,
-        "engagementDuration": 466
+        "engagementDuration": 466,
+        "pageType": "wrap-detail"
       },
       {
         "page": "/wraps/model-y-2025-premium-diy-sticker-859a?from=all",
@@ -1453,7 +1474,8 @@
         "sessions": 3,
         "activeUsers": 2,
         "engagedSessions": 3,
-        "engagementDuration": 293
+        "engagementDuration": 293,
+        "pageType": "wrap-detail"
       },
       {
         "page": "/models/model-3-2024?sort=popular",
@@ -1461,7 +1483,8 @@
         "sessions": 2,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 0
+        "engagementDuration": 0,
+        "pageType": "model"
       },
       {
         "page": "/?sort=popular",
@@ -1469,7 +1492,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 466
+        "engagementDuration": 466,
+        "pageType": "home"
       },
       {
         "page": "/login?next=%2Flock-sounds",
@@ -1477,7 +1501,8 @@
         "sessions": 1,
         "activeUsers": 0,
         "engagedSessions": 0,
-        "engagementDuration": 0
+        "engagementDuration": 0,
+        "pageType": "other"
       },
       {
         "page": "/login?next=%2Fmodels%2Fmodel-y-2025-premium",
@@ -1485,7 +1510,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 14
+        "engagementDuration": 14,
+        "pageType": "other"
       },
       {
         "page": "/login?next=%2Fwraps%2Fmodel-y-2025-premium-diy-sticker-30c2%3Ffrom%3Dall",
@@ -1493,7 +1519,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 179
+        "engagementDuration": 179,
+        "pageType": "other"
       },
       {
         "page": "/login?next=%2Fwraps%2Fmodel-y-2025-premium-wrap-2f9b8b",
@@ -1501,7 +1528,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 0
+        "engagementDuration": 0,
+        "pageType": "other"
       },
       {
         "page": "/login?next=%2Fwraps%2Fmodel-y-wrap-3450e3",
@@ -1509,7 +1537,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 0,
-        "engagementDuration": 4
+        "engagementDuration": 4,
+        "pageType": "other"
       },
       {
         "page": "/models/model-3-2024",
@@ -1517,7 +1546,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 1
+        "engagementDuration": 1,
+        "pageType": "model"
       },
       {
         "page": "/models/model-3-2024-performance",
@@ -1525,7 +1555,8 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 0,
-        "engagementDuration": 0
+        "engagementDuration": 0,
+        "pageType": "model"
       },
       {
         "page": "/models/model-y-2025-performance",
@@ -1533,8 +1564,234 @@
         "sessions": 1,
         "activeUsers": 1,
         "engagedSessions": 1,
-        "engagementDuration": 114
+        "engagementDuration": 114,
+        "pageType": "model"
       }
-    ]
+    ],
+    "clusters": {
+      "home_core": [
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉塗裝下載",
+          "clicks": 17,
+          "impressions": 77,
+          "ctr": 0.22077922077922077,
+          "position": 6.532467532467533,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "tesla 塗 裝 下載",
+          "clicks": 13,
+          "impressions": 72,
+          "ctr": 0.18055555555555555,
+          "position": 6.236111111111111,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉涂装",
+          "clicks": 1,
+          "impressions": 25,
+          "ctr": 0.04,
+          "position": 4.88,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉自定义涂装",
+          "clicks": 2,
+          "impressions": 21,
+          "ctr": 0.09523809523809523,
+          "position": 8.80952380952381,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉3d車漆外觀下載",
+          "clicks": 3,
+          "impressions": 20,
+          "ctr": 0.15,
+          "position": 10.1,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉喷漆车间",
+          "clicks": 0,
+          "impressions": 18,
+          "ctr": 0,
+          "position": 9.222222222222221,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉自定义车衣",
+          "clicks": 0,
+          "impressions": 6,
+          "ctr": 0,
+          "position": 7.5,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉 喷漆车间",
+          "clicks": 1,
+          "impressions": 4,
+          "ctr": 0.25,
+          "position": 14.5,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉喷漆车间素材",
+          "clicks": 1,
+          "impressions": 3,
+          "ctr": 0.3333333333333333,
+          "position": 7.333333333333333,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉喷漆",
+          "clicks": 0,
+          "impressions": 3,
+          "ctr": 0,
+          "position": 11.333333333333334,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉皮肤设计",
+          "clicks": 1,
+          "impressions": 2,
+          "ctr": 0.5,
+          "position": 13,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉烤漆中心下載",
+          "clicks": 0,
+          "impressions": 2,
+          "ctr": 0,
+          "position": 23.5,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉车机皮肤",
+          "clicks": 0,
+          "impressions": 2,
+          "ctr": 0,
+          "position": 16.5,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "tesla 涂装",
+          "clicks": 0,
+          "impressions": 1,
+          "ctr": 0,
+          "position": 5,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉 喷漆",
+          "clicks": 0,
+          "impressions": 1,
+          "ctr": 0,
+          "position": 15,
+          "pageType": "home"
+        }
+      ],
+      "model_intent": [],
+      "wrap_long_tail": [
+        {
+          "page": "https://tewan.club/wraps/model-y-wrap-fbb15c?from=all",
+          "query": "有照片吗",
+          "clicks": 0,
+          "impressions": 1,
+          "ctr": 0,
+          "position": 18,
+          "pageType": "wrap-detail"
+        }
+      ],
+      "tutorial_intent": [
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉自定义涂装下载",
+          "clicks": 32,
+          "impressions": 71,
+          "ctr": 0.4507042253521127,
+          "position": 5.154929577464789,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉涂装下载",
+          "clicks": 3,
+          "impressions": 19,
+          "ctr": 0.15789473684210525,
+          "position": 5.157894736842105,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉喷漆车间下载",
+          "clicks": 1,
+          "impressions": 15,
+          "ctr": 0.06666666666666667,
+          "position": 4.266666666666667,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉皮肤下载",
+          "clicks": 3,
+          "impressions": 6,
+          "ctr": 0.5,
+          "position": 12.166666666666666,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉车机皮肤下载",
+          "clicks": 0,
+          "impressions": 3,
+          "ctr": 0,
+          "position": 7.666666666666667,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉贴纸下载",
+          "clicks": 0,
+          "impressions": 2,
+          "ctr": 0,
+          "position": 10,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉喷漆车间皮肤下载",
+          "clicks": 0,
+          "impressions": 1,
+          "ctr": 0,
+          "position": 17,
+          "pageType": "home"
+        },
+        {
+          "page": "https://tewan.club/",
+          "query": "特斯拉自定义皮肤下载",
+          "clicks": 0,
+          "impressions": 1,
+          "ctr": 0,
+          "position": 15,
+          "pageType": "home"
+        }
+      ]
+    }
   }
 }

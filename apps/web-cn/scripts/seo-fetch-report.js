@@ -110,6 +110,46 @@ async function fetchGSCReport(accessToken, siteUrl) {
   return res.json()
 }
 
+function normalizePageType(page) {
+  if (!page) return 'unknown'
+  if (page === '/' || page.startsWith('/?')) return 'home'
+  if (page.startsWith('/models/')) return 'model'
+  if (page.startsWith('/wraps/')) return 'wrap-detail'
+  if (page.startsWith('/ai-generate')) return 'ai-generate'
+  if (page.startsWith('/faq')) return 'faq'
+  return 'other'
+}
+
+function buildQueryClusters(gscRows) {
+  const buckets = {
+    home_core: [],
+    model_intent: [],
+    wrap_long_tail: [],
+    tutorial_intent: [],
+  }
+
+  for (const row of gscRows) {
+    const q = row.query.toLowerCase()
+    if (q.includes('model y') || q.includes('model 3') || q.includes('cybertruck') || q.includes('model s') || q.includes('model x')) {
+      buckets.model_intent.push(row)
+    } else if (q.includes('怎么') || q.includes('如何') || q.includes('下载') || q.includes('导入') || q.includes('使用')) {
+      buckets.tutorial_intent.push(row)
+    } else if (normalizePageType(new URL(row.page).pathname) === 'wrap-detail') {
+      buckets.wrap_long_tail.push(row)
+    } else {
+      buckets.home_core.push(row)
+    }
+  }
+
+  for (const key of Object.keys(buckets)) {
+    buckets[key] = buckets[key]
+      .sort((a, b) => b.impressions - a.impressions)
+      .slice(0, 15)
+  }
+
+  return buckets
+}
+
 function buildOpportunities(ga4, gsc) {
   const gaRows = (ga4.rows || []).map((row) => ({
     page: row.dimensionValues?.[0]?.value || '',
@@ -118,6 +158,7 @@ function buildOpportunities(ga4, gsc) {
     activeUsers: Number(row.metricValues?.[1]?.value || 0),
     engagedSessions: Number(row.metricValues?.[2]?.value || 0),
     engagementDuration: Number(row.metricValues?.[3]?.value || 0),
+    pageType: normalizePageType(row.dimensionValues?.[0]?.value || ''),
   }))
 
   const gscRows = (gsc.rows || []).map((row) => ({
@@ -127,6 +168,7 @@ function buildOpportunities(ga4, gsc) {
     impressions: Number(row.impressions || 0),
     ctr: Number(row.ctr || 0),
     position: Number(row.position || 0),
+    pageType: normalizePageType(new URL(row.keys?.[0] || 'https://tewan.club').pathname),
   }))
 
   const lowCtr = gscRows
@@ -140,8 +182,9 @@ function buildOpportunities(ga4, gsc) {
     .slice(0, 20)
 
   const landingPages = gaRows.slice(0, 20)
+  const clusters = buildQueryClusters(gscRows)
 
-  return { lowCtr, nearPageOne, landingPages }
+  return { lowCtr, nearPageOne, landingPages, clusters }
 }
 
 function writeOutputs(payload) {
@@ -155,13 +198,26 @@ function writeOutputs(payload) {
     `# SEO Weekly Snapshot (${stamp})`,
     '',
     '## Top landing pages (Organic Search)',
-    ...payload.opportunities.landingPages.map((row) => `- ${row.page}: ${row.sessions} sessions / ${row.activeUsers} users / ${row.engagedSessions} engaged`),
+    ...payload.opportunities.landingPages.map((row) => `- ${row.page} [${row.pageType}]: ${row.sessions} sessions / ${row.activeUsers} users / ${row.engagedSessions} engaged`),
     '',
     '## High-impression low-CTR queries',
-    ...payload.opportunities.lowCtr.map((row) => `- ${row.query} | ${row.page} | ${row.clicks} clicks / ${row.impressions} impressions / CTR ${(row.ctr * 100).toFixed(1)}% / pos ${row.position.toFixed(1)}`),
+    ...payload.opportunities.lowCtr.map((row) => `- ${row.query} | ${row.page} [${row.pageType}] | ${row.clicks} clicks / ${row.impressions} impressions / CTR ${(row.ctr * 100).toFixed(1)}% / pos ${row.position.toFixed(1)}`),
     '',
     '## Near page-one opportunities',
-    ...payload.opportunities.nearPageOne.map((row) => `- ${row.query} | ${row.page} | ${row.impressions} impressions / pos ${row.position.toFixed(1)}`),
+    ...payload.opportunities.nearPageOne.map((row) => `- ${row.query} | ${row.page} [${row.pageType}] | ${row.impressions} impressions / pos ${row.position.toFixed(1)}`),
+    '',
+    '## Query clusters',
+    '### Home core',
+    ...payload.opportunities.clusters.home_core.map((row) => `- ${row.query} | ${row.impressions} impressions | pos ${row.position.toFixed(1)}`),
+    '',
+    '### Model intent',
+    ...payload.opportunities.clusters.model_intent.map((row) => `- ${row.query} | ${row.impressions} impressions | pos ${row.position.toFixed(1)}`),
+    '',
+    '### Wrap detail long-tail',
+    ...payload.opportunities.clusters.wrap_long_tail.map((row) => `- ${row.query} | ${row.page} | ${row.impressions} impressions | pos ${row.position.toFixed(1)}`),
+    '',
+    '### Tutorial intent',
+    ...payload.opportunities.clusters.tutorial_intent.map((row) => `- ${row.query} | ${row.impressions} impressions | pos ${row.position.toFixed(1)}`),
     '',
   ].join('\n')
   fs.writeFileSync(mdPath, md)
