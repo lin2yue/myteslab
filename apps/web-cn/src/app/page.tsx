@@ -29,77 +29,32 @@ export default async function HomePage({
 
     return (
         <div className="flex flex-col">
+            {/* SEO H1 - Hidden but accessible */}
+            <h1 className="sr-only">
+                特斯拉喷漆车间涂装免费下载 - 车机贴膜图库与 AI 设计工具
+            </h1>
+
             {/* Main Content */}
             <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex-1 w-full">
                 {/* SEO Hero Section */}
                 <section className="mb-8 text-center">
-                    <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
-                        特斯拉喷漆车间涂装免费下载与 AI 设计平台
-                    </h1>
+                    <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
+                        {t('welcome')}
+                    </h2>
                     <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
                         {t('welcome_desc')}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-zinc-500 max-w-4xl mx-auto mt-4 leading-7">
-                        特玩专注提供特斯拉涂装下载、特斯拉喷漆车间素材、车机皮肤与自定义贴膜设计，覆盖 Model 3、Model Y、Cybertruck、Model S、Model X，支持 AI 生成与 3D 预览后再下载导入车机。
-                    </p>
                 </section>
                 <HomeOperationBanner />
-
-                <section className="mb-8 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 p-6 md:p-8">
-                    <div className="grid gap-6 md:grid-cols-3 text-left">
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">热门搜索入口</h2>
-                            <ul className="space-y-2 text-sm text-gray-600 dark:text-zinc-400">
-                                <li>特斯拉涂装下载</li>
-                                <li>特斯拉喷漆车间素材</li>
-                                <li>特斯拉车机皮肤下载</li>
-                                <li>特斯拉自定义涂装与 AI 设计</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">支持车型</h2>
-                            <p className="text-sm text-gray-600 dark:text-zinc-400 leading-7">
-                                支持 Model 3、Model Y、Cybertruck、Model S、Model X，不同车型页可直接查看适配的喷漆车间贴膜与下载素材。
-                            </p>
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">使用方式</h2>
-                            <p className="text-sm text-gray-600 dark:text-zinc-400 leading-7">
-                                先浏览社区涂装或用 AI 生成设计，再通过 3D 预览确认效果，最后下载 PNG 贴图导入 Tesla Toybox Paint Shop / 喷漆车间使用。
-                            </p>
-                        </div>
-                    </div>
-                </section>
 
                 <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
                     <WrapList initialWraps={wraps} model={model} locale="zh" sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
 
-                <section className="mt-12 grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 p-6">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">为什么特玩适合特斯拉喷漆车间 SEO 关键词用户</h2>
-                        <div className="space-y-3 text-sm leading-7 text-gray-600 dark:text-zinc-400">
-                            <p>我们不是单纯图片站，而是围绕“特斯拉涂装下载、喷漆车间素材、车机皮肤导入、AI 生成设计、3D 预览”形成完整链路，能覆盖搜索用户从找素材到实际下载使用的全过程。</p>
-                            <p>首页负责收口核心词，车型页负责承接 Model 3 / Model Y 等中频词，具体作品详情页负责承接长尾风格词，这样搜索引擎更容易理解站点结构与页面意图。</p>
-                        </div>
-                    </div>
-                    <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 p-6">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">常见问题</h2>
-                        <div className="space-y-4 text-sm leading-7 text-gray-600 dark:text-zinc-400">
-                            <div>
-                                <h3 className="font-medium text-gray-900 dark:text-white">特斯拉喷漆车间素材可以免费下载吗？</h3>
-                                <p>大部分公开涂装作品可以直接浏览与下载，适合导入 Tesla Toybox Paint Shop 使用。</p>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-900 dark:text-white">支持哪些车型？</h3>
-                                <p>当前重点支持 Model 3、Model Y、Cybertruck、Model S、Model X，并持续扩充适配模型与贴图。</p>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-900 dark:text-white">能不能先预览再下载？</h3>
-                                <p>可以。每个核心页面都尽量提供 3D 预览与筛选能力，降低下载前试错成本。</p>
-                            </div>
-                        </div>
-                    </div>
+                <section className="sr-only" aria-hidden="true">
+                    <h2>特斯拉涂装下载与喷漆车间素材</h2>
+                    <p>特玩提供特斯拉涂装下载、特斯拉喷漆车间素材、车机皮肤与自定义贴膜设计，覆盖 Model 3、Model Y、Cybertruck、Model S、Model X，支持 AI 生成与 3D 预览后再下载导入车机。</p>
+                    <p>首页负责承接特斯拉自定义涂装、喷漆车间下载、车机皮肤下载等核心搜索词，并通过车型页、详情页和 AI 生成页形成更完整的搜索意图承接结构。</p>
                 </section>
             </main>
             <HomeOperationModal />
