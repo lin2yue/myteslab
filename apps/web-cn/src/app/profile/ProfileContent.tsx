@@ -57,6 +57,7 @@ const MAX_WRAP_TITLE_LENGTH = 200;
 export default function ProfileContent({ generatedWraps, downloads, wrapModels, isCreator = false }: ProfileContentProps) {
     const t = useTranslations('Profile');
     const tCommon = useTranslations('Common');
+    const tGen = useTranslations('Generator');
     const alert = useAlert();
     const [activeTab, setActiveTab] = useState<'creations' | 'downloads'>('creations');
     const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -246,7 +247,7 @@ export default function ProfileContent({ generatedWraps, downloads, wrapModels, 
 
             // Update UI
             setWraps(wraps.map(w => w.id === activePublishWrap.id ? { ...w, is_public: true, preview_url: confirmData.previewUrl } : w));
-            alert.success(tCommon('publish_success'));
+            alert.success(tGen('publish_success'));
             setShowPublishModal(false);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)

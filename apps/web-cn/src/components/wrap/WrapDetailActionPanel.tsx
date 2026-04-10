@@ -49,6 +49,7 @@ export default function WrapDetailActionPanel({
   models
 }: WrapDetailActionPanelProps) {
   const tCommon = useTranslations('Common')
+  const tGen = useTranslations('Generator')
   const tProfile = useTranslations('Profile')
   const alert = useAlert()
   const router = useRouter()
@@ -155,7 +156,7 @@ export default function WrapDetailActionPanel({
 
       setIsPublic(true)
       setShowPublishModal(false)
-      alert.success(tCommon('publish_success'))
+      alert.success(tGen('publish_success'))
       router.refresh()
     } catch (error) {
       console.error('Failed to publish wrap from detail:', error)
