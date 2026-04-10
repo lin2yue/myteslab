@@ -152,6 +152,7 @@ export default async function WrapDetailPage({
     const priceCredits = Number(wrap.price_credits || 0)
     const backHref = from === 'all' ? '/' : (wrap.model_slug ? `/models/${wrap.model_slug}` : '/')
     const isOwner = !!sessionUser && !!wrap.user_id && sessionUser.id === wrap.user_id
+    const isCreator = sessionUser?.role === 'creator'
 
 
     // 获取模型名称以增强标题和结构化数据 SEO
@@ -346,6 +347,9 @@ export default async function WrapDetailPage({
                                 sourcePrompt={wrap.prompt}
                                 initialIsPublic={wrap.is_public}
                                 isOwner={isOwner}
+                                modelUrl={proxiedModelUrl}
+                                wheelUrl={wheelUrl}
+                                isCreator={isCreator}
                                 models={models.map(modelItem => ({
                                     slug: modelItem.slug,
                                     name: modelItem.name,

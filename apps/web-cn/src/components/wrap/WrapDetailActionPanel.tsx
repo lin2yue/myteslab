@@ -7,6 +7,7 @@ import { useTranslations } from '@/lib/i18n'
 import Portal from '@/components/Portal'
 import Select from '@/components/ui/Select'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import PublishModal, { type MarketplaceOptions } from '@/components/publish/PublishModal'
 import { useAlert } from '@/components/alert/AlertProvider'
 import { deleteGeneratedWrap, updateWrapVisibility } from '@/lib/profile-actions'
 import { sortModelsByPreferredOrder } from '@/lib/model-order'
@@ -27,6 +28,9 @@ interface WrapDetailActionPanelProps {
   sourcePrompt?: string | null
   initialIsPublic: boolean
   isOwner: boolean
+  modelUrl: string
+  wheelUrl?: string
+  isCreator?: boolean
   models: ModelOption[]
 }
 
@@ -39,6 +43,9 @@ export default function WrapDetailActionPanel({
   sourcePrompt,
   initialIsPublic,
   isOwner,
+  modelUrl,
+  wheelUrl,
+  isCreator = false,
   models
 }: WrapDetailActionPanelProps) {
   const tCommon = useTranslations('Common')
@@ -50,8 +57,10 @@ export default function WrapDetailActionPanel({
 
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [isBusy, setIsBusy] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [showPublishModal, setShowPublishModal] = useState(false)
 
   const candidateModels = useMemo(
     () => sortModelsByPreferredOrder(models).filter(model => model.slug !== sourceModelSlug),
@@ -84,11 +93,15 @@ export default function WrapDetailActionPanel({
 
   const handleTogglePublish = async () => {
     if (!isOwner || isBusy) return
+    if (!isPublic) {
+      setShowPublishModal(true)
+      return
+    }
+
     setIsBusy(true)
     try {
-      const nextVisibility = !isPublic
-      await updateWrapVisibility(wrapId, nextVisibility)
-      setIsPublic(nextVisibility)
+      await updateWrapVisibility(wrapId, false)
+      setIsPublic(false)
       alert.success(tProfile('update_success'))
       router.refresh()
     } catch (error) {
@@ -96,6 +109,60 @@ export default function WrapDetailActionPanel({
       alert.error(tProfile('update_failed'))
     } finally {
       setIsBusy(false)
+    }
+  }
+
+  const confirmPublish = async (previewImageBase64: string, marketplaceOptions?: MarketplaceOptions) => {
+    if (!isOwner || isPublishing) return
+
+    setIsPublishing(true)
+    try {
+      const signRes = await fetch('/api/wrap/get-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wrapId })
+      })
+      const signData = await signRes.json()
+      if (!signData.success) throw new Error(`get-upload-url failed: ${signData.error}`)
+
+      const { uploadUrl, ossKey } = signData
+      const base64Content = previewImageBase64.replace(/^data:image\/\w+;base64,/, '')
+      const byteCharacters = atob(base64Content)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' })
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: blob,
+        headers: { 'Content-Type': 'image/png' }
+      })
+      if (!uploadRes.ok) throw new Error('OSS direct upload failed')
+
+      const confirmRes = await fetch('/api/wrap/confirm-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wrapId,
+          ossKey,
+          marketplaceOptions
+        })
+      })
+      const confirmData = await confirmRes.json()
+      if (!confirmData.success) throw new Error(`confirm-publish failed: ${confirmData.error}`)
+
+      setIsPublic(true)
+      setShowPublishModal(false)
+      alert.success(tCommon('publish_success'))
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to publish wrap from detail:', error)
+      const message = error instanceof Error ? error.message : String(error)
+      alert.error(`发布失败: ${message}`)
+    } finally {
+      setIsPublishing(false)
     }
   }
 
@@ -218,6 +285,20 @@ export default function WrapDetailActionPanel({
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={handleDelete}
       />
+
+      {showPublishModal && (
+        <PublishModal
+          isOpen={showPublishModal}
+          onClose={() => setShowPublishModal(false)}
+          onConfirm={confirmPublish}
+          modelSlug={sourceModelSlug}
+          modelUrl={modelUrl}
+          wheelUrl={wheelUrl}
+          textureUrl={sourceTextureUrl}
+          isPublishing={isPublishing}
+          isCreator={isCreator}
+        />
+      )}
     </>
   )
 }
