@@ -9,7 +9,7 @@ const RECOMMENDED_POPULAR_WEIGHT = 0.55
 const RECOMMENDED_FRESH_WEIGHT = 0.45
 const RECOMMENDED_FRESH_DECAY_HOURS = 168
 const RECOMMENDED_HEAD_FRESH_HOURS = 72
-const RECOMMENDED_HEAD_MIN_HEAT = 1
+const RECOMMENDED_HEAD_MIN_HEAT = 0
 const RECOMMENDED_HEAD_MAX_HEAT = 12
 
 /**
@@ -197,7 +197,7 @@ export async function getWraps(
 
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
-            ['wraps-v11', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
+            ['wraps-v12', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
@@ -228,8 +228,11 @@ async function fetchWrapsInternal(
             const searchParam = `$${params.length}`
             where += ` AND (w.name ILIKE ${searchParam} OR COALESCE(w.name_en, '') ILIKE ${searchParam} OR COALESCE(w.prompt, '') ILIKE ${searchParam})`
         }
+        const publishedAgeHoursExpr = `
+            GREATEST(EXTRACT(EPOCH FROM (NOW() - COALESCE(w.first_published_at, w.created_at))) / 3600.0, 0)
+        `
         const recommendedHeadCondition = `
-            GREATEST(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600.0, 0) <= ${RECOMMENDED_HEAD_FRESH_HOURS}
+            ${publishedAgeHoursExpr} <= ${RECOMMENDED_HEAD_FRESH_HOURS}
             AND COALESCE(w.user_download_count, w.download_count, 0) BETWEEN ${RECOMMENDED_HEAD_MIN_HEAT} AND ${RECOMMENDED_HEAD_MAX_HEAT}
         `
         const orderBy = sortBy === 'recommended'
@@ -240,16 +243,16 @@ async function fetchWrapsInternal(
                 END DESC,
                 CASE
                     WHEN ${recommendedHeadCondition}
-                    THEN w.created_at ELSE NULL
+                    THEN COALESCE(w.first_published_at, w.created_at) ELSE NULL
                 END DESC,
                 (
                     ${RECOMMENDED_POPULAR_WEIGHT} * LN(1 + COALESCE(w.user_download_count, w.download_count, 0))
                     + ${RECOMMENDED_FRESH_WEIGHT} * EXP(
-                        -GREATEST(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600.0, 0) / ${RECOMMENDED_FRESH_DECAY_HOURS}
+                        -${publishedAgeHoursExpr} / ${RECOMMENDED_FRESH_DECAY_HOURS}
                     )
                 ) DESC,
                 COALESCE(w.user_download_count, w.download_count, 0) DESC,
-                w.created_at DESC,
+                COALESCE(w.first_published_at, w.created_at) DESC,
                 w.id DESC
             `
             : sortBy === 'popular'

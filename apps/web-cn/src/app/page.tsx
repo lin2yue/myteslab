@@ -31,7 +31,7 @@ export default async function HomePage({
         <div className="flex flex-col">
             {/* SEO H1 - Hidden but accessible */}
             <h1 className="sr-only">
-                特斯拉自定义涂装免费下载 - 车机贴膜图库与 AI 设计工具
+                特斯拉喷漆车间涂装免费下载 - 车机贴膜图库与 AI 设计工具
             </h1>
 
             {/* Main Content */}
@@ -50,6 +50,12 @@ export default async function HomePage({
                 <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
                     <WrapList initialWraps={wraps} model={model} locale="zh" sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
+
+                <section className="sr-only" aria-hidden="true">
+                    <h2>特斯拉涂装下载与喷漆车间素材</h2>
+                    <p>特玩提供特斯拉涂装下载、特斯拉喷漆车间素材、车机皮肤与自定义贴膜设计，覆盖 Model 3、Model Y、Cybertruck、Model S、Model X，支持 AI 生成与 3D 预览后再下载导入车机。</p>
+                    <p>首页负责承接特斯拉自定义涂装、喷漆车间下载、车机皮肤下载等核心搜索词，并通过车型页、详情页和 AI 生成页形成更完整的搜索意图承接结构。</p>
+                </section>
             </main>
             <HomeOperationModal />
 

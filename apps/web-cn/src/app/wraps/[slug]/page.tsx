@@ -361,6 +361,16 @@ export default async function WrapDetailPage({
                                     </p>
                                 </div>
                             )}
+
+                            <div className="pt-4 border-t border-black/5 dark:border-white/10 space-y-3">
+                                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">作品说明</h2>
+                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
+                                    这款 {name} 适用于特斯拉 {modelName || '车型'} 的涂装下载与喷漆车间预览场景，页面提供纹理预览、下载入口与 3D 查看能力，方便你在下载前先确认视觉效果是否符合预期。
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
+                                    如果你在搜索 {modelName ? `“${modelName} 涂装下载”` : '“特斯拉涂装下载”'}、{modelName ? `“${modelName} 喷漆车间素材”` : '“特斯拉喷漆车间素材”'} 或类似长尾词，这类详情页会进一步承接具体风格与具体作品需求。
+                                </p>
+                            </div>
                         </div>
 
                         {/* AI 提示词卡片 */}
