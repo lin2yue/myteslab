@@ -16,6 +16,7 @@ import { getModelDisplayName } from '@/lib/model-display'
 import WrapDetailViewerPanel from '@/components/wrap/WrapDetailViewerPanel'
 import WrapDetailActionPanel from '@/components/wrap/WrapDetailActionPanel'
 import TexturePreviewModal from '@/components/wrap/TexturePreviewModal'
+import { BackButton } from '@/components/BackButton'
 import { dbQuery } from '@/lib/db'
 
 export async function generateMetadata({
@@ -192,15 +193,10 @@ export default async function WrapDetailPage({
             {/* Main Content */}
             <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex-1 w-full">
                 <div className="flex flex-wrap items-center gap-4 mb-8">
-                    <Link
-                        href={backHref}
-                        className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors text-sm font-medium mr-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        {t('back_to_home')}
-                    </Link>
+                    <BackButton
+                        fallbackHref={backHref}
+                        label={t('back_to_home')}
+                    />
 
                     <div className="w-px h-4 bg-gray-200 dark:bg-zinc-800 hidden sm:block"></div>
 
@@ -290,16 +286,6 @@ export default async function WrapDetailPage({
                                 )}
                             </div>
 
-                            {/* Dynamic SEO Description Section (Hidden for users, visible for SEO) */}
-                            <div className="sr-only" aria-hidden="true">
-                                <h2>{locale === 'en' ? 'About this Tesla Wrap Design' : '关于这款特斯拉贴膜设计'}</h2>
-                                <p>
-                                    {locale === 'en'
-                                        ? wrap.description_en || wrap.description || `This custom Tesla ${modelName || ''} wrap design, named "${name}", is available for free download. It provides a unique aesthetic for your vehicle with high-precision 4K texture patterns. Preview it in real-time using our 3D visualization studio before applying it to your car.`
-                                        : wrap.description || `这款名为“${name}”的定制特斯拉 ${modelName || ''} 车身贴膜设计现在可以免费下载。它通过高精度 4K 纹理图案为您提供独特的外观方案。在正式施工前，您可以使用我们的 3D 可视化工作室进行实时效果预览。`}
-                                </p>
-                            </div>
-
                             {/* 贴图预览 (完整展示，不裁切) */}
                             <div className="bg-black/5 dark:bg-white/10 rounded-xl border border-black/5 dark:border-white/10 p-2">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Texture Preview</p>
@@ -365,16 +351,6 @@ export default async function WrapDetailPage({
                                     </p>
                                 </div>
                             )}
-
-                            <div className="pt-4 border-t border-black/5 dark:border-white/10 space-y-3">
-                                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">作品说明</h2>
-                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
-                                    这款 {name} 适用于特斯拉 {modelName || '车型'} 的涂装下载与喷漆车间预览场景，页面提供纹理预览、下载入口与 3D 查看能力，方便你在下载前先确认视觉效果是否符合预期。
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
-                                    如果你在搜索 {modelName ? `“${modelName} 涂装下载”` : '“特斯拉涂装下载”'}、{modelName ? `“${modelName} 喷漆车间素材”` : '“特斯拉喷漆车间素材”'} 或类似长尾词，这类详情页会进一步承接具体风格与具体作品需求。
-                                </p>
-                            </div>
                         </div>
 
                         {/* AI 提示词卡片 */}

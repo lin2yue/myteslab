@@ -257,11 +257,11 @@ export function DownloadButton({ wrapId, wrapName, wrapSlug, locale, isLoggedIn,
                     )}
                 </span>
             </Button>
-            <p className="text-xs text-gray-500 text-center mt-2">
-                {priceCredits > 0
-                    ? (locale === 'zh' ? `付费下载：${priceCredits} 积分（使用充值积分）` : `Paid download: ${priceCredits} credits`)
-                    : t('free_download')}
-            </p>
+            {priceCredits > 0 ? (
+                <p className="text-xs text-gray-500 text-center mt-2">
+                    {locale === 'zh' ? `付费下载：${priceCredits} 积分（使用充值积分）` : `Paid download: ${priceCredits} credits`}
+                </p>
+            ) : null}
 
             {showPayModal && (
                 <Portal>

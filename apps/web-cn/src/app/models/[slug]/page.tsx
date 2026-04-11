@@ -115,55 +115,11 @@ export default async function ModelPage({
                     <p className="text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
                         {locale === 'en' ? modelDescription : `${modelDescription} 支持免费下载并导入特斯拉车机。`}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-zinc-500 max-w-4xl mx-auto mt-4 leading-7">
-                        {locale === 'en'
-                            ? `Explore Tesla ${currentModel.name_en || currentModel.name} wrap downloads, Paint Shop textures, and AI-generated design previews.`
-                            : `这里集中收录适配特斯拉${currentModel.name}的喷漆车间素材、涂装下载、车机贴膜与 AI 生成设计，方便你快速筛选适合该车型的下载资源。`}
-                    </p>
-                </section>
-
-                <section className="mb-8 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 p-6 md:p-8">
-                    <div className="grid gap-6 md:grid-cols-2 text-left">
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">适合搜索用户的内容结构</h2>
-                            <p className="text-sm text-gray-600 dark:text-zinc-400 leading-7">
-                                本页围绕“特斯拉{currentModel.name}涂装下载、{currentModel.name}喷漆车间素材、{currentModel.name}车机皮肤”这些车型词做聚合，帮助搜索引擎明确页面主题，也方便用户快速找到对应车型可用的设计。
-                            </p>
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">下载与预览方式</h2>
-                            <p className="text-sm text-gray-600 dark:text-zinc-400 leading-7">
-                                可先查看作品缩略图和详情页 3D 预览，再下载 PNG 贴图导入 Tesla Toybox Paint Shop 使用；如果现有作品不满足需求，也可以再转去 AI 生成页面创建新方案。
-                            </p>
-                        </div>
-                    </div>
                 </section>
 
                 <FilterBarWrapper models={models} sortBy={sortBy} recommendedKeywords={recommendedKeywords}>
                     <WrapList initialWraps={wraps} model={slug} locale={locale} sortBy={sortBy} searchQuery={searchQuery} />
                 </FilterBarWrapper>
-
-                <section className="mt-12 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 p-6 md:p-8">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{currentModel.name} 车型常见问题</h2>
-                    <div className="grid gap-4 md:grid-cols-2 text-sm leading-7 text-gray-600 dark:text-zinc-400">
-                        <div>
-                            <h3 className="font-medium text-gray-900 dark:text-white">这个车型页面适合找什么？</h3>
-                            <p>适合找 {currentModel.name} 专用涂装、喷漆车间素材、车机贴膜纹理，以及与该车型尺寸匹配的设计下载资源。</p>
-                        </div>
-                        <div>
-                            <h3 className="font-medium text-gray-900 dark:text-white">可以直接导入车机吗？</h3>
-                            <p>页面中的公开作品主要服务于下载和预览场景，适合进一步导入 Tesla Toybox Paint Shop 使用。</p>
-                        </div>
-                        <div>
-                            <h3 className="font-medium text-gray-900 dark:text-white">没有想要的风格怎么办？</h3>
-                            <p>可以先从本车型聚合页找灵感，再去 AI 生成页面描述你想要的风格，生成更贴合的专属涂装方案。</p>
-                        </div>
-                        <div>
-                            <h3 className="font-medium text-gray-900 dark:text-white">为什么车型聚合页对 SEO 重要？</h3>
-                            <p>因为它能承接“Model Y 涂装下载”“Model 3 喷漆车间素材”这类中频关键词，帮助首页分担主题，同时给详情页提供更清晰的内链结构。</p>
-                        </div>
-                    </div>
-                </section>
             </main>
         </div>
     )
