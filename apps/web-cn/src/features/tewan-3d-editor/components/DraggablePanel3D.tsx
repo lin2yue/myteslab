@@ -17,21 +17,23 @@ type DraggablePanel3DProps = {
   title?: string
 }
 
-function getDefaultX(w: number) {
-  if (typeof window === 'undefined') return 600
-  return Math.max(300, window.innerWidth - w - 20)
+function getDefaultPosition(w: number, h: number) {
+  if (typeof window === 'undefined') return { x: 640, y: 420 }
+  const x = Math.max(24, window.innerWidth - w - 32)
+  const y = Math.max(80, window.innerHeight - h - 96)
+  return { x, y }
 }
 
 export function DraggablePanel3D({
   children,
-  defaultSize = { width: 480, height: 400 },
-  minSize = { width: 300, height: 240 },
+  defaultSize = { width: 360, height: 300 },
+  minSize = { width: 260, height: 220 },
   onClose,
   allowFullscreen = true,
   title = '3D 预览',
   defaultPosition,
 }: DraggablePanel3DProps) {
-  const resolvedDefaultPosition = defaultPosition ?? { x: getDefaultX(defaultSize.width), y: 80 }
+  const resolvedDefaultPosition = defaultPosition ?? getDefaultPosition(defaultSize.width, defaultSize.height)
   const panelRef = useRef<HTMLDivElement>(null)
   const dragState = useRef<{ dragging: boolean; startX: number; startY: number; originX: number; originY: number } | null>(null)
   const resizeState = useRef<{ resizing: boolean; startX: number; startY: number; originW: number; originH: number } | null>(null)

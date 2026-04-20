@@ -7,6 +7,8 @@ type ShapeType = 'rect' | 'circle' | 'line'
 type MaterialFinish = 'matte' | 'gloss'
 type LightingMode = 'day' | 'garage'
 export type LeftTab = 'draw' | 'ai' | 'upload' | 'export'
+/** Canva 风格左侧导航。null = 面板收起 */
+export type LeftPanel = 'design' | 'ai' | 'elements' | 'upload' | 'text' | 'draw' | 'layers' | null
 
 type EditorState = {
   tool: ToolType
@@ -20,8 +22,10 @@ type EditorState = {
   lightingMode: LightingMode
   /** 与 AI 设计页一致：默认开启自动旋转 */
   autoRotate: boolean
-  /** 左侧面板当前激活标签 */
+  /** 左侧面板当前激活标签（legacy，保留兼容） */
   activeLeftTab: LeftTab
+  /** Canva 风格：当前展开的左侧面板，null 表示全部收起 */
+  leftPanel: LeftPanel
   /** AI 设计提示词 */
   aiPrompt: string
   /** AI 生成中 */
@@ -40,6 +44,7 @@ type EditorState = {
   setLightingMode: (mode: LightingMode) => void
   setAutoRotate: (on: boolean) => void
   setActiveLeftTab: (tab: LeftTab) => void
+  setLeftPanel: (panel: LeftPanel) => void
   setAiPrompt: (prompt: string) => void
   setAiGenerating: (generating: boolean) => void
   setPanel3DVisible: (visible: boolean) => void
@@ -57,6 +62,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   lightingMode: 'day',
   autoRotate: true,
   activeLeftTab: 'draw',
+  leftPanel: 'design',
   aiPrompt: '',
   aiGenerating: false,
   panel3DVisible: true,
@@ -72,6 +78,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   setLightingMode: (lightingMode) => set({ lightingMode }),
   setAutoRotate: (autoRotate) => set({ autoRotate }),
   setActiveLeftTab: (activeLeftTab) => set({ activeLeftTab }),
+  setLeftPanel: (leftPanel) => set({ leftPanel }),
   setAiPrompt: (aiPrompt) => set({ aiPrompt }),
   setAiGenerating: (aiGenerating) => set({ aiGenerating }),
   setPanel3DVisible: (panel3DVisible) => set({ panel3DVisible }),
