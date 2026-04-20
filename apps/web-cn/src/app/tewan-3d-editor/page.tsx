@@ -31,7 +31,7 @@ export default async function Tewan3DEditorPage() {
   })
 
   return (
-    <main className="min-h-screen bg-gray-950">
+    <main className="h-screen w-screen overflow-hidden bg-gray-950">
       <Tewan3DEditorApp models={models} />
     </main>
   )

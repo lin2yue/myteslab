@@ -11,7 +11,6 @@ type CarPreview3DProps = {
   modelSlug: string
   textureDataUrl: string | null
   lightingMode?: 'day' | 'garage'
-  materialFinish?: 'matte' | 'gloss'
   /** 与 AI 设计页一致 */
   autoRotate?: boolean
 }
@@ -22,7 +21,6 @@ export function CarPreview3D({
   modelSlug,
   textureDataUrl,
   lightingMode = 'day',
-  materialFinish = 'gloss',
   autoRotate = true,
 }: CarPreview3DProps) {
   const materialFilter = useMemo(() => {
@@ -54,7 +52,6 @@ export function CarPreview3D({
       modelSlug={modelSlug}
       textureUrl={textureDataUrl ?? undefined}
       materialFilter={materialFilter}
-      materialFinish={materialFinish}
       backgroundColor={backgroundColor}
       autoRotate={autoRotate}
       environment="neutral"

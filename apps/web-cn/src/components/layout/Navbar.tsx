@@ -21,6 +21,9 @@ export default function Navbar() {
     const { balance, loading: creditsLoading } = useCredits();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    // Tewan 3D editor is a full-screen workspace — no global navbar.
+    const isFullscreenEditor = pathname?.startsWith('/tewan-3d-editor');
+
     // 当前主导航状态
     const isAiPage = pathname?.includes('/ai-generate/');
     const isLockSoundsPage = pathname?.startsWith('/lock-sounds');
@@ -40,6 +43,10 @@ export default function Navbar() {
             document.body.style.touchAction = '';
         };
     }, [isMobileMenuOpen]);
+
+    if (isFullscreenEditor) {
+        return null;
+    }
 
     return (
         <header className="bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50 border-b border-black/5 dark:border-white/10">

@@ -1002,14 +1002,8 @@ export const ModelViewer = forwardRef<ModelViewerRef, ModelViewerProps>(({
                 </div>
             )}
 
-            {textureLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[1px] rounded-lg z-10 transition-all text-xs">
-                    <div className="bg-white/80 px-4 py-2 rounded-full shadow-sm border border-gray-100 flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin"></div>
-                        <p className="text-gray-600 font-medium">{t('applying_texture')}</p>
-                    </div>
-                </div>
-            )}
+            {/* 纹理刷新过于频繁（实时编辑器场景），覆盖遮罩会出现"加载中"闪烁，
+                这里直接去掉视觉提示，仅保留底层 textureLoading 状态用于 waitForReady。 */}
 
             {error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-red-50 rounded-lg z-20">

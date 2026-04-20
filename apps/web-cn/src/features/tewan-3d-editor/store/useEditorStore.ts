@@ -2,13 +2,12 @@
 
 import { create } from 'zustand'
 
-type ToolType = 'select' | 'paint' | 'erase' | 'shape' | 'text' | 'sticker'
+type ToolType = 'select' | 'pan' | 'paint' | 'erase' | 'shape' | 'text' | 'sticker'
 type ShapeType = 'rect' | 'circle' | 'line'
-type MaterialFinish = 'matte' | 'gloss'
 type LightingMode = 'day' | 'garage'
 export type LeftTab = 'draw' | 'ai' | 'upload' | 'export'
 /** Canva 风格左侧导航。null = 面板收起 */
-export type LeftPanel = 'design' | 'ai' | 'elements' | 'upload' | 'text' | 'draw' | 'layers' | null
+export type LeftPanel = 'base' | 'ai' | 'elements' | 'upload' | 'text' | 'draw' | 'layers' | null
 
 type EditorState = {
   tool: ToolType
@@ -18,9 +17,8 @@ type EditorState = {
   fontSize: number
   fontFamily: string
   textureDataUrl: string | null
-  materialFinish: MaterialFinish
   lightingMode: LightingMode
-  /** 与 AI 设计页一致：默认开启自动旋转 */
+  /** 默认关闭自动旋转，避免编辑时画面跳动 */
   autoRotate: boolean
   /** 左侧面板当前激活标签（legacy，保留兼容） */
   activeLeftTab: LeftTab
@@ -40,7 +38,6 @@ type EditorState = {
   setFontSize: (size: number) => void
   setFontFamily: (font: string) => void
   setTextureDataUrl: (dataUrl: string) => void
-  setMaterialFinish: (finish: MaterialFinish) => void
   setLightingMode: (mode: LightingMode) => void
   setAutoRotate: (on: boolean) => void
   setActiveLeftTab: (tab: LeftTab) => void
@@ -58,11 +55,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   fontSize: 68,
   fontFamily: 'Inter',
   textureDataUrl: null,
-  materialFinish: 'gloss',
   lightingMode: 'day',
-  autoRotate: true,
+  autoRotate: false,
   activeLeftTab: 'draw',
-  leftPanel: 'design',
+  leftPanel: 'base',
   aiPrompt: '',
   aiGenerating: false,
   panel3DVisible: true,
@@ -74,7 +70,6 @@ export const useEditorStore = create<EditorState>((set) => ({
   setFontSize: (fontSize) => set({ fontSize }),
   setFontFamily: (fontFamily) => set({ fontFamily }),
   setTextureDataUrl: (textureDataUrl) => set({ textureDataUrl }),
-  setMaterialFinish: (materialFinish) => set({ materialFinish }),
   setLightingMode: (lightingMode) => set({ lightingMode }),
   setAutoRotate: (autoRotate) => set({ autoRotate }),
   setActiveLeftTab: (activeLeftTab) => set({ activeLeftTab }),

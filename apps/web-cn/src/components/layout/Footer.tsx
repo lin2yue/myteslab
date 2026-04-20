@@ -14,6 +14,11 @@ export default function Footer() {
         return null;
     }
 
+    // Tewan 3D editor is a full-screen workspace — no global footer.
+    if (pathname?.startsWith('/tewan-3d-editor')) {
+        return null;
+    }
+
     return (
         <footer className="mt-auto border-t border-black/5 dark:border-white/10 bg-white/70 dark:bg-zinc-950/80 backdrop-blur">
             <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
