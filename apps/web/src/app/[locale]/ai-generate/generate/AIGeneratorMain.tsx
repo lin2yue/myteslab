@@ -636,21 +636,18 @@ export default function AIGeneratorMain({
             alert.warning('当前作品贴图还未就绪，请稍后再发布');
             return;
         }
-        if (activeMode === 'diy' && !activeWrapId) {
-            alert.warning('请先保存 DIY 作品，再发布');
-            return
-        }
 
+        let targetWrapId = activeWrapId
         if (activeMode === 'diy' && !activeWrapId) {
             const savedWrapId = await handleSaveDiy(currentTexture)
             if (!savedWrapId) {
                 return
             }
-            setActiveWrapId(savedWrapId)
+            targetWrapId = savedWrapId
         }
 
         // 已经发布了就不再操作
-        const currentWrap = activeWrapId ? history.find(h => h.id === activeWrapId) : null;
+        const currentWrap = targetWrapId ? history.find(h => h.id === targetWrapId) : null;
         if (currentWrap?.is_public) return;
 
         // 打开预览弹窗，而不再直接执行发布
@@ -1078,7 +1075,7 @@ export default function AIGeneratorMain({
                         </button>
                         <button
                             onClick={handlePublish}
-                            disabled={isPublishing || isSaving || (activeMode === 'ai' && (!activeWrapId || !currentTexture)) || (activeMode === 'diy' && (!currentTexture || !activeWrapId)) || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
+                            disabled={isPublishing || isSaving || (activeMode === 'ai' && (!activeWrapId || !currentTexture)) || !currentTexture || (activeWrapId ? history.find(h => h.id === activeWrapId)?.is_public : false)}
                             className={`flex items-center gap-1.5 flex-shrink-0 ${isPublishing || isSaving ? 'h-10 px-4 rounded-lg bg-gray-100' : (activeWrapId && history.find(h => h.id === activeWrapId)?.is_public ? 'h-10 px-4 rounded-lg bg-gray-100 text-gray-400' : 'btn-primary h-10 px-4')}`}
                         >
                             {(isPublishing || isSaving) ? (
