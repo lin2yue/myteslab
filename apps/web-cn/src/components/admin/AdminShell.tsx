@@ -85,6 +85,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         { name: 'Works', href: '/admin/wraps', icon: LayoutDashboard },
         { name: 'Operations', href: '/admin/operations', icon: Megaphone },
         { name: 'WeChat Replies', href: '/admin/wechat-messages', icon: MessageSquare },
+        { name: 'Tewan MP Messages', href: '/admin/tewan-mp-messages', icon: MessageSquare },
         { name: 'Credit Ledger', href: '/admin/credits', icon: Wallet },
         { name: 'Credit Campaigns', href: '/admin/credit-campaigns', icon: Target },
     ];

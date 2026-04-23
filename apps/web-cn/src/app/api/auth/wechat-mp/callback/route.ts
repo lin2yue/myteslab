@@ -5,6 +5,7 @@ import { dbQuery } from '@/lib/db';
 import { findUserByWechatOpenId } from '@/lib/auth/users';
 import { generateAIChatReply } from '@/lib/ai/gemini-chat';
 import { createHash } from 'crypto';
+import { logTewanMpMessage } from '@/lib/tewan-mp-logs';
 
 const parser = new XMLParser();
 let dedupTableEnsured = false;
@@ -376,6 +377,19 @@ export async function POST(request: Request) {
             return new Response('success');
         }
 
+        const inboundMessageKey = buildMessageKey(msg);
+        await logTewanMpMessage({
+            openid,
+            direction: 'inbound',
+            msgType: msg.MsgType || 'unknown',
+            event: msg.Event || null,
+            eventKey: msg.EventKey || null,
+            msgId: msg.MsgId ? String(msg.MsgId) : null,
+            dedupKey: inboundMessageKey,
+            content: msg.MsgType === 'text' ? String(msg.Content || '').trim() : null,
+            sourceAccount: 'tewan'
+        }).catch(() => {});
+
         // Handle 'subscribe' (new follow) and 'SCAN' (already followed)
         if (msg.MsgType === 'event' && (msg.Event === 'subscribe' || msg.Event === 'SCAN')) {
             let sceneId = msg.EventKey;
@@ -409,6 +423,15 @@ export async function POST(request: Request) {
 <MsgType><![CDATA[text]]></MsgType>
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
+                    await logTewanMpMessage({
+                        openid,
+                        direction: 'outbound',
+                        msgType: 'text',
+                        dedupKey: inboundMessageKey,
+                        content: replyContent,
+                        replyStrategy: 'subscribe_existing_user',
+                        sourceAccount: 'tewan'
+                    }).catch(() => {});
                     if (inboundEncrypted) {
                         const encryptedReply = encryptWechatMessage(replyXml, timestamp, nonce);
                         return new NextResponse(encryptedReply.responseXml, {
@@ -434,6 +457,16 @@ export async function POST(request: Request) {
 <MsgType><![CDATA[text]]></MsgType>
 <Content><![CDATA[${replyContent}]]></Content>
 </xml>`;
+
+                    await logTewanMpMessage({
+                        openid,
+                        direction: 'outbound',
+                        msgType: 'text',
+                        dedupKey: inboundMessageKey,
+                        content: replyContent,
+                        replyStrategy: 'subscribe_new_user_oauth',
+                        sourceAccount: 'tewan'
+                    }).catch(() => {});
 
                     if (inboundEncrypted) {
                         const encryptedReply = encryptWechatMessage(replyXml, timestamp, nonce);
@@ -482,6 +515,16 @@ export async function POST(request: Request) {
                 const segments = splitTextByUtf8Bytes(safeFastReply, WECHAT_TEXT_MAX_BYTES);
                 const passiveReply = segments[0] || '我可以直接给你步骤。你可以问我：车膜安装、锁车音安装、积分规则。';
                 await saveReplyForDedup(messageKey, passiveReply, 'passive_replied');
+                await logTewanMpMessage({
+                    openid,
+                    direction: 'outbound',
+                    msgType: 'text',
+                    msgId: msg.MsgId ? String(msg.MsgId) : null,
+                    dedupKey: messageKey,
+                    content: passiveReply,
+                    replyStrategy: 'fast_reply',
+                    sourceAccount: 'tewan'
+                }).catch(() => {});
                 if (segments.length > 1) {
                     void sendAsyncCustomerMessage({
                         openid,
@@ -513,6 +556,16 @@ export async function POST(request: Request) {
             if (raced === TIMEOUT) {
                 void aiTask
                     .then(async (finalReply) => {
+                        await logTewanMpMessage({
+                            openid,
+                            direction: 'outbound',
+                            msgType: 'text',
+                            msgId: msg.MsgId ? String(msg.MsgId) : null,
+                            dedupKey: messageKey,
+                            content: finalReply,
+                            replyStrategy: 'async_ai_reply',
+                            sourceAccount: 'tewan'
+                        }).catch(() => {});
                         await sendAsyncCustomerMessage({
                             openid,
                             content: finalReply,
@@ -526,6 +579,16 @@ export async function POST(request: Request) {
                             buildFastReplyByIntent(content)
                             || '我先给你直接步骤：你可以问我“车膜安装到车上”“锁车音安装”“积分怎么扣费”，我会直接按步骤回复。'
                         );
+                        await logTewanMpMessage({
+                            openid,
+                            direction: 'outbound',
+                            msgType: 'text',
+                            msgId: msg.MsgId ? String(msg.MsgId) : null,
+                            dedupKey: messageKey,
+                            content: fallback,
+                            replyStrategy: 'async_fallback_reply',
+                            sourceAccount: 'tewan'
+                        }).catch(() => {});
                         await sendAsyncCustomerMessage({
                             openid,
                             content: fallback,
@@ -540,6 +603,16 @@ export async function POST(request: Request) {
             const segments = splitTextByUtf8Bytes(safeAiReply, WECHAT_TEXT_MAX_BYTES);
             const passiveReply = segments[0] || '我可以直接给你步骤。你可以问我：车膜安装、锁车音安装、积分规则。';
             await saveReplyForDedup(messageKey, passiveReply, 'passive_replied');
+            await logTewanMpMessage({
+                openid,
+                direction: 'outbound',
+                msgType: 'text',
+                msgId: msg.MsgId ? String(msg.MsgId) : null,
+                dedupKey: messageKey,
+                content: passiveReply,
+                replyStrategy: 'sync_ai_reply',
+                sourceAccount: 'tewan'
+            }).catch(() => {});
             if (segments.length > 1) {
                 void sendAsyncCustomerMessage({
                     openid,
