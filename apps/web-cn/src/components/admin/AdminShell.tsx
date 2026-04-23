@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, History, Wallet, ShieldCheck, Users, BarChart, Target, Megaphone } from 'lucide-react';
+import { LayoutDashboard, History, Wallet, ShieldCheck, Users, BarChart, Target, Megaphone, MessageSquare } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -84,6 +84,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         { name: 'AI Tasks', href: '/admin/tasks', icon: History },
         { name: 'Works', href: '/admin/wraps', icon: LayoutDashboard },
         { name: 'Operations', href: '/admin/operations', icon: Megaphone },
+        { name: 'WeChat Replies', href: '/admin/wechat-messages', icon: MessageSquare },
         { name: 'Credit Ledger', href: '/admin/credits', icon: Wallet },
         { name: 'Credit Campaigns', href: '/admin/credit-campaigns', icon: Target },
     ];
