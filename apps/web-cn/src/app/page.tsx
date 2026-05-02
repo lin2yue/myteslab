@@ -6,7 +6,8 @@ import { getModelDisplayName } from '@/lib/model-display'
 import { HomeOperationModal } from '@/components/operations/HomeOperationModal'
 import { HomeOperationBanner } from '@/components/operations/HomeOperationBanner'
 
-export const revalidate = 60 // 启用 ISR 缓存，每 60 秒刷新一次，提升首页响应速度
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function HomePage({
     searchParams,
