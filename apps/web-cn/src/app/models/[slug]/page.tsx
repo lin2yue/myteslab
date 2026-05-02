@@ -5,7 +5,8 @@ import { FilterBarWrapper } from '@/components/FilterBarWrapper'
 import { getWraps, getModels, getWrapKeywordSuggestions, type WrapSortBy } from '@/lib/api'
 import { notFound } from 'next/navigation'
 
-export const revalidate = 60 // Enable ISR
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function generateMetadata({
     params
