@@ -3,14 +3,14 @@ import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app';
 /**
  * Standard Share Composable for Uni-App Vue 3
  * @param {Object|Function} options - Share configuration object or function returning it
- * @param {string} [options.title] - Share title (default: '特玩-锁车音效库')
+ * @param {string} [options.title] - Share title (default: '特玩')
  * @param {string} [options.path] - Share path (default: '/pages/index/index')
  * @param {string} [options.imageUrl] - Share image (default: '/static/share-cover.jpg')
  * @param {string} [options.query] - Query string for timeline (default: '')
  */
 export function useShare(options = {}) {
     const DEFAULT_CONFIG = {
-        title: '特玩-锁车音效库',
+        title: '特玩',
         path: '/pages/index/index',
         // imageUrl: '/static/share-cover.jpg', // Commented out to allow Page Screenshot (Default WeChat behavior)
         query: ''

@@ -3,7 +3,6 @@
 import {
   ChangeEvent,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -33,6 +32,7 @@ import PublishModal, { type MarketplaceOptions } from '@/components/publish/Publ
 import { useAlert } from '@/components/alert/AlertProvider'
 import { resolveModelAssetUrl } from '@/lib/editor/resolve-model-asset-url'
 import { useRouter } from 'next/navigation'
+import { RACING_STICKER_ASSETS, STICKER_RESOURCE_LINKS, type StickerAsset } from '../data/stickerAssets'
 
 /* ───────── constants ───────── */
 const QUICK_STYLES = [
@@ -60,6 +60,13 @@ const STICKERS = [
   '🎯', '🦅', '🐉', '🌊', '☠️', '🎪', '🏆', '🎸',
   '🌸', '🌈', '☀️', '🌙', '❤️', '💀', '🦋', '🐅',
 ]
+
+const STICKER_CATEGORY_LABEL: Record<StickerAsset['category'], string> = {
+  numbers: '号码',
+  racing: '赛车图形',
+  badges: '字标',
+  png: 'PNG',
+}
 
 const TEXT_PRESETS: { id: string; label: string; fontSize: number; fontFamily: string; preview: string }[] = [
   { id: 'display', label: '展示标题', fontSize: 120, fontFamily: 'Impact', preview: 'DISPLAY' },
@@ -241,14 +248,21 @@ export function Tewan3DEditorApp({ models: propModels }: { models?: ModelConfig[
     setUploadError(null)
     const file = e.target.files?.[0]; if (!file) return
     if (file.size > 10 * 1024 * 1024) { setUploadError('文件最大 10MB'); return }
+    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')
     const reader = new FileReader()
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string
-      if (dataUrl && editorRef.current) editorRef.current.addImageFromDataUrl(dataUrl)
+      if (!dataUrl || !editorRef.current) return
+      if (isSvg) {
+        editorRef.current.addSvgSticker(dataUrl, file.name.replace(/\.svg$/i, '') || 'SVG 贴纸', color)
+      } else {
+        editorRef.current.addImageFromDataUrl(dataUrl)
+      }
     }
-    reader.readAsDataURL(file)
+    if (isSvg) reader.readAsText(file)
+    else reader.readAsDataURL(file)
     if (uploadInputRef.current) uploadInputRef.current.value = ''
-  }, [])
+  }, [color])
 
   /* ───────── Download (clean texture, no bounding boxes) ───────── */
   const handleDownloadTexture = useCallback(() => {
@@ -378,6 +392,15 @@ export function Tewan3DEditorApp({ models: propModels }: { models?: ModelConfig[
         ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
         : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-white/5'
     }`
+
+  const addStickerAsset = useCallback((asset: StickerAsset) => {
+    setTool('sticker')
+    if (asset.kind === 'svg') {
+      editorRef.current?.addSvgSticker(asset.svg, asset.name, color)
+    } else {
+      editorRef.current?.addPngSticker(asset.src, asset.name)
+    }
+  }, [color, setTool])
 
   /* ───────── Context bar (top of canvas) ───────── */
   const renderColorRow = () => (
@@ -790,7 +813,6 @@ export function Tewan3DEditorApp({ models: propModels }: { models?: ModelConfig[
     setGradientStops(seeded)
     setGradientAngle(preset.angle)
     setActiveStopId(seeded[0].id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const basePanel = (
@@ -1127,7 +1149,39 @@ export function Tewan3DEditorApp({ models: propModels }: { models?: ModelConfig[
         </div>
 
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">贴纸</p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">赛车贴纸</p>
+            <span className="text-[11px] text-neutral-400">SVG 可换色 / PNG 原图</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {RACING_STICKER_ASSETS.map((asset) => (
+              <button
+                key={asset.id}
+                type="button"
+                onClick={() => addStickerAsset(asset)}
+                title={`${asset.name} · ${STICKER_CATEGORY_LABEL[asset.category]}`}
+                className="group flex h-24 flex-col items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white p-2 text-xs text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50"
+              >
+                <span className="flex h-12 w-full items-center justify-center overflow-hidden">
+                  {asset.kind === 'svg' ? (
+                    <span
+                      className="block h-12 w-full text-neutral-900 transition group-hover:text-red-600"
+                      style={{ color }}
+                      dangerouslySetInnerHTML={{ __html: asset.svg }}
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={asset.src} alt="" className="max-h-12 max-w-full object-contain" />
+                  )}
+                </span>
+                <span className="line-clamp-1 max-w-full text-center leading-tight">{asset.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">表情贴纸</p>
           <div className="grid grid-cols-6 gap-1.5">
             {STICKERS.map((emoji, i) => (
               <button
@@ -1140,6 +1194,28 @@ export function Tewan3DEditorApp({ models: propModels }: { models?: ModelConfig[
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">素材来源</p>
+          <div className="space-y-2">
+            {STICKER_RESOURCE_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-lg bg-white px-3 py-2 text-xs text-neutral-700 ring-1 ring-neutral-200 transition hover:text-neutral-950 hover:ring-neutral-300"
+                title={link.note}
+              >
+                <span className="font-medium">{link.label}</span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-neutral-500">{link.note}</span>
+              </a>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
+            品牌和赛事 logo 可能受商标保护，商用前请确认授权；内置赛车贴纸为自制通用素材。
+          </p>
         </div>
       </div>
     </>
@@ -1169,7 +1245,7 @@ export function Tewan3DEditorApp({ models: propModels }: { models?: ModelConfig[
           <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{uploadError}</div>
         )}
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-500">
-          上传后图片以独立图层添加到画布，可自由移动、缩放、旋转；结合画笔工具可二次创作。
+          上传后图片以独立图层添加到画布，可自由移动、缩放、旋转；SVG 上传后可像内置 SVG 贴纸一样换色。
         </div>
       </div>
     </>

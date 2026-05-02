@@ -59,6 +59,8 @@ export type Canvas2DEditorRef = {
   addShape: (shapeType: 'rect' | 'circle' | 'line', color: string) => void
   addText: (text: string, fontSize: number, fontFamily: string, color: string) => void
   addSticker: (emoji: string) => void
+  addSvgSticker: (svg: string, name?: string, fillColor?: string) => void
+  addPngSticker: (src: string, name?: string) => void
   deleteSelected: () => void
   clearCanvas: () => void
   bringToFront: () => void
@@ -146,10 +148,36 @@ function layerName(obj: fabric.Object): string {
 }
 function layerType(obj: fabric.Object): LayerSummary['type'] {
   if (obj instanceof fabric.Image) return 'image'
+  if ((obj as fabric.Object & { __isColorableSvgSticker?: boolean }).__isColorableSvgSticker) return 'shape'
   if (obj instanceof fabric.IText) return 'text'
   if (obj instanceof fabric.Rect || obj instanceof fabric.Circle || obj instanceof fabric.Line) return 'shape'
   if (obj instanceof fabric.Path) return 'path'
   return 'other'
+}
+
+function isPaintString(value: unknown): value is string {
+  return typeof value === 'string' && value !== '' && value !== 'none' && value !== 'transparent'
+}
+
+function walkFabricObject(obj: fabric.Object, visit: (child: fabric.Object) => void) {
+  visit(obj)
+  const children = (obj as fabric.Object & { _objects?: fabric.Object[] })._objects
+  if (children) children.forEach((child) => walkFabricObject(child, visit))
+}
+
+function recolorSvgSticker(obj: fabric.Object, color: string) {
+  walkFabricObject(obj, (child) => {
+    const target = child as fabric.Object & { fill?: unknown; stroke?: unknown }
+    if (isPaintString(target.fill) && target.fill !== '#fff' && target.fill !== '#ffffff') {
+      child.set('fill', color)
+    }
+    if (isPaintString(target.stroke) && target.stroke !== '#fff' && target.stroke !== '#ffffff') {
+      child.set('stroke', color)
+    }
+    child.dirty = true
+  })
+  ;(obj as fabric.Object & { __stickerColor?: string }).__stickerColor = color
+  obj.dirty = true
 }
 
 function isEditingDomField(): boolean {
@@ -548,6 +576,46 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef, Canvas2DEditorProps>
     c.add(t); c.setActiveObject(t); c.requestRenderAll()
   }, [orientNewObject, WIDTH, HEIGHT])
 
+  const placeImageLikeObject = useCallback((obj: fabric.Object, maxRatio = 0.38) => {
+    const scaleX = (WIDTH * maxRatio) / Math.max(1, obj.width || WIDTH)
+    const scaleY = (HEIGHT * maxRatio) / Math.max(1, obj.height || HEIGHT)
+    const scale = Math.min(scaleX, scaleY, 1)
+    obj.set({
+      left: WIDTH / 2 - ((obj.width || 0) * scale) / 2 + Math.random() * 60 - 30,
+      top: HEIGHT / 2 - ((obj.height || 0) * scale) / 2 + Math.random() * 60 - 30,
+      scaleX: scale,
+      scaleY: scale,
+      selectable: true,
+    })
+    orientNewObject(obj)
+  }, [orientNewObject, WIDTH, HEIGHT])
+
+  const addSvgSticker = useCallback((svg: string, name = 'SVG 贴纸', fillColor = '#111111') => {
+    const c = fabricRef.current; if (!c) return
+    const normalized = svg.replaceAll('currentColor', fillColor)
+    fabric.loadSVGFromString(normalized, (objects, options) => {
+      const valid = objects.filter(Boolean) as fabric.Object[]
+      if (!valid.length) return
+      const grouped = fabric.util.groupSVGElements(valid, options) as fabric.Object
+      ;(grouped as fabric.Object & { name?: string; __isColorableSvgSticker?: boolean }).name = name
+      ;(grouped as fabric.Object & { __isColorableSvgSticker?: boolean }).__isColorableSvgSticker = true
+      recolorSvgSticker(grouped, fillColor)
+      placeImageLikeObject(grouped, 0.34)
+      c.add(grouped); c.setActiveObject(grouped); c.requestRenderAll()
+      syncTexture()
+    })
+  }, [placeImageLikeObject, syncTexture])
+
+  const addPngSticker = useCallback((src: string, name = 'PNG 贴纸') => {
+    const c = fabricRef.current; if (!c) return
+    fabric.Image.fromURL(src, (img) => {
+      ;(img as fabric.Image & { name?: string }).name = name
+      placeImageLikeObject(img, 0.34)
+      c.add(img); c.setActiveObject(img); c.requestRenderAll()
+      syncTexture()
+    }, { crossOrigin: 'anonymous' })
+  }, [placeImageLikeObject, syncTexture])
+
   const addImageFromDataUrl = useCallback((dataUrl: string) => {
     const c = fabricRef.current; if (!c) return
     fabric.Image.fromURL(dataUrl, (img) => {
@@ -621,6 +689,8 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef, Canvas2DEditorProps>
   /* ─── Selection: read / write fill ─────────────────────────────────── */
   const fillOfObject = (o: fabric.Object | undefined | null): string | null => {
     if (!o) return null
+    const stickerColor = (o as fabric.Object & { __stickerColor?: string }).__stickerColor
+    if (stickerColor) return stickerColor
     const f = (o as fabric.Object & { fill?: unknown }).fill
     return typeof f === 'string' ? f : null
   }
@@ -642,7 +712,11 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef, Canvas2DEditorProps>
     const c = fabricRef.current; if (!c) return false
     const a = c.getActiveObject(); if (!a) return false
     if ((a as fabric.Object & { name?: string }).name === BASE_LAYER_NAME) return false
-    a.set('fill', color)
+    if ((a as fabric.Object & { __isColorableSvgSticker?: boolean }).__isColorableSvgSticker) {
+      recolorSvgSticker(a, color)
+    } else {
+      a.set('fill', color)
+    }
     // For IText we must also strip per-character `fill` overrides — otherwise
     // any character that had previously been styled (e.g. via in-place edit)
     // would keep its old color and the change would silently look broken.
@@ -792,7 +866,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef, Canvas2DEditorProps>
       syncTexture()
       emitLayers()
     },
-    addImageFromDataUrl, fillAll, fillGradient, addShape, addText, addSticker,
+    addImageFromDataUrl, fillAll, fillGradient, addShape, addText, addSticker, addSvgSticker, addPngSticker,
     deleteSelected, clearCanvas, bringToFront, sendToBack,
     undo, redo,
     setZoom, zoomIn, zoomOut, fitToScreen, resetZoom,
@@ -836,7 +910,7 @@ export const Canvas2DEditor = forwardRef<Canvas2DEditorRef, Canvas2DEditorProps>
     brushSize, color, shapeType, tool, fontSize, fontFamily,
     ensureBaseFillLayer, setBrushSize, setColor, setShapeType,
     setFontSize, setFontFamily, syncTexture,
-    addImageFromDataUrl, fillAll, fillGradient, addShape, addText, addSticker,
+    addImageFromDataUrl, fillAll, fillGradient, addShape, addText, addSticker, addSvgSticker, addPngSticker,
     deleteSelected, clearCanvas, bringToFront, sendToBack,
     undo, redo, setZoom, zoomIn, zoomOut, fitToScreen, resetZoom,
     rotateCW, rotateCCW, setRotation,

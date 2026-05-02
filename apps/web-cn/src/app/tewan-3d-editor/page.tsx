@@ -1,18 +1,29 @@
-import { Tewan3DEditorApp } from '@/features/tewan-3d-editor/components/Tewan3DEditorApp'
+import { Tewan3DEditorClient } from './Tewan3DEditorClient'
 import { getModels } from '@/lib/api'
 import type { ModelConfig } from '@/config/models'
 
 export const dynamic = 'force-dynamic'
 
+type EditorModelRow = {
+  slug: string
+  name: string
+  name_en?: string | null
+  model_3d_url?: string | null
+  wheel_url?: string | null
+  sort_order?: number | null
+  is_active?: boolean | null
+  thumb_url?: string | null
+}
+
 export default async function Tewan3DEditorPage() {
   // Fetch from DB (same as AI design page); falls back to DEFAULT_MODELS on failure
-  const dbModels = await getModels()
+  const dbModels = await getModels() as EditorModelRow[]
 
   // Map DB rows to the ModelConfig shape used by the editor
   // The DB doesn't carry uv_mask_url / uv_texture_rotation, so we merge from DEFAULT_MODELS
   const { DEFAULT_MODELS } = await import('@/config/models')
 
-  const models: ModelConfig[] = dbModels.map((m: any) => {
+  const models: ModelConfig[] = dbModels.map((m) => {
     const defaults = DEFAULT_MODELS.find((d) => d.slug === m.slug)
     return {
       slug: m.slug,
@@ -32,7 +43,7 @@ export default async function Tewan3DEditorPage() {
 
   return (
     <main className="h-screen w-screen overflow-hidden bg-gray-950">
-      <Tewan3DEditorApp models={models} />
+      <Tewan3DEditorClient models={models} />
     </main>
   )
 }

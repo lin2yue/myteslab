@@ -88,7 +88,6 @@
 import { defineComponent, ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { wrapsService } from '../../services/wraps.js';
-import { audioService } from '../../services/audio.js'; 
 import { getOptimizedImage } from '../../utils/image';
 import InstructionsModal from '../../components/InstructionsModal.vue';
 import UiIcon from '../../components/UiIcon.vue';
@@ -202,24 +201,26 @@ export default defineComponent({
     });
 
     const handleGetWrap = () => {
-      // Use original URL for detailed texture
       const rawUrl = wrap.value?.wrap_image_url || wrap.value?.image_url;
-      let downloadUrl = audioService.getDownloadUrl(rawUrl);
-      
-      if (downloadUrl) {
-        // Append force download param for Aliyun OSS / Standard S3
-        const separator = downloadUrl.includes('?') ? '&' : '?';
-        downloadUrl += `${separator}response-content-disposition=attachment`;
-
-        uni.setClipboardData({
-          data: downloadUrl,
-          success: () => {
-            showModal.value = true;
-          },
-        });
-      } else {
+      if (!rawUrl) {
         uni.showToast({ title: '无下载链接', icon: 'none' });
+        return;
       }
+
+      // Normalize OSS to CDN
+      let downloadUrl = rawUrl.replace(
+        'lock-sounds.oss-cn-beijing.aliyuncs.com',
+        'cdn.tewan.club'
+      );
+      const separator = downloadUrl.includes('?') ? '&' : '?';
+      downloadUrl += `${separator}response-content-disposition=attachment`;
+
+      uni.setClipboardData({
+        data: downloadUrl,
+        success: () => {
+          showModal.value = true;
+        },
+      });
     };
 
     return {

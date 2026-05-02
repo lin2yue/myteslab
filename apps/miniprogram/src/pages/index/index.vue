@@ -19,11 +19,10 @@
       </view>
       <view style="height: 24rpx;"></view>
 
-      <view v-for="n in 4" :key="n" class="bg-gradient-to-br from-white/5 to-transparent border border-white/10 rounded-2xl p-3 flex items-center mb-4">
-        <view class="w-16 h-16 rounded-lg bg-white/10 mr-4 shrink-0"></view>
-        <view class="flex-1 min-w-0">
-          <view class="h-5 w-44 rounded bg-white/10 mb-2"></view>
-          <view class="h-3 w-28 rounded bg-white/10"></view>
+      <view class="grid grid-cols-2 gap-3">
+        <view v-for="n in 4" :key="n" class="bg-gradient-to-br from-white/5 to-transparent border border-white/10 rounded-2xl p-3">
+          <view class="w-full aspect-square rounded-lg bg-white/10 mb-2"></view>
+          <view class="h-4 w-3/4 rounded bg-white/10"></view>
         </view>
       </view>
     </view>
@@ -33,10 +32,11 @@
         <view class="flex items-center">
           <image src="/static/icons/LOGO.png" mode="heightFix" class="h-7" />
         </view>
-        <text class="text-white/60 mt-1 text-sm">发现最酷的特斯拉锁车音效</text>
+        <text class="text-white/60 mt-1 text-sm">探索特斯拉个性化改装</text>
       </view>
 
       <swiper 
+          v-if="banners.length > 0"
           class="h-44 mb-6 rounded-2xl overflow-hidden shadow-lg" 
           circular 
           autoplay 
@@ -56,35 +56,8 @@
           </swiper-item>
       </swiper>
 
-      <view>
-          <SectionHeader :show-more="true" @more="goToLibrary" class="mb-4">
-              热门推荐
-          </SectionHeader>
-          <view style="height: 24rpx;"></view>
-
-          <AudioCard 
-              v-for="audio in hotAudios" 
-              :key="audio.id" 
-              :audio="audio"
-              :is-playing="currentAudio?.id === audio.id && isPlaying"
-              @play="handlePlay(audio)"
-              @download="handleDownload(audio)"
-          />
-
-          <view v-if="loading" class="text-center py-8">
-              <text class="text-white/40">加载中...</text>
-          </view>
-
-          <!-- View More Audios -->
-          <view class="py-4">
-             <button @click="goToLibrary" class="w-full bg-white/5 border border-white/10 rounded-xl py-3 flex items-center justify-center active:bg-white/10">
-                <text class="text-white/80 text-sm font-medium">查看更多音效</text>
-             </button>
-          </view>
-      </view>
-
       <!-- Wraps Section -->
-      <view class="mt-8">
+      <view>
         <SectionHeader :show-more="true" @more="goToWraps">
           车身涂装
         </SectionHeader>
@@ -94,6 +67,10 @@
            <WrapCard v-for="wrap in hotWraps" :key="wrap.id" :wrap="wrap" class="w-full" />
         </view>
 
+        <view v-if="loading" class="text-center py-8">
+            <text class="text-white/40">加载中...</text>
+        </view>
+
         <!-- View More Wraps -->
         <view class="py-4">
             <button @click="goToWraps" class="w-full bg-white/5 border border-white/10 rounded-xl py-3 flex items-center justify-center active:bg-white/10">
@@ -101,44 +78,27 @@
             </button>
          </view>
       </view>
-
-      <GlobalPlayer />
-      <Modal :visible="showModal" @close="showModal = false" />
     </view>
   </view>
 </template>
 
 <script>
 import { defineComponent, ref, onMounted } from 'vue';
-import { audioService } from '../../services/audio';
+import { supabase } from '../../services/supabase';
 import { wrapsService } from '../../services/wraps';
-import { usePlayerStore } from '../../store/player';
-import { storeToRefs } from 'pinia';
-import AudioCard from '../../components/AudioCard.vue';
-import GlobalPlayer from '../../components/GlobalPlayer.vue';
-import Modal from '../../components/InstructionsModal.vue';
 import SectionHeader from '../../components/SectionHeader.vue';
-import UiCard from '../../components/UiCard.vue';
-import UiIcon from '../../components/UiIcon.vue';
 import WrapCard from '../../components/WrapCard.vue';
 import { getOptimizedImage } from '../../utils/image';
 
 export default defineComponent({
   components: {
-    AudioCard,
-    GlobalPlayer,
-    Modal,
     SectionHeader,
-    UiCard,
-    UiIcon,
     WrapCard
   },
   setup() {
      const banners = ref([]);
-     const hotAudios = ref([]);
      const hotWraps = ref([]);
      const loading = ref(true);
-     const showModal = ref(false);
      const showSkeleton = ref(true);
 
      const swiperIndicatorColor = {
@@ -146,68 +106,39 @@ export default defineComponent({
         inactive: 'rgba(255, 255, 255, 0.15)'
     };
 
-    const playerStore = usePlayerStore();
-    const { currentAudio, isPlaying } = storeToRefs(playerStore);
-
     const fetchBanners = async () => {
-        const { data } = await audioService.fetchBanners();
-        if (data && data.length > 0) {
-            banners.value = data.map(b => ({
-                id: b.id,
-                title: b.title,
-                image: b.image_url,
-                target: b.target_path
-            }));
-        } else {
-            banners.value = [];
-        }
-    };
-
-    const fetchHotAudios = async () => {
-        // Fixed 10 hot audios
-        const { data } = await audioService.fetchAudios('hot', 1, 10);
-        if (data) {
-            hotAudios.value = data;
+        if (!supabase) return;
+        try {
+            const { data } = await supabase
+                .from('banners')
+                .select('*')
+                .eq('is_active', true)
+                .order('sort_order', { ascending: true });
+            if (data && data.length > 0) {
+                banners.value = data.map(b => ({
+                    id: b.id,
+                    title: b.title,
+                    image: b.image_url,
+                    target: b.target_path
+                }));
+            }
+        } catch (err) {
+            console.error('Error fetching banners:', err);
         }
     };
 
     const fetchHotWraps = async () => {
-        // Fixed 6 hot wraps
         const { data } = await wrapsService.fetchWraps({ pageSize: 6 });
         if (data) {
             hotWraps.value = data;
         }
-    }
+    };
     
     const handleBannerClick = (banner) => {
         if (banner.target) {
             uni.navigateTo({ url: banner.target });
         }
     };
-
-    const handlePlay = (audio) => {
-        playerStore.play(audio);
-    };
-
-    const handleDownload = (audio) => {
-        const downloadUrl = audioService.getDownloadUrl(audio.file_url, audio.id);
-        if (downloadUrl) {
-            uni.setClipboardData({
-                data: downloadUrl,
-                success: () => {
-                    showModal.value = true;
-                }
-            });
-        }
-    };
-
-     const goToLibrary = () => {
-         uni.switchTab({ url: '/pages/library/index' });
-     };
-
-     const goToAlbums = () => {
-         uni.switchTab({ url: '/pages/albums/index' });
-     };
 
     const goToWraps = () => {
          uni.switchTab({ url: '/pages/wraps/index' });
@@ -218,8 +149,7 @@ export default defineComponent({
          showSkeleton.value = true;
 
          await Promise.all([
-             fetchBanners(), 
-             fetchHotAudios(),
+             fetchBanners(),
              fetchHotWraps()
          ]);
 
@@ -229,32 +159,24 @@ export default defineComponent({
 
       return {
           banners,
-          hotAudios,
           hotWraps,
           loading,
-          showModal,
           showSkeleton,
           getOptimizedImage,
-          currentAudio,
-          isPlaying,
           swiperIndicatorColor,
           handleBannerClick,
-          handlePlay,
-          handleDownload,
-          goToLibrary,
-          goToAlbums,
           goToWraps
       };
   },
   onShareAppMessage() {
     return {
-        title: '特玩-锁车音效库',
+        title: '特玩',
         path: '/pages/index/index'
     };
   },
   onShareTimeline() {
     return {
-        title: '特玩-锁车音效库'
+        title: '特玩'
     };
   }
 });

@@ -7,34 +7,9 @@
 			}
 		},
 		{
-			"path": "pages/albums/index",
-			"style": {
-				"navigationBarTitleText": "锁车音"
-			}
-		},
-		{
 			"path": "pages/tutorial/index",
 			"style": {
 				"navigationBarTitleText": "教程"
-			}
-		},
-		{
-			"path": "pages/albums-list/index",
-			"style": {
-				"navigationBarTitleText": "专辑"
-			}
-		},
-		{
-			"path": "pages/library/index",
-			"style": {
-				"navigationBarTitleText": "所有音频"
-			}
-		},
-		{
-			"path": "pages/album-detail/index",
-			"style": {
-				"navigationBarTitleText": "专辑详情",
-				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -52,7 +27,7 @@
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "white",
-		"navigationBarTitleText": "Tesla Sounds",
+		"navigationBarTitleText": "特玩",
 		"navigationBarBackgroundColor": "#111111",
 		"backgroundColor": "#111111",
 		"backgroundColorTop": "#111111",
@@ -69,12 +44,6 @@
 				"text": "探索",
 				"iconPath": "static/tabbar/discover.png",
 				"selectedIconPath": "static/tabbar/discover-active.png"
-			},
-			{
-				"pagePath": "pages/albums/index",
-				"text": "锁车音",
-				"iconPath": "static/tabbar/albums.png",
-				"selectedIconPath": "static/tabbar/albums-active.png"
 			},
 			{
 				"pagePath": "pages/wraps/index",
