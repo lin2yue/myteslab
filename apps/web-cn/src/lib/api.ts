@@ -8,7 +8,7 @@ export type WrapSortBy = 'recommended' | 'popular' | 'latest'
 const RECOMMENDED_POPULAR_WEIGHT = 0.55
 const RECOMMENDED_FRESH_WEIGHT = 0.45
 const RECOMMENDED_FRESH_DECAY_HOURS = 168
-const RECOMMENDED_HEAD_FRESH_HOURS = 72
+const RECOMMENDED_HEAD_FRESH_HOURS = 168
 const RECOMMENDED_HEAD_MIN_HEAT = 0
 const RECOMMENDED_HEAD_MAX_HEAT = 12
 
@@ -197,7 +197,7 @@ export async function getWraps(
 
         return await unstable_cache(
             () => fetchWrapsInternal(modelSlug, page, pageSize, sortBy, normalizedSearchQuery),
-            ['wraps-v12', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
+            ['wraps-v13', modelSlug || 'all', String(page), sortBy, normalizedSearchQuery || 'none'],
             { revalidate: 60, tags: ['wraps'] }
         )()
     } catch (error) {
